@@ -926,3 +926,5 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T19:38:04.552Z,GET,www.cancer.gov,/espanol/tipos/linfoma/pro/tratamiento-linfoma-celulas-b-crecimiento-rapido-pdq,,200,426451,0.070
 2026-11-15T19:38:09.632Z,GET,www.cancer.gov,/publications/pdq/information-summaries/genetics/rtps2-hp-pdq,,200,87852,0.065
 2026-11-15T19:38:14.707Z,GET,www.cancer.gov,/types/cervical/hp/treatment-during-pregnancy-pdq,,200,51455,0.047
+2026-11-15T20:04:46.375Z,GET,api.fda.gov,/download.json,,200,602365,0.673
+2026-11-15T20:14:06.884Z,GET,api.fda.gov,/download.json,,200,602365,0.655
