@@ -36,6 +36,16 @@ MAPPING: dict[str, tuple[str, ...]] = {
     "general": ("patient_counseling_information",),
 }
 SECTION_17 = "patient_counseling_information"
+#: Heading keys whose mapping is this project's choice, not the regulation's (the regulation
+#: names no section for them). Reported with every alignment figure.
+MAPPED_BY_PROJECT = frozenset({"general"})
+
+
+def mapping_source(key: str) -> str | None:
+    """``regulation`` or ``project`` for a mapped heading key; ``None`` for one not mapped."""
+    if key not in MAPPING:
+        return None
+    return "project" if key in MAPPED_BY_PROJECT else "regulation"
 
 
 def label_counts(

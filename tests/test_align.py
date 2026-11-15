@@ -45,3 +45,10 @@ def test_segment_spans_match_the_segments():
     assert GUIDE[start:head_end] == segs[1].heading
     assert GUIDE[head_end:end].strip() == segs[1].body
     assert tx.segment_spans("") == []
+
+
+def test_general_is_mapped_by_the_project_not_the_regulation():
+    assert align.mapping_source("general") == "project"
+    assert align.mapping_source("what_is") == "regulation"
+    assert align.mapping_source("preamble") is None
+    assert align.MAPPED_BY_PROJECT.issubset(align.MAPPING)
