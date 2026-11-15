@@ -118,6 +118,41 @@ def cmd_profile(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_download_all(args: argparse.Namespace) -> int:
+    _check_drive(Path("data/raw"))
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    day = today_utc()
+    first = pages.fetch_page(client, bulk.DOWNLOAD_JSON, PAGES_ROOT, day)
+    listing = json.loads(first.path.read_text(encoding="utf-8"))
+    export_date, parts = bulk.label_parts(listing)
+    print(f"Listing: export {export_date}, {len(parts)} parts.", flush=True)
+    rows = bulk.fetch_all(
+        client,
+        listing,
+        BULK_ROOT,
+        args.max_mb,
+        clock=client.clock,
+        log=lambda s: print(s, flush=True),
+    )
+    second = pages.fetch_page(client, bulk.DOWNLOAD_JSON, PAGES_ROOT, day)
+    again, _ = bulk.label_parts(json.loads(second.path.read_text(encoding="utf-8")))
+    total = sum(int(r["bytes"]) for r in rows)
+    print(
+        f"{len(rows)} parts of the {export_date} export on disk, {total:,} bytes; "
+        f"{client.budget.calls} of {client.budget.max_calls} calls this session.",
+        flush=True,
+    )
+    if again != export_date:
+        print(
+            f"The export date changed during the run ({export_date} -> {again}). Stop here: "
+            "read the listing again once and start over from it.",
+            flush=True,
+        )
+        return 2
+    print(f"The listing still names {export_date}: all parts share one export date.", flush=True)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -162,6 +197,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("part", help="path to a downloaded part (.json.zip)")
     p.add_argument("--out", default="data/interim/profile/profile.json")
     p.set_defaults(func=cmd_profile)
+
+    p = sub.add_parser("download-all", help="every part of the listed export (resumable)")
+    p.add_argument("--max-mb", type=float, default=200.0, help="the largest part allowed")
+    caps(p)
+    p.set_defaults(func=cmd_download_all)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")

@@ -78,3 +78,12 @@ def test_page_text_reads_plain_files_as_they_are(tmp_path):
     f = tmp_path / "robots.txt"
     f.write_text("User-agent: *\nDisallow: /a\n")
     assert pages.page_text(f) == "User-agent: *\nDisallow: /a\n"
+
+
+def test_the_same_page_fetched_twice_in_a_day_keeps_both_copies(tmp_path):
+    c, _, _ = make(tmp_path, [FakeResponse(body=b"one"), FakeResponse(body=b"two")])
+    root = tmp_path / "pages"
+    a = pages.fetch_page(c, "https://x.gov/download.json", root, "d")
+    b = pages.fetch_page(c, "https://x.gov/download.json", root, "d")
+    assert (a.path.name, b.path.name) == ("download.json", "download.2.json")
+    assert pages.latest_pages(root)["https://x.gov/download.json"].read_bytes() == b"two"

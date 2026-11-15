@@ -85,3 +85,33 @@ def test_profile_writes_aggregates(tmp_path, monkeypatch, capsys):
     saved = json.loads((tmp_path / "out" / "p.json").read_text())
     assert saved["labels"] == 2 and saved["source_meta"] == {"last_updated": "2026-11-13"}
     assert "2 paired" in capsys.readouterr().out
+
+
+def test_download_all_checks_the_listing_before_and_after(tmp_path, monkeypatch, capsys):
+    import json
+
+    from plainpairs import cli
+    from tests.test_bulk import listing, part_zip_bytes
+    from tests.test_client import FakeResponse
+    from tests.test_client import make as make_fake
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "raw").mkdir(parents=True)
+    first = json.dumps(listing([2], 2)).encode()
+    moved = json.dumps(listing([2], 2, date="2026-11-20")).encode()
+    answers = [
+        FakeResponse(body=first),
+        FakeResponse(body=part_zip_bytes(2, 0, 2)),
+        FakeResponse(body=moved),
+    ]
+    fake, _session, _ = make_fake(tmp_path, answers)
+    monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake)
+    assert main(["download-all"]) == 2
+    out = capsys.readouterr().out
+    assert "export 2026-11-13, 1 parts" in out
+    assert "changed during the run" in out
+    answers2 = [FakeResponse(body=first), FakeResponse(body=first)]
+    fake2, _, _ = make_fake(tmp_path, answers2)
+    monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake2)
+    assert main(["download-all"]) == 0
+    assert "share one export date" in capsys.readouterr().out

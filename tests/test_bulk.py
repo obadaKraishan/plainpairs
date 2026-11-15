@@ -131,3 +131,79 @@ def test_a_member_that_unpacks_too_large_is_refused(tmp_path, monkeypatch):
     monkeypatch.setattr(bulk, "MAX_UNPACKED", 10)
     with pytest.raises(bulk.BulkError, match="unpacks to"):
         list(bulk.iter_labels(z))
+
+
+def listing(parts, total, date="2026-11-13"):
+    return {
+        "results": {
+            "drug": {
+                "label": {
+                    "export_date": date,
+                    "total_records": total,
+                    "partitions": [
+                        {
+                            "display_name": f"/drug/label (part {i} of {len(parts)})",
+                            "file": f"https://download.example.org/drug/label/drug-label-000{i}-of-000{len(parts)}.json.zip",
+                            "size_mb": "0.01",
+                            "records": n,
+                        }
+                        for i, n in enumerate(parts, start=1)
+                    ],
+                }
+            }
+        }
+    }
+
+
+def part_zip_bytes(n, skip, total, date="2026-11-13"):
+    buf = io.BytesIO()
+    meta = {"last_updated": date, "results": {"skip": skip, "limit": n, "total": total}}
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("drug-label.json", labels_json(n, meta))
+    return buf.getvalue()
+
+
+def test_fetch_all_downloads_missing_parts_and_keeps_a_manifest(tmp_path):
+    lst = listing([3, 2], 5)
+    root = tmp_path / "bulk"
+    existing = root / "2026-11-13" / "drug-label-0001-of-0002.json.zip"
+    existing.parent.mkdir(parents=True)
+    existing.write_bytes(part_zip_bytes(3, 0, 5))
+    c, session, _ = make(tmp_path, [FakeResponse(body=part_zip_bytes(2, 3, 5))])
+    logs = []
+    rows = bulk.fetch_all(c, lst, root, 1, clock=lambda: "T", log=logs.append)
+    assert [r["how"] for r in rows] == ["existing file", "downloaded"]
+    assert [r["meta_skip"] for r in rows] == ["0", "3"]
+    assert len(session.calls) == 1
+    again = bulk.fetch_all(c, lst, root, 1, clock=lambda: "T", log=logs.append)
+    assert again == rows
+    assert len(session.calls) == 1
+    assert "on disk and checked" in logs[-1]
+
+
+def test_fetch_all_stops_when_a_part_belongs_to_another_export(tmp_path):
+    lst = listing([2], 2)
+    c, _, _ = make(tmp_path, [FakeResponse(body=part_zip_bytes(2, 0, 2, date="2026-11-20"))])
+    with pytest.raises(bulk.ExportChanged, match="2026-11-20"):
+        bulk.fetch_all(c, lst, tmp_path / "bulk", 1, clock=lambda: "T", log=lambda s: None)
+    assert not bulk.manifest_path(tmp_path / "bulk", "2026-11-13").exists()
+
+
+def test_check_part_reports_every_mismatch(tmp_path):
+    z = tmp_path / "p.zip"
+    z.write_bytes(part_zip_bytes(2, 0, 9))
+    _, parts = bulk.label_parts(listing([3], 5))
+    with pytest.raises(bulk.ExportChanged, match=r"holds 2 records, not 3.*total of 9, not 5"):
+        bulk.check_part(z, parts[0], "2026-11-13", 5)
+
+
+def test_fetch_all_refuses_a_part_that_no_longer_matches_its_manifest(tmp_path):
+    lst = listing([2], 2)
+    root = tmp_path / "bulk"
+    c, _, _ = make(tmp_path, [FakeResponse(body=part_zip_bytes(2, 0, 2))])
+    bulk.fetch_all(c, lst, root, 1, clock=lambda: "T", log=lambda s: None)
+    target = root / "2026-11-13" / "drug-label-0001-of-0001.json.zip"
+    target.chmod(0o644)
+    target.write_bytes(b"changed")
+    with pytest.raises(bulk.BulkError, match="does not match its manifest"):
+        bulk.fetch_all(c, lst, root, 1, clock=lambda: "T", log=lambda s: None)

@@ -128,6 +128,11 @@ def fetch_page(client: PoliteClient, url: str, root: Path, day: str) -> SavedPag
     dest = page_path(root, day, url)
     if resp.status != 200:
         dest = dest.with_name(f"{dest.name}.http{resp.status}")
+    n = 2
+    base = dest
+    while dest.exists():  # the same page fetched again the same day: keep both copies
+        dest = base.with_name(f"{base.stem}.{n}{base.suffix}")
+        n += 1
     digest = durable.write_once(dest, resp.content)
     saved = SavedPage(url, resp.status, dest, len(resp.content), digest)
     manifest = root / "manifest.csv"
