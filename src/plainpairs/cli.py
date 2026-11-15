@@ -17,6 +17,7 @@ from plainpairs import (
     dailymed,
     label,
     listed,
+    nci,
     pages,
     probe,
     release,
@@ -34,6 +35,7 @@ PAGES_ROOT = Path("data/raw/pages")
 BULK_ROOT = Path("data/raw/bulk")
 LISTED_ROOT = Path("data/raw/listed")
 RELEASE_ROOT = Path("data/raw/dailymed/rx-release")
+NCI_ROOT = Path("data/raw/nci")
 
 
 def today_utc() -> str:
@@ -247,6 +249,66 @@ def cmd_structure(args: argparse.Namespace) -> int:
     )
     print(json.dumps(summary["counts"], sort_keys=True), flush=True)
     return 0
+
+
+def _read_dates(root: Path) -> dict[str, str]:
+    """The day each NCI page was read, from the NCI manifest's time column."""
+    import csv
+
+    manifest = Path(root) / "manifest.csv"
+    if not manifest.exists():
+        return {}
+    with manifest.open(newline="", encoding="utf-8") as fh:
+        return {r["url"]: r["time"][:10] for r in csv.DictReader(fh) if r["status"] == "200"}
+
+
+def cmd_nci_build(args: argparse.Namespace) -> int:
+    dates = _read_dates(Path(args.root))
+    counts = nci.build(
+        Path(args.root),
+        Path(args.out),
+        date_read=lambda u: dates.get(u, ""),
+        log=lambda s: print(s, flush=True),
+    )
+    print(json.dumps(counts, sort_keys=True), flush=True)
+    return 0
+
+
+def cmd_nci_text(args: argparse.Namespace) -> int:
+    import pyarrow.parquet as pq
+
+    summaries = pq.read_table(Path(args.tables) / "nci_summaries.parquet").to_pylist()
+    if args.saved:
+        saved = nci.saved_pages(Path(args.saved))
+
+        def get_page(url: str) -> str | None:
+            path = saved.get(url)
+            return path.read_text(encoding="utf-8", errors="replace") if path else None
+
+        print(f"Rebuilding the NCI text from the pages saved under {args.saved}.", flush=True)
+    else:
+        from plainpairs import nci_pages
+
+        client = make_client(args.since, args.max_calls, args.max_bytes)
+        client.min_interval = nci_pages.MIN_INTERVAL
+
+        def get_page(url: str) -> str | None:
+            resp = client.get(url)
+            return resp.content.decode("utf-8", errors="replace") if resp.status == 200 else None
+
+        print(
+            f"Rebuilding the NCI text by reading NCI's {len(summaries)} pages again, one every "
+            f"{nci_pages.MIN_INTERVAL:.0f} seconds (pages NCI has updated since will differ).",
+            flush=True,
+        )
+    report = nci.rebuild_text(summaries, get_page)
+    if args.out:
+        import pyarrow as pa
+
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        pq.write_table(pa.Table.from_pylist(report["rows"]), args.out)
+    print(json.dumps(report["counts"], sort_keys=True))
+    return 0 if not report["counts"].get("missing") else 1
 
 
 def _listing_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None]:
@@ -577,6 +639,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--workers", type=int, default=1, help="parts read in parallel")
     p.add_argument("--verify", action="store_true", help="check each part's SHA-256 first")
     p.set_defaults(func=cmd_structure)
+
+    p = sub.add_parser("nci-build", help="the NCI cancer information summaries' three tables")
+    p.add_argument("--root", default=str(NCI_ROOT), help="where the summary pages are saved")
+    p.add_argument("--out", default="data/interim/tables")
+    p.set_defaults(func=cmd_nci_build)
+
+    p = sub.add_parser(
+        "nci-text",
+        help="rebuild the NCI text by reading NCI's pages again (or from saved copies)",
+    )
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--saved", help="read the saved copies under this folder instead of NCI")
+    p.add_argument("--out", help="write the rebuilt blocks to this Parquet file")
+    caps(p)
+    p.set_defaults(func=cmd_nci_text)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
     p.add_argument("--tables", default="data/interim/tables")
