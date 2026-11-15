@@ -303,8 +303,10 @@ class Builder:
         identity: Counter[str] = Counter()
         excluded: list[dict[str, Any]] = []
         buf: dict[str, list[dict[str, Any]]] = {name: [] for name in TEXT_TABLES}
+        ids: list[tuple[str, int | None]] = []
         for record in bulk.iter_labels(path):
             c["labels_read"] += 1
+            ids.append((str(record.get("set_id")), label._version(record.get("version"))))
             for f in ("spl_medguide", "spl_patient_package_insert"):
                 if record.get(f):
                     c[f"field:{f}"] += 1
@@ -371,6 +373,7 @@ class Builder:
             "df": self.df,
             "n_docs": self.n_docs,
             "rows": rows,
+            "ids": ids,
         }
 
     def _map(self, fn: Callable[[tuple[Any, ...]], dict[str, Any]], jobs: list[tuple[Any, ...]]):
@@ -403,7 +406,9 @@ class Builder:
         excluded: list[dict[str, Any]] = []
         jobs = [(n, p, self.out, self.export_date) for n, p in self.parts]
         rows = self.stats.setdefault("rows", {})
+        export_ids: list[tuple[str, int | None]] = []
         for res in self._map(_scan_job, jobs):
+            export_ids += res["ids"]
             c.update(res["counts"])
             errors.update(res["errors"])
             identity.update(res["identity"])
@@ -416,6 +421,19 @@ class Builder:
                 rows[name] = rows.get(name, 0) + n
             self.log(f"pass 1: part {res['number']} read; {c['in_scope']:,} labels in scope so far")
         self._merge_parts(TEXT_TABLES)
+        # every set id of the export, in scope or not: lets `changes` tell a label that left
+        # the scope from one withdrawn (ids and versions only, outside the record tables)
+        pq.write_table(
+            pa.table(
+                {
+                    "export_date": [self.export_date] * len(export_ids),
+                    "set_id": [i for i, _ in export_ids],
+                    "version": pa.array([v for _, v in export_ids], pa.int32()),
+                }
+            ),
+            self.out / "export_ids.parquet",
+            compression="zstd",
+        )
         self.stats["counts"] = dict(c)
         self.stats["parse_errors"] = dict(errors)
         self.stats["identity"] = dict(identity)

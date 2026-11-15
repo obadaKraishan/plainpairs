@@ -84,13 +84,16 @@ def test_two_builds_compared_end_to_end(tmp_path):
     assert rows["set-aaaa"]["change"] == "texts_changed"
     assert rows["set-aaaa"]["sections_changed"] == ["medication_guide"]
     assert (rows["set-aaaa"]["old_version"], rows["set-aaaa"]["new_version"]) == (7, 8)
-    assert rows["set-bbbb"]["change"] == "gone"
+    assert rows["set-bbbb"]["change"] == "withdrawn"  # not in the newer export at all
     assert rows["set-nnnn"]["change"] == "new_label"
     assert summary["changes"]["texts_changed"] == 1 and summary["unchanged"] == 0
     assert summary["distinct_patient_texts_new"] == 1  # the changed guide
     assert summary["distinct_patient_texts_gone"] == 1  # its old wording
-    assert summary["export_ids_known"] is False
+    assert summary["export_ids_known"] is True
     assert "text" not in pq.read_schema(out).names
+    (new_dir / "export_ids.parquet").unlink()
+    gone = {r["set_id"]: r["change"] for r in changes.compare(old_dir, new_dir)[0].to_pylist()}
+    assert gone["set-bbbb"] == "gone"  # without the newer export's ids
 
 
 def test_a_build_of_two_export_dates_is_refused(tmp_path):
@@ -114,3 +117,18 @@ def test_changes_command(tmp_path, monkeypatch, capsys):
     assert main([*args, "--json", str(js)]) == 0
     assert "0 labels changed, 1 unchanged" in capsys.readouterr().out
     assert json.loads(js.read_text())["rows"] == 0
+
+
+def test_the_build_lists_every_export_id_so_changes_can_tell_withdrawn_from_left_scope(tmp_path):
+    guide = copy.deepcopy(PLR_WITH_GUIDE)
+    insert = copy.deepcopy(OLDER_WITH_INSERT)
+    old_dir = _build(tmp_path, "old", [[guide, insert]])
+    ids = pq.read_table(old_dir / "export_ids.parquet").to_pylist()
+    assert sorted(r["set_id"] for r in ids) == ["set-aaaa", "set-bbbb"]
+    out_of_scope = copy.deepcopy(insert)
+    out_of_scope.pop("spl_patient_package_insert")  # still exported, no longer in scope
+    new_dir = _build(tmp_path, "new", [[out_of_scope]])
+    table, summary = changes.compare(old_dir, new_dir)
+    got = {r["set_id"]: r["change"] for r in table.to_pylist()}
+    assert got == {"set-aaaa": "withdrawn", "set-bbbb": "left_scope"}
+    assert summary["export_ids_known"] is True
