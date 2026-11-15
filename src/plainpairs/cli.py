@@ -18,6 +18,7 @@ from plainpairs import (
     label,
     listed,
     nci,
+    pack,
     pages,
     probe,
     release,
@@ -315,6 +316,37 @@ def cmd_nci_text(args: argparse.Namespace) -> int:
         pq.write_table(pa.Table.from_pylist(report["rows"]), args.out)
     print(json.dumps(report["counts"], sort_keys=True))
     return 0 if not report["counts"].get("missing") else 1
+
+
+def cmd_release_build(args: argparse.Namespace) -> int:
+    m = pack.build_pack(
+        Path(args.tables),
+        Path(args.out),
+        args.version,
+        Path(args.takedown) if args.takedown else None,
+    )
+    print(
+        f"Pack {m['version']} in {args.out}: {len(m['files'])} files, {m['rows']:,} rows, "
+        f"{m['bytes'] / 1e6:,.1f} MB; held back {json.dumps(m['held_back'])}",
+        flush=True,
+    )
+    if args.kaggle:
+        pack.build_kaggle(Path(args.out), Path(args.kaggle))
+        print(f"Kaggle folder in {args.kaggle}.", flush=True)
+    return 0
+
+
+def cmd_release_pack_check(args: argparse.Namespace) -> int:
+    problems = pack.check_pack(Path(args.pack))
+    if args.kaggle:
+        problems += pack.check_kaggle(Path(args.kaggle), Path(args.pack))
+    if problems:
+        print(f"PACK CHECK FAILED ({len(problems)} problems):")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+    print(f"Pack check passed: {args.pack}")
+    return 0
 
 
 def _listing_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None]:
@@ -680,6 +712,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", help="write the rebuilt blocks to this Parquet file")
     caps(p)
     p.set_defaults(func=cmd_nci_text)
+
+    p = sub.add_parser("release", help="the release pack: build it, or check it on its own")
+    rsub = p.add_subparsers(dest="release_command", required=True)
+    rb = rsub.add_parser("build", help="write the pack for one version from the local build")
+    rb.add_argument("--version", required=True)
+    rb.add_argument("--tables", default="data/interim/tables")
+    rb.add_argument("--out", required=True, help="an empty folder, e.g. data/release/0.1.0")
+    rb.add_argument("--takedown", default="data/takedown.csv", help="the takedown list")
+    rb.add_argument("--kaggle", help="also write the Kaggle mirror's folder here")
+    rb.set_defaults(func=cmd_release_build)
+    rc = rsub.add_parser("check", help="check a pack folder alone (and its Kaggle folder)")
+    rc.add_argument("--pack", required=True)
+    rc.add_argument("--kaggle")
+    rc.set_defaults(func=cmd_release_pack_check)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
     p.add_argument("--tables", default="data/interim/tables")
