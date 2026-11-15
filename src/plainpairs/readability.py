@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import math
 import re
+from functools import lru_cache
 
 from pydantic import BaseModel, ConfigDict
 
@@ -55,7 +56,12 @@ RULES = ("s1", "s2")
 
 def syllables(word: str) -> int:
     """Syllables in one English word, by rule (at least 1 for a word with a letter)."""
-    w = re.sub(r"[^a-z]", "", word.lower())
+    return _syllables(word.lower())
+
+
+@lru_cache(maxsize=500_000)
+def _syllables(lowered: str) -> int:
+    w = re.sub(r"[^a-z]", "", lowered)
     if not w:
         return 0
     if len(w) <= 3:
