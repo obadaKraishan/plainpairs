@@ -23,6 +23,7 @@ from plainpairs import (
     sheet,
     spl_release,
     stats,
+    structure,
     tables,
 )
 from plainpairs import profile as prof
@@ -211,6 +212,39 @@ def cmd_xml_download(args: argparse.Namespace) -> int:
         print("The page changed during the download: a part was replaced. Stop and look.")
         return 2
     print("The page still lists the same parts and checksums.", flush=True)
+    return 0
+
+
+def release_parts(day: str, verify: bool = False) -> list[Path]:
+    """The release parts of ``day``, checked against their manifest (size; SHA-256 if asked)."""
+    from plainpairs import durable
+
+    rows = spl_release.read_manifest(spl_release.manifest_path(RELEASE_ROOT, day))
+    if not rows:
+        raise SystemExit(f"No release manifest for {day} under {RELEASE_ROOT}; download it first.")
+    out = []
+    for name, row in sorted(rows.items(), key=lambda kv: int(kv[1]["part"])):
+        path = RELEASE_ROOT / day / name
+        if not path.exists() or path.stat().st_size != int(row["bytes"]):
+            raise SystemExit(f"{path} is missing or has the wrong size; download it again.")
+        if verify and durable.sha256_file(path) != row["sha256"]:
+            raise SystemExit(f"{path} does not match its SHA-256 in the manifest.")
+        out.append(path)
+    return out
+
+
+def cmd_structure(args: argparse.Namespace) -> int:
+    parts = release_parts(args.release_date, args.verify)
+    print(f"{len(parts)} release parts of {args.release_date} match their manifest.", flush=True)
+    summary = structure.build(
+        parts,
+        args.release_date,
+        Path(args.tables),
+        Path(args.out),
+        workers=args.workers,
+        log=lambda s: print(s, flush=True),
+    )
+    print(json.dumps(summary["counts"], sort_keys=True), flush=True)
     return 0
 
 
@@ -521,6 +555,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--list-only", action="store_true", help="read the page and stop")
     caps(p)
     p.set_defaults(func=cmd_xml_download)
+
+    p = sub.add_parser(
+        "structure", help="read the release's XML: index, blocks and structure per label"
+    )
+    p.add_argument("--release-date", required=True)
+    p.add_argument("--tables", default="data/interim/tables", help="the build to join to")
+    p.add_argument("--out", default="data/interim/structure")
+    p.add_argument("--workers", type=int, default=1, help="parts read in parallel")
+    p.add_argument("--verify", action="store_true", help="check each part's SHA-256 first")
+    p.set_defaults(func=cmd_structure)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
     p.add_argument("--tables", default="data/interim/tables")
