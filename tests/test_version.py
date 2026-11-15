@@ -50,3 +50,18 @@ def test_counts_runs_the_plan_through_the_client(tmp_path, monkeypatch, capsys):
     assert main(["counts", "--first", "3", "--out", "c.json"]) == 0
     assert len(session.calls) == 3
     assert "3 answers saved" in capsys.readouterr().out
+
+
+def test_download_part_needs_the_saved_listing(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "raw").mkdir(parents=True)
+    assert main(["download-part"]) == 1
+    assert "download.json" in capsys.readouterr().out
+
+
+def test_commands_that_write_raw_data_need_the_drive(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "raw").symlink_to(tmp_path / "gone" / "plainpairs")
+    with pytest.raises(SystemExit, match="Mount the Kraishan drive"):
+        main(["download-part"])

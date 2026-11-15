@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, pages, probe
+from plainpairs import __version__, bulk, pages, probe
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
 USAGE_LOG = Path("data/usage_log.csv")
 PAGES_ROOT = Path("data/raw/pages")
+BULK_ROOT = Path("data/raw/bulk")
 
 
 def today_utc() -> str:
@@ -81,6 +83,24 @@ def cmd_counts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_download_part(args: argparse.Namespace) -> int:
+    _check_drive(Path("data/raw"))
+    listing = pages.latest_pages(PAGES_ROOT).get(bulk.DOWNLOAD_JSON)
+    if listing is None:
+        print(
+            f"No saved copy of {bulk.DOWNLOAD_JSON}. Fetch it first with `plainpairs fetch-page`."
+        )
+        return 1
+    export_date, parts = bulk.label_parts(json.loads(listing.read_text(encoding="utf-8")))
+    part = (
+        bulk.smallest(parts) if args.part == 0 else next(p for p in parts if p.number == args.part)
+    )
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    dest = bulk.fetch_part(client, part, BULK_ROOT, export_date, args.max_mb)
+    print(f"Saved part {part.number} of {part.of} ({dest.stat().st_size:,} bytes) to {dest}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -114,6 +134,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--min-interval", type=float, default=1.5)
     caps(p)
     p.set_defaults(func=cmd_counts)
+
+    p = sub.add_parser("download-part", help="download one bulk part of the label data")
+    p.add_argument("--part", type=int, default=0, help="the part number (default: the smallest)")
+    p.add_argument("--max-mb", type=float, default=200.0)
+    caps(p)
+    p.set_defaults(func=cmd_download_part)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")
