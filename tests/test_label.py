@@ -99,3 +99,32 @@ def test_iter_rows_reads_a_part(tmp_path):
         body = {"meta": {}, "results": [PLR_WITH_GUIDE, OLDER_WITH_INSERT, MISSING_SECTIONS]}
         zf.writestr("drug-label-0001-of-0001.json", json.dumps(body))
     assert [r.identity.set_id for r in label.iter_rows(z)] == ["set-aaaa", "set-bbbb", "set-dddd"]
+
+
+def test_format_rules_and_their_order():
+    assert label.label_format({"use_in_specific_populations": ["x"]}, None) == "plr"
+    assert label.label_format({"purpose": ["x"], "warnings": ["y"]}, None) == "otc_drug_facts"
+    assert label.label_format({"warnings": ["y"]}, "HUMAN OTC DRUG") == "otc_drug_facts"
+    assert label.label_format({"clinical_pharmacology": ["x"]}, None) == "older"
+    assert label.label_format({"spl_unclassified_section": ["x"]}, None) == "unknown"
+
+
+def test_format_conflicts_are_reported():
+    rec = {"warnings_and_cautions": ["a"], "purpose": ["b"]}
+    assert label.format_conflicts(rec, "HUMAN OTC DRUG") == [
+        "plr_and_drug_facts_sections",
+        "plr_sections_typed_otc",
+    ]
+    assert label.format_conflicts({"purpose": ["b"]}, "HUMAN PRESCRIPTION DRUG") == [
+        "drug_facts_sections_typed_prescription"
+    ]
+    assert label.format_conflicts({}, None) == []
+
+
+def test_copyright_marks_anywhere_in_the_label_but_not_in_openfda():
+    assert label.record_has_copyright_mark(
+        {"package_label_principal_display_panel": ["\u00a9 2026"]}
+    )
+    assert label.record_has_copyright_mark({"spl_medguide": ["All Rights Reserved."]})
+    assert not label.record_has_copyright_mark({"openfda": {"brand_name": ["Copyright"]}})
+    assert not label.record_has_copyright_mark({"id": "x", "version": "2"})

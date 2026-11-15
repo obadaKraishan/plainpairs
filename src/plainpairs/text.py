@@ -253,3 +253,68 @@ def heading_template(heading: str, key: str) -> str:
             start, end = m.span(group)
             return _SPACE.sub(" ", heading[:start] + "[medicine]" + heading[end:])
     return heading  # pragma: no cover - every pattern has a name group
+
+
+# --- Tables repeated inline ----------------------------------------------------------------
+
+_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
+#: The longest gap allowed between two cells of one table found in running text.
+_MAX_GAP = 400
+
+
+def table_cells(markup: str) -> list[str]:
+    """The cleaned text of each cell of one HTML table, empty cells left out."""
+    return [c for c in (clean(m) for m in _CELL.findall(markup)) if c]
+
+
+def strip_tables(text: str, tables: list[str], min_found: float = 0.6) -> tuple[str, int]:
+    """``text`` without the tables that the source also repeats inline, and the characters cut.
+
+    The source keeps each table twice: as HTML in a ``*_table`` field and, flattened, inside
+    the section's text. For each table, its cells are looked for in order in the text, each
+    within a short gap of the last; the stretch they cover is cut when at least ``min_found``
+    of the table's characters were found. A table not repeated inline is left alone.
+    """
+    spans: list[tuple[int, int]] = []
+    for markup in tables:
+        cells = [c for c in table_cells(markup) if len(c) >= 3]
+        if not cells:
+            continue
+        total = sum(len(c) for c in cells)
+        found, pos, start, end = 0, 0, None, None
+        for cell in cells:
+            window = len(cell) + _MAX_GAP if start is not None else len(text)
+            idx = text.find(cell, pos, pos + window if start is not None else None)
+            if idx == -1:
+                continue
+            if start is None:
+                start = idx
+            end = idx + len(cell)
+            found += len(cell)
+            pos = end
+        if start is not None and end is not None and found / total >= min_found:
+            spans.append((start, end))
+    if not spans:
+        return text, 0
+    spans.sort()
+    merged: list[list[int]] = []
+    for s, e in spans:
+        if merged and s <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    out, last, cut = [], 0, 0
+    for s, e in merged:
+        out.append(text[last:s])
+        cut += e - s
+        last = e
+    out.append(text[last:])
+    return _SPACE.sub(" ", " ".join(out)).strip(), cut
+
+
+_NUMBERED = re.compile(r"(?<![\d.])\d{1,2}\.\d{1,2}\s+[A-Z]")
+
+
+def count_numbered_headings(text: str) -> int:
+    """Numbered headings in a prescriber section (``5.1 Liver Problems``)."""
+    return len(_NUMBERED.findall(text))

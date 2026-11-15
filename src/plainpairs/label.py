@@ -9,6 +9,7 @@ fail, in plain words, on a record without an ``id`` or a ``set_id``.
 from __future__ import annotations
 
 import datetime as dt
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -27,8 +28,28 @@ from plainpairs.schema import (
 )
 from plainpairs.text import join, table_to_text
 
-#: Sections found only in "Drug Facts", the format of over-the-counter labels.
-DRUG_FACTS_FIELDS = ("purpose", "when_using", "stop_use", "ask_doctor", "do_not_use")
+#: Sections found only in the newer prescription format (21 CFR 201.57(a) to (c)).
+PLR_FIELDS = ("warnings_and_cautions", "use_in_specific_populations", "dosage_forms_and_strengths")
+#: Sections found only in "Drug Facts", the format of over-the-counter labels (21 CFR 201.66).
+DRUG_FACTS_FIELDS = (
+    "purpose",
+    "when_using",
+    "stop_use",
+    "do_not_use",
+    "ask_doctor",
+    "ask_doctor_or_pharmacist",
+)
+#: Sections of a prescription label in either format.
+PRESCRIPTION_FIELDS = (
+    "indications_and_usage",
+    "contraindications",
+    "warnings",
+    "precautions",
+    "adverse_reactions",
+    "clinical_pharmacology",
+)
+#: A copyright mark: the sign, the word, or "all rights reserved".
+COPYRIGHT = re.compile(r"\u00a9|\bcopyright\b|all rights reserved", re.I)
 
 
 class LabelError(ValueError):
@@ -62,15 +83,54 @@ def _version(raw: Any) -> int | None:
         return None
 
 
+def _has(record: dict[str, Any], fields: tuple[str, ...]) -> bool:
+    return any(record.get(f) for f in fields)
+
+
 def label_format(record: dict[str, Any], product_type: str | None) -> LabelFormat:
-    """Which kind of label this is, from the sections it has."""
-    if record.get("warnings_and_cautions"):
+    """Which kind of label this is, from the sections it has (in this order).
+
+    1. ``plr``: a section only the newer prescription format has (Warnings and Precautions,
+       Use in Specific Populations, or Dosage Forms and Strengths).
+    2. ``otc_drug_facts``: a section only Drug Facts has (Purpose, When using, Stop use, Do not
+       use, Ask a doctor), or the source types the label as an over-the-counter drug.
+    3. ``older``: a prescription section in the older format (Indications and Usage,
+       Contraindications, Warnings, Precautions, Adverse Reactions, Clinical Pharmacology).
+    4. ``unknown``: none of these.
+    """
+    if _has(record, PLR_FIELDS):
         return "plr"
-    if product_type == "HUMAN OTC DRUG" or any(record.get(f) for f in DRUG_FACTS_FIELDS):
+    if _has(record, DRUG_FACTS_FIELDS) or product_type == "HUMAN OTC DRUG":
         return "otc_drug_facts"
-    if any(record.get(f) for f in OLDER_WARNINGS) or record.get("indications_and_usage"):
+    if _has(record, PRESCRIPTION_FIELDS):
         return "older"
     return "unknown"
+
+
+def format_conflicts(record: dict[str, Any], product_type: str | None) -> list[str]:
+    """Signals that point two ways (counted, never used to change the format)."""
+    out = []
+    plr, facts = _has(record, PLR_FIELDS), _has(record, DRUG_FACTS_FIELDS)
+    if plr and facts:
+        out.append("plr_and_drug_facts_sections")
+    if plr and product_type == "HUMAN OTC DRUG":
+        out.append("plr_sections_typed_otc")
+    if facts and product_type == "HUMAN PRESCRIPTION DRUG":
+        out.append("drug_facts_sections_typed_prescription")
+    return out
+
+
+def record_has_copyright_mark(record: dict[str, Any]) -> bool:
+    """True when any text of the label (every text field, not the source's ``openfda``
+    block) shows the copyright sign, the word "copyright" or "all rights reserved"."""
+    for key, value in record.items():
+        if key == "openfda":
+            continue
+        values = value if isinstance(value, list) else [value]
+        for v in values:
+            if isinstance(v, str) and COPYRIGHT.search(v):
+                return True
+    return False
 
 
 def parse_label(record: dict[str, Any]) -> LabelRow:

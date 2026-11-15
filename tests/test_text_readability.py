@@ -212,3 +212,28 @@ def test_measure_rules_counts_once_and_grades_by_each_rule():
 def test_counts_of_numbers_and_percentages():
     assert rd.count_numbers("Take 1 or 2.5 mg, up to 1,000 mg; not 3rd") == 3
     assert rd.count_percentages("12% and 0.5 % and five percent") == 3
+
+
+def test_strip_tables_cuts_a_table_repeated_inline():
+    table = (
+        "<table><tr><th>Reaction</th><th>Zorvan N=100</th></tr>"
+        "<tr><td>Headache</td><td>12 (12%)</td></tr></table>"
+    )
+    text = "Most common reactions: Reaction Zorvan N=100 Headache 12 (12%) were mild."
+    prose, cut = tx.strip_tables(text, [table])
+    assert prose == "Most common reactions: were mild."
+    assert cut == len("Reaction Zorvan N=100 Headache 12 (12%)")
+    assert tx.strip_tables("No table here.", [table]) == ("No table here.", 0)
+    assert tx.strip_tables("Text.", ["<table></table>"]) == ("Text.", 0)
+
+
+def test_strip_tables_merges_overlapping_tables():
+    t1 = "<table><tr><td>Alpha beta</td><td>Gamma delta</td></tr></table>"
+    t2 = "<table><tr><td>Gamma delta</td><td>Epsilon zeta</td></tr></table>"
+    prose, _ = tx.strip_tables("Start Alpha beta Gamma delta Epsilon zeta end.", [t1, t2])
+    assert prose == "Start end."
+
+
+def test_numbered_headings_are_counted():
+    assert tx.count_numbered_headings("5.1 Liver Problems text 5.2 Rash 2.5 mg daily 10.12 X") == 3
+    assert tx.table_cells("<table><tr><td> a </td><td></td></tr></table>") == ["a"]
