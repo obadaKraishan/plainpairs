@@ -154,6 +154,14 @@ def previous_from_pack(pack_dir: Path, out_dir: Path) -> tuple[Path, Path]:
             rows = t.to_pylist()
             parts += [{k: r.get(k) for k in schema.names} for r in rows]
         pq.write_table(pa.Table.from_pylist(parts, schema), tdir / f"{name}.parquet")
+    for short, name in (
+        ("summaries", "nci_summaries"),
+        ("pairs", "nci_pairs"),
+        ("text", "nci_text"),
+    ):
+        src = pack_dir / f"data/nci/{short}.parquet"
+        if src.exists():  # read on their own schedule: carried as they are
+            shutil.copyfile(src, tdir / f"{name}.parquet")
     labels = pq.read_table(tdir / "labels.parquet").to_pylist()
     index, rows = [], []
     for r in labels:

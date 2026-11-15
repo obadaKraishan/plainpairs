@@ -124,6 +124,9 @@ def test_previous_from_a_pack(tmp_path):
     from plainpairs import codes, pack
 
     _root, prev, _st, _labels = _previous(tmp_path)
+    from tests.test_release import _nci_tables
+
+    _nci_tables(prev, tmp_path)
     codes.build(prev, log=lambda s: None)
     p = tmp_path / "pack"
     pack.build_pack(prev, p, "0.1.0", today=lambda: "2026-11-15")
@@ -133,3 +136,16 @@ def test_previous_from_a_pack(tmp_path):
     rows = pq.read_table(sdir / "structure.parquet").to_pylist()
     assert rows and all(r["structured"]["xml_match"] == "exact" for r in rows)
     assert json.loads((tdir / "build_summary.json").read_text())["export_date"] == "2026-11-13"
+    assert (tdir / "nci_text.parquet").exists() and (tdir / "nci_summaries.parquet").exists()
+
+
+def test_the_weekly_workflow_is_switched_off_and_pinned():
+    import re
+    from pathlib import Path
+
+    wf = Path(".github/workflows/weekly-update.yml").read_text(encoding="utf-8")
+    active = "\n".join(line for line in wf.splitlines() if not line.lstrip().startswith("#"))
+    assert "schedule:" not in active and 'DELIVERY_ENABLED: "false"' in active
+    assert "permissions: {}" in active and "if: false" in active
+    for uses in re.findall(r"uses: (\S+)", active):
+        assert re.fullmatch(r"[\w./-]+@[0-9a-f]{40}", uses), uses
