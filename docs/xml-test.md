@@ -1,5 +1,9 @@
 # DailyMed XML against the JSON: a test on 20 labels (2026-11-15)
 
+**Superseded in part.** The maintainer approved the full download, and the corpus now takes
+structure from DailyMed's release for every label it can (`docs/method.md`, section 6b). The
+20-label test below is kept as the record of why.
+
 **Question:** what does DailyMed's label XML (Structured Product Labeling) keep that the
 openFDA JSON loses, how do the grades differ, and what would moving to XML cost?
 

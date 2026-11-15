@@ -20,8 +20,14 @@ matched section by section, with reading-level and plain-language measures on bo
   (the NDC directory of 2026-11-13, DailyMed's label list of 2026-11-15), 15,022 of the 35,177
   labels (42.7%) were for products in the current NDC directory, DailyMed served 19,847
   (56.4%), and 15,318 (43.5%) were on neither list. Every label carries both flags
-  (`listed_in_ndc_directory`, `served_by_dailymed`). A label on neither list may be for a
-  product no longer marketed.
+  (`listed_in_ndc_directory`, `served_by_dailymed`). What they do and do not mean:
+  - the NDC flag equals the source's `openfda` block this week (every label with the block is
+    in the directory, none without it), because openFDA fills the block from the directory;
+    it is kept because the two could part when refreshed on different days;
+  - "served by DailyMed" means only that DailyMed lists the label. It does not mean the product
+    is marketed, and this card never says so;
+  - a label on neither list may be for a product no longer marketed, or one these lists do not
+    cover.
 - **Not official.** Not made, endorsed or checked by the U.S. Food and Drug Administration, the
   National Library of Medicine or any company whose labels it describes.
 
@@ -53,6 +59,8 @@ and states:
 | labels with no medicine key | 16,122 |
 | labels with a product name read from their product data / distinct product names | 34,406 / 3,676 |
 | labels in the current NDC directory / served by DailyMed / on neither list | 15,022 / 19,847 / 15,318 |
+| configuration `current` (structure from DailyMed's XML) / `unlisted` (JSON only) | 19,778 / 15,399 |
+| distinct guides / inserts in `current` (at least one current label) | 7,182 of 12,006 / 4,576 of 7,769 |
 | section pairs in table C | 250,829 |
 | labels typed over the counter with a guide or insert (listed apart, not in scope) | 100 |
 
@@ -69,9 +77,10 @@ Where a label also has the `openfda` block, the name read agrees with one of its
 reported beside the 1,713 or more distinct medicines: a product name is not a medicine.
 
 ## Two layers and the switch
-- **Record layer**, always releasable: `labels`, `patient_texts`, `section_pairs` and
-  `excluded_otc`. Identifiers, dates, formats, hashes, headings found, lengths, reading levels,
-  counts, alignment keys and scores. No label text.
+- **Record layer**, always releasable: `labels`, `patient_texts`, `section_pairs`,
+  `excluded_otc`, and `codes` (the trusted rule-based codes only; `docs/codebook.md`).
+  Identifiers, dates, formats, hashes, headings found, lengths, reading levels per
+  configuration, counts, alignment keys and scores. No label text.
 - **Text layer**: `text_prescriber` and `text_patient`, the cleaned texts keyed by label and
   section, each row with the label's `has_copyright_mark`.
 
@@ -94,14 +103,44 @@ and 6,173 of the 7,769 distinct patient package inserts have at least one unmark
 Whatever the setting, `plainpairs text` rebuilds the text layer from the record layer and the
 source's own bulk files of the same export date, and confirms every row by its hash.
 
-## Reading levels
-Grades are computed by stated formulas (Flesch-Kincaid, Flesch reading ease, SMOG) on prose
-with the inline tables cut, with a sentence rule that breaks at list marks and headings. They
-are comparable within this corpus, not the grade of the printed page. No reading-level figure
-is given here yet: the source's JSON loses the structure of lists and subsections, which raises
-the grades, and a test against the structured SPL XML (`docs/xml-test.md`) shows by how much.
-Figures will be stated once the corpus measures text with its structure.
+## Two configurations
+The release has two configurations, and no reading level is ever computed across both:
 
+- **`current`** (19,778 labels): DailyMed's full release of human prescription labels of the
+  same week (2026-11-13) holds the label in the same version, and each of its patient texts
+  with the same words as the source's JSON. The text's structure (paragraphs, list items,
+  headings, tables) comes from that XML, and its reading levels are measured on the structure.
+  Benchmark items come from this configuration only.
+- **`unlisted`** (15,399 labels): every other label, measured from the JSON only and flagged
+  so (`structure_source = json`). 15,122 are not in DailyMed's release, 268 are there only in
+  another version, 8 lack a patient text in the XML and 1 has a patient text whose words
+  differ.
+
+The two are not the same as the lists above: the configuration rests on DailyMed's release of
+the same week as the export, the "served" flag on its list of two days later.
+
+## Reading levels
+Grades are computed by stated formulas (Flesch-Kincaid grade, SMOG) and are comparable only
+within one configuration and one basis. Over distinct texts (each shared text once), export
+and release of 2026-11-13:
+
+| | `current`, from structure | `current`, same texts, from the JSON | `unlisted`, from the JSON |
+|---|---:|---:|---:|
+| Medication Guides | 7,182 texts | 7,182 | 4,824 |
+| median Flesch-Kincaid grade (middle half) | 8.67 (7.88 to 9.48) | 10.86 (9.68 to 11.87) | 10.70 (9.42 to 11.79) |
+| above grade 8 by Flesch-Kincaid | 71.9% | 95.0% | 93.1% |
+| median SMOG grade / above grade 8 | 11.10 / 99.2% | 12.94 / 99.5% | 12.85 / 99.5% |
+| median share of sentences over 20 words | 11% | 22% | 21% |
+| patient package inserts | 4,576 texts | 4,576 | 3,193 |
+| median Flesch-Kincaid grade | 8.58 | 10.03 | 9.72 |
+| above grade 8 by Flesch-Kincaid | 66.9% | 91.4% | 87.6% |
+
+**What may be said.** On `current` labels, reading levels may be reported as measured on the
+label's structure: by Flesch-Kincaid, most Medication Guides (72%) and patient package inserts
+(67%) are above grade 8, and by SMOG nearly all are (99%). On `unlisted` labels only grades
+from the flattened JSON exist; they are reported apart, flagged, and run about two grades
+higher than the structure's on the same texts (guides 10.86 against 8.67), because lists that
+lost their marks read as long sentences. No figure combines the two configurations.
 ## History
 The source holds only the current version of each label. This corpus's history therefore
 starts with its first release: each weekly release records the export date it was built from,
