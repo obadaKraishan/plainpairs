@@ -23,10 +23,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # A push (or pull request) runs Python 3.12 only, to save Actions minutes. The full
-        # matrix, 3.10 to 3.13, runs only when started by hand (workflow_dispatch), before a
-        # release.
-        python-version: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["3.10", "3.11", "3.12", "3.13"]' || '["3.12"]') }}
+        # A pull request runs the full matrix, 3.10 to 3.13: main's four required checks
+        # report from it. A push to main (a merged pull request) runs Python 3.12 only. A run
+        # started by hand (workflow_dispatch) runs the full matrix too.
+        python-version: ${{ fromJSON(github.event_name == 'push' && '["3.12"]' || '["3.10", "3.11", "3.12", "3.13"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

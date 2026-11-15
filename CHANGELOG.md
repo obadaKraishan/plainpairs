@@ -93,6 +93,8 @@ All notable changes to this project are recorded here. The format follows
   for the same `current` labels.
 
 ### Changed
+- CI runs the full matrix (Python 3.10 to 3.13) on pull requests again, so that the four
+  checks `main` requires report; a push to `main` runs Python 3.12 only.
 - The dataset card's `size_categories` is computed from the pack's row count and checked
   (`1M<n<10M` for 1,409,294 rows).
 - The card's first-screen box, the README and the data card now cover the cancer information
