@@ -66,3 +66,35 @@ def test_a_document_type_declaration_is_refused():
     evil = b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">]><document xmlns="urn:hl7-org:v3"/>'
     with pytest.raises(Exception):  # noqa: B017 - defusedxml raises its own error types
         dailymed.parse_spl(evil)
+
+
+def test_choose_and_compare():
+    labels = [
+        {
+            "set_id": f"s{i}",
+            "version": 1,
+            "label_format": fmt,
+            "has_medication_guide": mg,
+            "has_patient_package_insert": not mg,
+        }
+        for i, (fmt, mg) in enumerate(
+            [("plr", True), ("older", True), ("plr", False), ("older", False)] * 3
+        )
+    ]
+    picks = dailymed.choose(labels, per_stratum=2, seed=1)
+    assert len(picks) == 8 and {p["stratum"] for p in picks} == {
+        "plr:medication_guide",
+        "older:medication_guide",
+        "plr:patient_package_insert",
+        "older:patient_package_insert",
+    }
+    doc = dailymed.parse_spl(SPL)
+    json_texts = {
+        "medication_guide": "MEDICATION GUIDE Read this guide first. What is Zorvan? "
+        "Zorvan may cause: \u2022 headache \u2022 tiredness today"
+    }
+    out = dailymed.compare(json_texts, doc)
+    assert set(out) == {"medication_guide"}
+    r = out["medication_guide"]
+    assert r["xml_list_items"] == 2 and r["json_list_marks"] == 2
+    assert r["xml_sentences"] == 6 and r["json_sentences_s1"] < r["json_sentences_s2"]

@@ -171,3 +171,73 @@ def test_build_passes_the_workers_on(tmp_path, monkeypatch):
     monkeypatch.setattr(cli.tables, "Builder", Spy)
     assert main(["build", "--export-date", "2026-11-13", "--out", "t", "--workers", "1"]) == 0
     assert seen["workers"] == 1
+
+
+def _built(tmp_path, monkeypatch):
+    from plainpairs import cli, tables
+    from tests.test_tables import write_export
+
+    monkeypatch.chdir(tmp_path)
+    root = write_export(tmp_path / "bulk")
+    monkeypatch.setattr(cli, "BULK_ROOT", root)
+    tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"),
+        tmp_path / "t",
+        "2026-11-13",
+        log=lambda s: None,
+    ).run()
+    return root
+
+
+def test_release_check_command_passes_and_fails_loudly(tmp_path, monkeypatch, capsys):
+    _built(tmp_path, monkeypatch)
+    assert main(["release-check", "--tables", "t", "--switch", "unmarked"]) == 0
+    assert "Release check passed" in capsys.readouterr().out
+    assert main(["release-check", "--tables", "t", "--switch", "all"]) == 1
+    assert "RELEASE CHECK FAILED" in capsys.readouterr().out
+
+
+def test_text_command_rebuilds_and_confirms(tmp_path, monkeypatch, capsys):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    _built(tmp_path, monkeypatch)
+    assert main(["text", "--labels", "t/labels.parquet", "--out", "r"]) == 0
+    assert "every row matches its hash" in capsys.readouterr().out
+    t = pq.read_table(tmp_path / "t" / "labels.parquet")
+    i = t.schema.get_field_index("t_medication_guide_sha256")
+    pq.write_table(
+        t.set_column(i, "t_medication_guide_sha256", pa.array(["0" * 64] * t.num_rows)),
+        tmp_path / "t" / "labels.parquet",
+    )
+    assert main(["text", "--labels", "t/labels.parquet", "--out", "r2"]) == 1
+
+
+def test_stats_command(tmp_path, monkeypatch, capsys):
+    _built(tmp_path, monkeypatch)
+    assert main(["stats", "--tables", "t", "--out", "s/stats.json"]) == 0
+    assert "4 labels" in capsys.readouterr().out
+
+
+def test_dailymed_test_command_reads_robots_then_labels(tmp_path, monkeypatch, capsys):
+    from plainpairs import cli
+    from tests.test_client import FakeResponse
+    from tests.test_client import make as make_fake
+    from tests.test_dailymed import SPL
+
+    _built(tmp_path, monkeypatch)
+    (tmp_path / "data" / "raw").mkdir(parents=True)
+    answers = [FakeResponse(body=b"User-agent: *\nDisallow: /search\n")] + [
+        FakeResponse(body=SPL) for _ in range(4)
+    ]
+    fake, session, _ = make_fake(tmp_path, answers)
+    monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake)
+    assert main(["dailymed-test", "--tables", "t", "--per-stratum", "1", "--out", "d/c.json"]) == 0
+    out = capsys.readouterr().out
+    assert "robots.txt: HTTP 200" in out
+    assert "labels compared" in out
+    assert session.calls[0]["url"].endswith("/robots.txt")
+    fake2, session2, _ = make_fake(tmp_path, [FakeResponse(body=b"User-agent: *\n")])
+    monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake2)
+    assert main(["dailymed-test", "--tables", "t", "--robots-only"]) == 0
+    assert len(session2.calls) == 1
