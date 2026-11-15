@@ -1,5 +1,8 @@
 # Codebook (DRAFT)
 
+The codes built so far, with their rules and limits, are in `docs/codebook.md` (version 0).
+This file stays as the wider plan.
+
 **DRAFT for the maintainer's review. No text is coded in this session.** Each measure has a
 definition in this project's own words, its source, the level it applies to (whole text,
 segment, aligned pair) and a first view of how it could be computed:
