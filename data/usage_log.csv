@@ -98,3 +98,10 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T13:54:10.848Z,GET,api.fda.gov,/drug/label.json,count=effective_time&limit=1000,200,357076,0.347
 2026-11-15T13:54:12.701Z,GET,api.fda.gov,/drug/label.json,search=(_exists_:spl_medguide%20OR%20_exists_:spl_patient_package_insert)&count=effective_time&limit=1000,200,255551,0.317
 2026-11-15T13:54:14.523Z,GET,api.fda.gov,/drug/label.json,search=_exists_:patient_medication_information&count=effective_time&limit=1000,200,50687,0.201
+2026-11-15T13:55:26.459Z,HEAD,api.fda.gov,/download.json,,200,0,0.417
+2026-11-15T13:55:33.036Z,GET,api.fda.gov,/download.json,,200,602365,0.769
+2026-11-15T13:56:57.421Z,GET,download.open.fda.gov,/drug/label/drug-label-0014-of-0014.json.zip,,200,39297061,49.199
+2026-11-15T14:07:32.191Z,GET,www.cdc.gov,/other/agencymaterials.html,,200,84067,0.931
+2026-11-15T14:07:34.128Z,GET,www.cdc.gov,/ccindex/index.html,,200,84521,1.202
+2026-11-15T14:07:36.334Z,GET,dailymed.nlm.nih.gov,/dailymed/archives/index.cfm,,200,461452,0.736
+2026-11-15T14:07:38.675Z,GET,dailymed.nlm.nih.gov,/dailymed/webservices-help/v2/spls_setid_history_api.cfm,,200,85122,0.066
