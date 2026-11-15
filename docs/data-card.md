@@ -16,9 +16,12 @@ matched section by section, with reading-level and plain-language measures on bo
 - **Not a judgment of any medicine.** The measures describe wording only.
 - **Not about people.** Labels hold no information about patients, and nothing is added.
 - **Not a list of medicines on the market.** The source keeps the latest version of each label
-  it holds, and many may be for products no longer listed: in a test of 20 labels, DailyMed's
-  service for current labels did not have 7, and all 7 lacked the source's `openfda` block
-  (which 57% of the labels here lack).
+  it holds, whether or not the product is still listed. On the days the two lists were read
+  (the NDC directory of 2026-11-13, DailyMed's label list of 2026-11-15), 15,022 of the 35,177
+  labels (42.7%) were for products in the current NDC directory, DailyMed served 19,847
+  (56.4%), and 15,318 (43.5%) were on neither list. Every label carries both flags
+  (`listed_in_ndc_directory`, `served_by_dailymed`). A label on neither list may be for a
+  product no longer marketed.
 - **Not official.** Not made, endorsed or checked by the U.S. Food and Drug Administration, the
   National Library of Medicine or any company whose labels it describes.
 
@@ -46,16 +49,24 @@ and states:
 | distinct Medication Guides (exact / loose / core) | 15,308 / 14,820 / 12,006 |
 | distinct patient package inserts (exact / loose / core) | 9,168 / 8,990 / 7,769 |
 | patient text groups in table B (all four kinds) | 21,416 |
-| distinct medicine keys (from the `openfda` block, and through shared texts) | 1,713 |
+| distinct medicine keys (from the `openfda` block, and through shared texts) | 1,713 or more |
 | labels with no medicine key | 16,122 |
-| section pairs in table C | 259,911 |
+| labels with a product name read from their product data / distinct product names | 34,406 / 3,676 |
+| labels in the current NDC directory / served by DailyMed / on neither list | 15,022 / 19,847 / 15,318 |
+| section pairs in table C | 250,829 |
 | labels typed over the counter with a guide or insert (listed apart, not in scope) | 100 |
 
 "Distinct medicines" are distinct sets of generic names from the source's `openfda` block,
 which most labels lack. A label without it borrows the key of labels that carry the same
 patient text (the same core hash: identical once case, punctuation and the closing lines that
 name the maker are set aside); 16,122 labels have neither, so the count of medicines is a
-lower bound. No name is read from the label text.
+lower bound. No medicine key is read from the label text.
+
+Product names are a separate column, read from each label's structured product data
+(`spl_product_data_elements`), not from its prose, and never merged into the medicine key.
+Where a label also has the `openfda` block, the name read agrees with one of its brand names for
+14,339 of 14,818 labels (96.8%). The 3,676 distinct product names (case ignored) are therefore
+reported beside the 1,713 or more distinct medicines: a product name is not a medicine.
 
 ## Two layers and the switch
 - **Record layer**, always releasable: `labels`, `patient_texts`, `section_pairs` and
