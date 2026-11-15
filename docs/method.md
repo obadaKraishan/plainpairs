@@ -3,8 +3,8 @@
 **DRAFT for the maintainer's review.** How the corpus would be built in S2 and checked.
 
 ## 1. Source and download
-All 14 drug-label bulk parts of one weekly export (`download.json`; 1,874,358,173 bytes zipped
-for the 2026-11-13 export), each saved raw once to the external drive, flushed and checked by
+All 14 drug-label bulk parts of one weekly export (`download.json` lists 1,787.53 MiB zipped,
+about 1.87 GB, for the 2026-11-13 export), each saved raw once to the external drive, flushed and checked by
 SHA-256. The source says a weekly update may change any record, so every export is read in
 full, never patched (`docs/automation.md`).
 
