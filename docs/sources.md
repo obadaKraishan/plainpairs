@@ -109,6 +109,10 @@ need to treat that text with care whatever the dataset page says (decision for t
   - `patient_medication_information`: "Information or instructions to patients about safe use of
     the drug product, sometimes including a reference to a patient medication guide or
     counseling materials."
+- **The NDC directory** (for the "listed now" flag). openFDA's `drug/ndc` bulk file, as
+  `download.json` lists it: one part, 26.94 MiB, 138,372 records, export of 2026-11-13. It falls
+  under the same openFDA terms as the label data (above). Only each entry's `spl_id` and
+  `openfda.spl_set_id` are read, to say whether a label's product is in the current directory.
 
 ## 2. DailyMed (National Library of Medicine)
 - **Who writes the labels, and who checks them** (<https://dailymed.nlm.nih.gov/dailymed/about-dailymed.cfm>):
@@ -149,6 +153,20 @@ need to treat that text with care whatever the dataset page says (decision for t
   daily, weekly and monthly updates (October 2026: 4,131 labels, 1.67 GB).
   > Warning: The full human prescription and OTC archive files, dm_spl_release_human_rx.zip and
   > dm_spl_release_human_otc.zip, are no longer available due to size considerations.
+- **The list of labels DailyMed serves** (for the "listed now" flag). The zip file metadata,
+  `dm_spl_zip_files_meta_data.zip` (7.30 MB as listed, MD5 as listed, last modified
+  2026-11-13), on the mapping files page
+  (<https://dailymed.nlm.nih.gov/dailymed/spl-resources-all-mapping-files.cfm>):
+  > These files map SPL Set ID to other information.
+
+  and described on the application support page
+  (<https://dailymed.nlm.nih.gov/dailymed/app-support-mapping-files.cfm>):
+  > This file maps SPL Set IDs to their zip file name and drug title. For each SPL zip file name,
+  > there will be one and only entry in this file.
+
+  Neither page states terms of reuse; NLM's web policy (above) applies, and the file is NLM's
+  own index. Only the set id and the version are read; the titles are never kept, and the file
+  is not redistributed.
 
 ## 3. FDA's website policy (<https://www.fda.gov/about-fda/about-website/website-policies>)
 > Unless otherwise noted, the contents of the FDA website (www.fda.gov) - both text and
@@ -258,13 +276,17 @@ partner copy on NCBI Bookshelf (terms not yet read), or asking NCI about the syn
 (contact is the maintainer's to make). Nothing was crawled.
 
 ## 6. Codebook instruments
-- **PEMAT (AHRQ).** The PEMAT page and AHRQ's copyright policy answered 403 to automated reads
-  and were not read; nothing is known here about permission to reprint the items (listed for the
-  maintainer to check by hand). Citation: Shoemaker SJ, Wolf MS, Brach C. Development of the
-  Patient Education Materials Assessment Tool (PEMAT): a new measure of understandability and
-  actionability for print and audiovisual patient information. *Patient Educ Couns.*
-  2014;96(3):395-403. Until AHRQ's terms are read, the codebook describes PEMAT items in its own
-  words and cites them, without reprinting them.
+- **PEMAT (AHRQ).** The PEMAT page and AHRQ's copyright policy answered 403 to automated reads.
+  The maintainer's own copies of the printable form (PEMAT-P) and the user's guide (Version 1.0,
+  November 2013, updated August 2014; AHRQ Publication No. 14-0002-EF) were read: neither states
+  terms of reuse. So the codebook (`docs/codebook.md`) names each PEMAT-P item it draws on by
+  its number and topic only, describes it in this project's words, cites the guide, and
+  reprints nothing; its measures are "PEMAT-informed text items", not PEMAT scores. Citations:
+  Shoemaker SJ, Wolf MS, Brach C. *The Patient Education Materials Assessment Tool (PEMAT) and
+  User's Guide.* Rockville, MD: Agency for Healthcare Research and Quality; 2013. AHRQ Publication
+  No. 14-0002-EF; and Shoemaker SJ, Wolf MS, Brach C. Development of the Patient Education
+  Materials Assessment Tool (PEMAT): a new measure of understandability and actionability for
+  print and audiovisual patient information. *Patient Educ Couns.* 2014;96(3):395-403.
 - **CDC Clear Communication Index** (<https://www.cdc.gov/ccindex/index.html>):
   > The Index has 4 introductory questions and 20 scored items drawn from scientific literature
   > in communication and related disciplines.
