@@ -20,7 +20,10 @@ def test_corpus_stats_on_invented_labels(tmp_path):
         s["switch"]["text_patient"]["released:unmarked"]
         < s["switch"]["text_patient"]["released:all"]
     )
-    assert "patient.medication_guide" in s["measures"]
+    # a build without a structure table has one group, never a pooled number
+    assert set(s["measures"]["patient.medication_guide"]) == {"no_configuration"}
+    assert "json" in s["measures"]["patient.medication_guide"]["no_configuration"]
+    assert s["configurations"]["labels"] == {"no_configuration": s["labels"]}
     assert s["alignment"]["how_to_take"]["segments"] == 2
     dumped = json.dumps(s, default=str)
     assert "made-up medicine" not in dumped and "Bottles of 30" not in dumped

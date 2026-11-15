@@ -129,49 +129,70 @@ def corpus_stats(out_dir: Path) -> dict[str, Any]:
         ),
     }
 
-    # Measures, per side and section, by both sentence rules.
+    # Reading measures, per configuration and never pooled across them: for `current`
+    # labels from structure and, for the same labels, from the JSON; for `unlisted` labels
+    # from the JSON only. A build without a structure table has one group, `no_configuration`.
+    confs = sorted({r["configuration"] or "no_configuration" for r in labels})
     m: dict[str, Any] = {}
     for side, names in (("p", tables.PRESCRIBER), ("t", tables.PATIENT)):
         for name in names:
-            vals = [r[f"{side}_{name}"] for r in labels if r[f"{side}_{name}"]]
+            key = f"{'prescriber' if side == 'p' else 'patient'}.{name}"
+            for conf in confs:
+                group = [r for r in labels if (r["configuration"] or "no_configuration") == conf]
+                vals = [r[f"{side}_{name}"] for r in group if r[f"{side}_{name}"]]
+                if not vals:
+                    continue
+                entry: dict[str, Any] = {"json": json_measures(vals)}
+                if conf == "current":
+                    both = [
+                        r
+                        for r in group
+                        if r[f"{side}_{name}"]
+                        and (r.get(f"{side}_{name}_structured") or {}).get("sentences") is not None
+                    ]
+                    entry["structured"] = structured_measures(
+                        [r[f"{side}_{name}_structured"] for r in both]
+                    )
+                    entry["json_same_labels"] = json_measures([r[f"{side}_{name}"] for r in both])
+                m.setdefault(key, {})[conf] = entry
+    s["measures"] = m
+    # The same over distinct patient texts (table B), so shared texts count once.
+    d: dict[str, Any] = {}
+    for kind in tables.PATIENT:
+        for conf in confs:
+            group = [
+                t
+                for t in texts
+                if t["kind"] == kind and (t["configuration"] or "no_configuration") == conf
+            ]
+            vals = [t["measures"] for t in group if t["measures"]]
             if not vals:
                 continue
-            m[f"{'prescriber' if side == 'p' else 'patient'}.{name}"] = {
-                "texts": len(vals),
-                "words": q([v["words"] for v in vals]),
-                "words_with_tables": q([v["words_with_tables"] for v in vals]),
-                "fk": q([v["flesch_kincaid"] for v in vals]),
-                "fk_s1": q([v["flesch_kincaid_s1"] for v in vals]),
-                "smog": q([v["smog"] for v in vals]),
-                "smog_s1": q([v["smog_s1"] for v in vals]),
-                "fre": q([v["flesch_reading_ease"] for v in vals]),
-                "long_sentence_share": q([v["long_sentence_share"] for v in vals]),
-                "numbers": q([v["numbers"] for v in vals]),
-                "percentages": q([v["percentages"] for v in vals]),
-                "headings": q([v["headings"] for v in vals]),
-                "with_tables_cut": sum(1 for v in vals if v["table_chars_cut"]),
-                "fk_above_8": round(
-                    sum(1 for v in vals if (v["flesch_kincaid"] or 0) > 8) / len(vals), 4
-                ),
-                "fk_s1_above_8": round(
-                    sum(1 for v in vals if (v["flesch_kincaid_s1"] or 0) > 8) / len(vals), 4
-                ),
-                "smog_above_8": round(sum(1 for v in vals if (v["smog"] or 0) > 8) / len(vals), 4),
-            }
-    s["measures"] = m
-    # The same, over distinct patient texts (table B), so shared texts count once.
-    s["measures_distinct_texts"] = {
-        kind: {
-            "texts": len(vals),
-            "fk": q([v["flesch_kincaid"] for v in vals]),
-            "fk_s1": q([v["flesch_kincaid_s1"] for v in vals]),
-            "smog": q([v["smog"] for v in vals]),
-            "fk_above_8": round(
-                sum(1 for v in vals if (v["flesch_kincaid"] or 0) > 8) / len(vals), 4
-            ),
-        }
-        for kind in tables.PATIENT
-        if (vals := [t["measures"] for t in texts if t["kind"] == kind and t["measures"]])
+            entry = {"json": json_measures(vals)}
+            if conf == "current":
+                both = [
+                    t
+                    for t in group
+                    if t["measures"]
+                    and (t["measures_structured"] or {}).get("sentences") is not None
+                ]
+                entry["structured"] = structured_measures([t["measures_structured"] for t in both])
+                entry["json_same_texts"] = json_measures([t["measures"] for t in both])
+            d.setdefault(kind, {})[conf] = entry
+    s["measures_distinct_texts"] = d
+    s["configurations"] = {
+        "labels": dict(Counter(r["configuration"] or "no_configuration" for r in labels)),
+        "unlisted_reasons": dict(
+            Counter(r["unlisted_reason"] for r in labels if r["unlisted_reason"])
+        ),
+        "distinct_texts": {
+            kind: dict(
+                Counter(
+                    t["configuration"] or "no_configuration" for t in texts if t["kind"] == kind
+                )
+            )
+            for kind in tables.PATIENT
+        },
     }
 
     # Headings found in guides and inserts (per distinct text).
@@ -337,6 +358,54 @@ def _texts_listed(labels: list[dict[str, Any]]) -> dict[str, int]:
     return out
 
 
+def _above(vals: list[dict[str, Any]], key: str, grade: float = 8) -> float | None:
+    got = [v[key] for v in vals if v.get(key) is not None]
+    return round(sum(1 for x in got if x > grade) / len(got), 4) if got else None
+
+
+def json_measures(vals: list[dict[str, Any]]) -> dict[str, Any]:
+    """Reading measures from the JSON text (both sentence rules), over the texts given."""
+    return {
+        "texts": len(vals),
+        "words": q([v["words"] for v in vals]),
+        "words_with_tables": q([v["words_with_tables"] for v in vals]),
+        "sentences": q([v["sentences"] for v in vals]),
+        "fk": q([v["flesch_kincaid"] for v in vals]),
+        "fk_s1": q([v["flesch_kincaid_s1"] for v in vals]),
+        "smog": q([v["smog"] for v in vals]),
+        "smog_s1": q([v["smog_s1"] for v in vals]),
+        "fre": q([v["flesch_reading_ease"] for v in vals]),
+        "long_sentence_share": q([v["long_sentence_share"] for v in vals]),
+        "numbers": q([v["numbers"] for v in vals]),
+        "percentages": q([v["percentages"] for v in vals]),
+        "headings": q([v["headings"] for v in vals]),
+        "with_tables_cut": sum(1 for v in vals if v["table_chars_cut"]),
+        "fk_above_8": _above(vals, "flesch_kincaid"),
+        "fk_s1_above_8": _above(vals, "flesch_kincaid_s1"),
+        "smog_above_8": _above(vals, "smog"),
+    }
+
+
+def structured_measures(vals: list[dict[str, Any]]) -> dict[str, Any]:
+    """Reading measures from structure (every list item, paragraph and cell ends a sentence;
+    titles, headings and data cells are not measured)."""
+    return {
+        "texts": len(vals),
+        "words": q([v["words"] for v in vals]),
+        "sentences": q([v["sentences"] for v in vals]),
+        "fk": q([v["flesch_kincaid"] for v in vals]),
+        "smog": q([v["smog"] for v in vals]),
+        "fre": q([v["flesch_reading_ease"] for v in vals]),
+        "long_sentence_share": q([v["long_sentence_share"] for v in vals]),
+        "fk_above_8": _above(vals, "flesch_kincaid"),
+        "smog_above_8": _above(vals, "smog"),
+        "headings": q([v["blocks_heading"] for v in vals]),
+        "list_items": q([v["blocks_item"] for v in vals]),
+        "subsection_titles": q([v["subsection_titles"] for v in vals]),
+        "matches": dict(Counter(v["xml_match"] for v in vals)),
+    }
+
+
 def _per_1000(num: int, words: int) -> float | None:
     return round(1000 * num / words, 2) if words else None
 
@@ -350,7 +419,7 @@ def code_summary(t: pa.Table, kind: str) -> dict[str, Any]:
     n = t.num_rows
     if not n:
         return {"texts": 0}
-    tot = {f: pc.sum(t[f]).as_py() or 0 for f in codes.FIELDS}
+    tot = {f: pc.sum(t[f]).as_py() or 0 for f in codes.FIELDS if f in t.column_names}
 
     def any_(f: str) -> float | None:
         return _share(pc.sum(pc.greater(t[f], 0)).as_py() or 0, n)
@@ -400,6 +469,29 @@ def code_summary(t: pa.Table, kind: str) -> dict[str, Any]:
     if kind == "patient":
         out["longest_section_words_median"] = med("longest_section_words")
         out["texts_with_a_section_over_250_words"] = any_("sections_over_250")
+    if "structured_sentences" in t.column_names:
+        st = t.filter(pc.is_valid(t["structured_sentences"]))
+        if st.num_rows:
+            sums = {f: pc.sum(st[f]).as_py() or 0 for f in codes.STRUCTURED_FIELDS}
+            out["structured"] = {
+                "texts": st.num_rows,
+                "sentences_over_20_share": _share(
+                    sums["structured_sentences_over_20"], sums["structured_sentences"]
+                ),
+                "sentences_over_40_share": _share(
+                    sums["structured_sentences_over_40"], sums["structured_sentences"]
+                ),
+                "longest_sentence_words_median": pc.quantile(
+                    st["structured_longest_sentence_words"], q=0.5, interpolation="midpoint"
+                ).to_pylist()[0],
+                "longest_part_words_median": pc.quantile(
+                    st["structured_longest_part_words"], q=0.5, interpolation="midpoint"
+                ).to_pylist()[0],
+                "texts_with_a_part_over_250_words": _share(
+                    pc.sum(pc.greater(st["structured_parts_over_250"], 0)).as_py() or 0,
+                    st.num_rows,
+                ),
+            }
     return out
 
 
@@ -409,7 +501,17 @@ def codes_stats(out_dir: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     t = pq.read_table(path)
-    out: dict[str, Any] = {"code_version": codes.CODE_VERSION, "rows": t.num_rows}
+    exp = Path(out_dir) / "codes_experimental.parquet"
+    if exp.exists():  # the experimental codes, row for row; summarized here, never released
+        x = pq.read_table(exp)
+        for name in codes.EXPERIMENTAL:
+            if name in x.column_names and name not in t.column_names:
+                t = t.append_column(name, x[name])
+    out: dict[str, Any] = {
+        "code_version": codes.CODE_VERSION,
+        "rows": t.num_rows,
+        "status": {k: v for k, (_cols, v) in codes.CODEBOOK.items()},
+    }
     pt = t.filter(pc.equal(t["side"], "patient"))
     # one row per distinct text: the first label that carries it
     ids = pt["patient_text_id"].to_pylist()

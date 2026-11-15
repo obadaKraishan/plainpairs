@@ -294,6 +294,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         log=lambda s: print(s, flush=True),
         workers=args.workers,
         listings=listings,
+        structure_dir=Path(args.structure) if args.structure else None,
     )
     stats = builder.run()
     print(json.dumps(stats.get("rows", {}), sort_keys=True), flush=True)
@@ -463,7 +464,12 @@ def cmd_changes(args: argparse.Namespace) -> int:
 
 
 def cmd_codes(args: argparse.Namespace) -> int:
-    n = codes.build(Path(args.tables), workers=args.workers, log=lambda s: print(s, flush=True))
+    n = codes.build(
+        Path(args.tables),
+        workers=args.workers,
+        log=lambda s: print(s, flush=True),
+        structure_path=Path(args.structure) if args.structure else None,
+    )
     print(f"Coded {n:,} texts (codebook version {codes.CODE_VERSION}).", flush=True)
     return 0
 
@@ -539,6 +545,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--listed", action="store_true", help="use the newest listing files under data/raw/listed"
     )
+    p.add_argument(
+        "--structure",
+        help="the structure folder (plainpairs structure) for the two configurations",
+    )
     p.set_defaults(func=cmd_build)
 
     p = sub.add_parser(
@@ -611,6 +621,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("codes", help="rule-based codes of every text (counts, no text)")
     p.add_argument("--tables", default="data/interim/tables")
     p.add_argument("--workers", type=int, default=1, help="batches coded in parallel")
+    p.add_argument(
+        "--structure", help="structure.parquet, for the length codes from structure (current)"
+    )
     p.set_defaults(func=cmd_codes)
 
     p = sub.add_parser("stats", help="aggregates of a built corpus (no text)")
