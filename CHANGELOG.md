@@ -47,7 +47,37 @@ All notable changes to this project are recorded here. The format follows
   scope can be told from one withdrawn.
 - `docs/benchmark-design.md` (DRAFT), replacing the benchmark sketch.
 
+- `xml-download`: DailyMed's full release of human prescription labels, read from its own
+  download page, part by part; a cut-off part resumes with a range request, each part is
+  checked against the page's MD5 and written once with its SHA-256 in a manifest.
+- `structure`: reads the release's label XML in place (no file unpacked to disk; images are
+  counted, never read), joins it to the corpus by set id and version, tests whether the XML
+  holds the JSON's words, and measures each section from its structure (`plainpairs.spl`:
+  titles, headings, paragraphs, list items, prose cells, captions and data cells).
+- Two configurations, `current` (structure from DailyMed's XML) and `unlisted` (the JSON only):
+  `build --structure` adds `configuration`, `structure_source`, `unlisted_reason` and the
+  measures from structure (`p_<section>_structured`, `t_<text>_structured`) to `labels`, and a
+  configuration to `patient_texts` and `section_pairs`. The JSON measures keep their columns.
+- `codes --structure`: the length codes read from structure for `current` labels; the
+  experimental codes go to `codes_experimental.parquet`, which no release carries.
+- `release-check` fails on a label without a configuration, a `current` label without
+  structure, a reading-level column pooled across the configurations, and an experimental
+  code in a release table.
+- `stats` gives reading levels per configuration only, with the JSON's beside the structure's
+  for the same `current` labels.
+
 ### Changed
+- Codebook version 1 (DRAFT): a development check by hand of every code, each code marked
+  trusted or experimental with its error counts, and rule fixes where a clear cause showed
+  (risk sizes only, cross-references and doses left out; the month "May" and "may report";
+  "inform patients" is not a contact; brand names and pronunciations in brackets; packaging
+  counts in "1 in N"). `codes.parquet` now holds only the trusted codes.
+- The benchmark design takes the maintainer's defaults: grade 8, 1,000 test and 200
+  development items, items from `current` labels only.
+- The data card states the two configurations, what the listed-now flags do and do not mean,
+  and reading levels per configuration.
+- `export_ids.parquet` writes a version too large for a 32-bit integer as null (counted in the
+  build summary) instead of stopping the build.
 - A heading followed at once by its restatement (the question, then "Before taking ..., tell
   your healthcare provider") is one heading with one body; `section_pairs` no longer has an
   empty "before" segment for each such guide.
