@@ -237,6 +237,26 @@ is the maintainer's decision; it is not settled here by assumption.
   | English | 237 | 152 |
   | Spanish | 215 | 152 |
 
+### Are the summaries distributed as files? (checked 2026-11-15)
+Not on NCI's own pages. The PDQ content partners page
+(<https://www.cancer.gov/publications/pdq/content-partners>, "Posted: November 19, 2024") says
+of its content distribution partners:
+> These partners use NCI-produced content in their websites and information products and may
+> syndicate it to their partners and customers, further extending its dissemination.
+
+> The summaries are made available to these partners through the NCI content syndication
+> program.
+
+Its link to that program (`/node/13430`) answered 404 on 2026-11-15, and NCI's syndication page
+(<https://www.cancer.gov/syndication>) offers RSS feeds, a dictionary widget and the clinical
+trials API, with no summary files or summary feed. The same page lists NCBI Bookshelf (National
+Library of Medicine) among the partners, and says "Almost all PDQ health professional and
+patient summaries, as well as other NCI content, are available in Spanish from NCI." So a public
+file download of the summaries was not found; S3 has three routes: the web pages themselves
+(about 760 pages in the sitemap, which is a crawl and needs the maintainer's approval), the
+partner copy on NCBI Bookshelf (terms not yet read), or asking NCI about the syndication program
+(contact is the maintainer's to make). Nothing was crawled.
+
 ## 6. Codebook instruments
 - **PEMAT (AHRQ).** The PEMAT page and AHRQ's copyright policy answered 403 to automated reads
   and were not read; nothing is known here about permission to reprint the items (listed for the
