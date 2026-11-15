@@ -88,6 +88,11 @@ def test_terms_followed_by_an_explanation():
     assert got["explained_called"] == 2  # "called" and "also known as", not "Call your doctor"
 
 
+def test_a_bracket_without_words_is_nothing():
+    got = c("A note ( - , ) and another (* *) here.")
+    assert got["explained_in_brackets"] == 0 and got["abbreviations_in_brackets"] == 0
+
+
 def test_long_sentences_and_long_sections():
     long = " ".join(["word"] * 45) + "."
     got = c(f"What is Zorvan? {long} How should I take Zorvan? Take it once a day.")

@@ -185,7 +185,7 @@ def _bracket_kind(inner: str) -> str | None:
         return "abbreviation"
     words = readability.words(inner)
     # one token (a name, a pronunciation such as "zor-VAN") or any digit: not an explanation
-    if len(inner.split()) < 2 or re.search(r"\d", inner):
+    if len(inner.split()) < 2 or re.search(r"\d", inner) or not words:
         return None
     if words[0].lower() in _BRACKET_SKIP_FIRST or inner.lower().startswith(("e.g", "i.e")):
         return "explained" if inner.lower().startswith("i.e") else None
