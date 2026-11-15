@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, pages
+from plainpairs import __version__, pages, probe
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
 USAGE_LOG = Path("data/usage_log.csv")
@@ -63,6 +63,24 @@ def cmd_quotes_check(args: argparse.Namespace) -> int:
     return 1 if bad else 0
 
 
+def cmd_counts(args: argparse.Namespace) -> int:
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    client.min_interval = args.min_interval
+    p = probe.Probe(client, Path(args.out))
+    plan = probe.standard_plan()
+    if args.first:
+        plan = plan[: args.first]
+    before = client.budget.calls
+    try:
+        probe.run_plan(p, plan)
+    finally:
+        print(
+            f"{len(p.results)} answers saved to {args.out}; {client.budget.calls - before} calls "
+            f"made now, {client.budget.calls} of {client.budget.max_calls} this session."
+        )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -89,6 +107,13 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("page-text", help="print the plain text of a saved page")
     p.add_argument("url")
     p.set_defaults(func=cmd_page_text)
+
+    p = sub.add_parser("counts", help="ask the label API the standard counts (resumable)")
+    p.add_argument("--out", default="data/interim/probe/counts.json")
+    p.add_argument("--first", type=int, default=0, help="ask only the first N questions")
+    p.add_argument("--min-interval", type=float, default=1.5)
+    caps(p)
+    p.set_defaults(func=cmd_counts)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")

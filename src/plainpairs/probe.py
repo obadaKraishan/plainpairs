@@ -131,3 +131,95 @@ def by_year(terms: Terms) -> dict[str, int]:
     for day, n in terms.terms:
         years[day[:4]] = years.get(day[:4], 0) + n
     return dict(sorted(years.items()))
+
+
+MG = "spl_medguide"
+PPI = "spl_patient_package_insert"
+MG_OR_PPI = f"(_exists_:{MG} OR _exists_:{PPI})"
+SHORT = {
+    "spl_medguide": "MG",
+    "spl_patient_package_insert": "PPI",
+    "instructions_for_use": "IFU",
+    "information_for_patients": "IFP",
+    "patient_medication_information": "PMI",
+}
+
+
+def standard_plan() -> list[tuple[str, str, str | None, str | None]]:
+    """The S1 counts: (name, kind, field to count or None, search or None)."""
+    plan: list[tuple[str, str, str | None, str | None]] = [("all", "total", None, None)]
+    for f in PATIENT_FIELDS:
+        plan.append((f"has:{SHORT[f]}", "total", None, exists(f)))
+    plan += [
+        ("has:MG|PPI", "total", None, MG_OR_PPI),
+        ("has:MG&PPI", "total", None, exists(MG, PPI)),
+        ("has:boxed_warning", "total", None, exists("boxed_warning")),
+        ("has:boxed_warning&(MG|PPI)", "total", None, f"_exists_:boxed_warning AND {MG_OR_PPI}"),
+        (
+            "has:warnings_and_cautions&(MG|PPI)",
+            "total",
+            None,
+            f"_exists_:warnings_and_cautions AND {MG_OR_PPI}",
+        ),
+        ("has:warnings&(MG|PPI)", "total", None, f"_exists_:warnings AND {MG_OR_PPI}"),
+        ("missing:openfda.product_type", "total", None, "_missing_:openfda.product_type"),
+        (
+            "IFP:phrase:patient counseling information",
+            "total",
+            None,
+            'information_for_patients:"patient counseling information"',
+        ),
+        (
+            "unclassified:phrase:medication guide&!MG",
+            "total",
+            None,
+            f'spl_unclassified_section:"medication guide" AND _missing_:{MG}',
+        ),
+        (
+            "IFP:phrase:medication guide&!MG",
+            "total",
+            None,
+            f'information_for_patients:"medication guide" AND _missing_:{MG}',
+        ),
+    ]
+    # Every combination of the five patient fields: present ones and absent ones.
+    n = len(PATIENT_FIELDS)
+    for mask in range(1, 2**n):
+        present = tuple(f for i, f in enumerate(PATIENT_FIELDS) if mask >> i & 1)
+        absent = tuple(f for i, f in enumerate(PATIENT_FIELDS) if not mask >> i & 1)
+        name = "only:" + "+".join(SHORT[f] for f in present)
+        plan.append((name, "total", None, pattern(present, absent)))
+    plan.append(("types:all", "terms", "openfda.product_type.exact", None))
+    for f in PATIENT_FIELDS:
+        plan.append((f"types:{SHORT[f]}", "terms", "openfda.product_type.exact", exists(f)))
+    plan.append(("types:MG|PPI", "terms", "openfda.product_type.exact", MG_OR_PPI))
+    for f in (MG, PPI, "instructions_for_use", "patient_medication_information"):
+        plan.append((f"generic:{SHORT[f]}", "terms", "openfda.generic_name.exact", exists(f)))
+    plan += [
+        ("generic:MG|PPI", "terms", "openfda.generic_name.exact", MG_OR_PPI),
+        ("brand:MG|PPI", "terms", "openfda.brand_name.exact", MG_OR_PPI),
+        ("set_id:MG|PPI", "terms", "set_id.exact", MG_OR_PPI),
+        ("application:MG|PPI", "terms", "openfda.application_number.exact", MG_OR_PPI),
+        ("manufacturer:MG|PPI", "terms", "openfda.manufacturer_name.exact", MG_OR_PPI),
+        ("route:MG|PPI", "terms", "openfda.route.exact", MG_OR_PPI),
+        (
+            "manufacturer:PMI",
+            "terms",
+            "openfda.manufacturer_name.exact",
+            exists("patient_medication_information"),
+        ),
+        ("days:all", "terms", "effective_time", None),
+        ("days:MG|PPI", "terms", "effective_time", MG_OR_PPI),
+        ("days:PMI", "terms", "effective_time", exists("patient_medication_information")),
+    ]
+    return plan
+
+
+def run_plan(p: Probe, plan: list[tuple[str, str, str | None, str | None]]) -> None:
+    """Ask every question in ``plan`` that ``p`` has no answer for yet."""
+    for name, kind, field, search in plan:
+        if kind == "total":
+            p.total(name, search)
+        else:
+            assert field is not None
+            p.terms(name, field, search)

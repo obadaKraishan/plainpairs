@@ -83,3 +83,22 @@ def test_daily_counts_add_up_to_years(tmp_path):
     c, _, _ = make(tmp_path, [answer(body)])
     p = probe.Probe(c, tmp_path / "counts.json")
     assert probe.by_year(p.terms("days", "effective_time")) == {"2009": 5, "2026": 1}
+
+
+def test_the_standard_plan_covers_every_combination_once():
+    plan = probe.standard_plan()
+    names = [name for name, *_ in plan]
+    assert len(names) == len(set(names))
+    assert sum(1 for n in names if n.startswith("only:")) == 31
+    only_mg = dict((n, s) for n, _, _, s in plan)["only:MG"]
+    assert only_mg.startswith("_exists_:spl_medguide AND _missing_:spl_patient_package_insert")
+
+
+def test_run_plan_asks_each_question(tmp_path):
+    plan = [("all", "total", None, None), ("t", "terms", "f.exact", "x:1")]
+    c, session, _ = make(tmp_path, [answer(TOTAL), answer({"results": []})])
+    p = probe.Probe(c, tmp_path / "counts.json")
+    probe.run_plan(p, plan)
+    probe.run_plan(p, plan)
+    assert len(session.calls) == 2
+    assert set(p.results) == {"all", "t"}
