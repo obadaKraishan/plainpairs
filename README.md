@@ -23,6 +23,10 @@ drafts are in [`docs/`](docs/).
   checks described in [`docs/method.md`](docs/method.md).
 - Reading-level and plain-language measures for every text, computed by stated rules.
 - New and changed labels added every week, with versioned, citable releases.
+- Apart from the labels, in its own configuration: text taken from the National Cancer
+  Institute's cancer information summaries, in their health-professional and patient versions,
+  in English and Spanish, paired by NCI's own links, with images, credited tables, references
+  and closing sections left out and a credit line on every row.
 
 ## What it is not
 - **Not medical information.** PlainPairs is a research record of how label text is worded.
@@ -44,6 +48,11 @@ source asks for, and the open questions about rights in label text. The source's
 disclaimer applies to everything here: "Do not rely on openFDA to make decisions regarding
 medical care. Always speak to your health provider about the risks and benefits of
 FDA-regulated products."
+
+The cancer information summaries come from the National Cancer Institute's website
+(<https://www.cancer.gov>), whose text is free of copyright unless marked otherwise; every row
+credits the National Cancer Institute as the source and links the original summary. NCI's
+summaries "are not clinical practice guidelines or treatment recommendations".
 
 ## Documents
 [`docs/`](docs/) holds the data card (`data-card.md`, a draft), the schema and the method

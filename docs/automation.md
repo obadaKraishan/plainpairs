@@ -1,6 +1,6 @@
 # Automation sketch (nothing built)
 
-**A sketch for S4.** A weekly run that reads the newest export, finds new and changed labels,
+**A sketch for the release.** A weekly run that reads the newest export, finds new and changed labels,
 and delivers the next dataset version as a pull request on the Hugging Face dataset, published
 only when the maintainer merges it (the pattern the CommonsWire weekly update uses).
 
@@ -15,7 +15,7 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
 
 ## The weekly run
 1. **When.** A GitHub Actions schedule a day or two after the usual export day (the next run
-   time is set from the `export_date` history in S4), plus a manual button.
+   time is set from the `export_date` history at release), plus a manual button.
 2. **Check for a new export.** Read `download.json`; if `export_date` equals the last release's,
    stop with nothing to do.
 3. **Download.** The 14 parts, one at a time, each streamed and checked against its size; the
@@ -30,7 +30,8 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
    in place like the full release. The full release does not fit a standard runner's disk
    (14 GB), so the weekly run starts from the last build's structure table and reads only
    update files; whether the full release must be read again from time to time (DailyMed
-   replaces it on its own schedule) is checked against the update files' counts in S4.
+   replaces it on its own schedule) is checked against the update files' counts before the run
+   is automated.
 5. **Parse and build** the three tables (`docs/schema.md`) for labels in scope, with the two
    small listing files read the same day (`plainpairs listed-download`, then
    `plainpairs build --listed --structure`), then the codes (`plainpairs codes --structure`).
@@ -72,3 +73,21 @@ rule). Each release lists the export date it was built from, and the `labels` ta
   switch in the workflow, off until the maintainer turns it on.
 - Actions pinned to commit SHAs; the token scoped to the one dataset and to pull requests.
 - No model calls in the weekly run.
+
+## The NCI cancer information summaries (configuration `nci`)
+NCI updates its summaries one at a time, each with its own "Updated" date, and its sitemap's
+dates are a site-wide publishing date, not a change date (752 of 757 summary pages carried one
+day in October 2026). So a change cannot be seen without reading the pages.
+
+- **Cadence: every three months**, not weekly. A full reading on 2026-11-15 took 760 requests
+  (robots.txt, the reuse policy, the sitemap index and the page sitemap, then 756 summary pages),
+  149.3 MB and 65 minutes at one request every 5 seconds, with every answer 200. NCI's own
+  update dates on that day: only 6 of the 756 summaries were updated in the past 12 months
+  (the latest on 2026-10-15); 449 carry a date in 2025 and 196 in 2024. Read every three
+  months, the cost is about 3,040 requests and 600 MB a year. If NCI's update rate returns to
+  that of 2025, monthly reading (about 9,100 requests a year) is the next step.
+- **Each reading:** read the sitemap; read every summary page once; build the three `nci` tables;
+  compare each page's `text_sha256` and `nci_updated` with the last build; record the pages that
+  changed, appeared or left; deliver with the label release.
+- **In a GitHub Actions run** the pages are read and parsed in memory and not kept; the saved
+  copies on the maintainer's drive stay the evidence of the first reading.
