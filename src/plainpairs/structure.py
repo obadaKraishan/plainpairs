@@ -190,23 +190,27 @@ def structured_row(
 
 
 def _json_texts(tables_dir: Path, ids: list[str]) -> dict[tuple[str, str], str]:
-    """The JSON text of each (set id, section) of ``ids``, read in batches (low memory)."""
+    """The JSON text of each (set id, section) of ``ids``, read in batches (low memory).
+
+    Set ids are matched and returned in lower case: the XML writes them in lower case, while
+    the JSON keeps each label's own spelling (a few use capitals)."""
     import pyarrow.compute as pc
 
     out: dict[tuple[str, str], str] = {}
     if not ids:
         return out
-    wanted = pa.array(ids)
+    wanted = pa.array([i.lower() for i in ids])
     for name in ("text_patient", "text_prescriber"):
         pf = pq.ParquetFile(Path(tables_dir) / f"{name}.parquet")
         for batch in pf.iter_batches(
             batch_size=5000, columns=["set_id", "section", "part", "text"]
         ):
             mask = pc.and_(
-                pc.is_in(batch["set_id"], value_set=wanted), pc.equal(batch["part"], "text")
+                pc.is_in(pc.utf8_lower(batch["set_id"]), value_set=wanted),
+                pc.equal(batch["part"], "text"),
             )
             for r in batch.filter(mask).to_pylist():
-                out[(r["set_id"], r["section"])] = r["text"]
+                out[(r["set_id"].lower(), r["section"])] = r["text"]
     return out
 
 

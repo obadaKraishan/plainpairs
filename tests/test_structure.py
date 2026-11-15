@@ -169,3 +169,25 @@ def test_structured_row_json_repeats():
     assert row["words"] == 3
     plain = structure.structured_row(blocks, json_text, "1 INDICATIONS Outer words here.")
     assert plain["xml_match"] == "not" and plain["words"] is None
+
+
+def test_json_texts_match_set_ids_in_any_case(tmp_path):
+    d = tmp_path / "tables"
+    d.mkdir()
+    base = {
+        "source": "s",
+        "export_date": "2026-11-13",
+        "version": 1,
+        "part": "text",
+        "part_index": 0,
+        "sha256": "x",
+        "has_copyright_mark": False,
+        "text_has_copyright_mark": False,
+    }
+    rows = [{**base, "set_id": "ABCD-1", "section": "medication_guide", "text": "Words."}]
+    for name in ("text_patient", "text_prescriber"):
+        pq.write_table(
+            pa.Table.from_pylist(rows if name == "text_patient" else [], tables.TEXT_SCHEMA),
+            d / f"{name}.parquet",
+        )
+    assert structure._json_texts(d, ["abcd-1"]) == {("abcd-1", "medication_guide"): "Words."}
