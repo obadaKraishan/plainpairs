@@ -21,12 +21,22 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
 3. **Download.** The 14 parts, one at a time, each streamed and checked against its size; the
    runner's disk (14 GB) holds the 1.9 GB zipped and nothing is unpacked.
 4. **Parse and build** the three tables (`docs/schema.md`) for labels in scope.
-5. **Compare with the last release, by set id:**
-   - **new:** a set id not in the last release;
-   - **changed:** same set id, a higher version or a different core hash of any text;
-   - **removed:** a set id that left the source (kept in the release with `last_seen`, as the
-     record of what was published, unless the maintainer decides otherwise);
+5. **Compare with the last release, by set id**, using only the record layer (every text has
+   its SHA-256 there, so no text is needed to tell what changed):
+   - **new label:** a set id not in the last release;
+   - **new version, same texts:** a higher `version` with every section hash unchanged (the
+     source often re-issues a label for packaging or listing changes);
+   - **changed text:** any prescriber section or patient text whose hash changed, recorded per
+     section, so a researcher can ask which sections changed and how often;
+   - **patient text added or dropped:** a guide or insert that appears or disappears (a label
+     can enter or leave the scope this way);
+   - **identity changed:** the `openfda` block appearing or disappearing, a format change, a
+     copyright mark appearing or disappearing (which moves text in or out under the switch);
+   - **withdrawn:** a set id that left the source; kept in the release with its last export
+     date, flagged, unless the maintainer decides otherwise;
    - **unchanged:** carried over as it is.
+   The comparison writes one small table per release (`changes`: set id, old and new version,
+   what changed), so the history of wording is itself a dataset.
 6. **Checks before delivery:** counts within expected bounds of the last release (a sudden drop
    of more than a few percent stops the run), every row valid against the models, no duplicate
    keys, measures recomputed for changed rows only, a summary of changes.
