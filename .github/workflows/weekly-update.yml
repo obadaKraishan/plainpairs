@@ -50,7 +50,7 @@ jobs:
       - name: Install the project (locked) and the Hugging Face client
         run: |
           uv sync --locked
-          uv tool install huggingface_hub
+          uv tool install "huggingface_hub==2.4.0"
 
       - name: Room on the runner
         run: df -h "$RUNNER_TEMP" . | tail -n +1
