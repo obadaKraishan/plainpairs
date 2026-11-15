@@ -1,0 +1,99 @@
+name: Weekly update
+
+# Builds the next PlainPairs version from the one published on Hugging Face, with the
+# repository's own `plainpairs update`, and checks it. See docs/automation.md.
+#
+# SWITCHED OFF: there is no schedule, and DELIVERY_ENABLED is "false", so a run (started by
+# hand from the Actions tab) builds and checks a version and uploads nothing. To switch it on,
+# after the repository is public (its Actions minutes are then free): add the schedule below,
+# create the environment `release` (deployments from main only) with the secret HF_TOKEN (a
+# token that may open pull requests on obadakr/plainpairs, nothing more), and set
+# DELIVERY_ENABLED to "true". A ready version is then delivered as a pull request on the
+# dataset, which the maintainer merges.
+#
+# Every action is pinned to a full commit SHA (the comment gives the version). No job runs on
+# pull requests, so a fork's pull request never reaches this workflow or its secret. The logs and
+# the job summary carry counts only; nothing is uploaded as an artifact.
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "23 7 * * 1" # Mondays, 07:23 UTC (openFDA's export usually lands by then)
+
+permissions: {}
+
+concurrency:
+  group: weekly-update
+  cancel-in-progress: false
+
+env:
+  DELIVERY_ENABLED: "false"
+  DATASET: obadakr/plainpairs
+
+jobs:
+  update:
+    name: Build and check the next version
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.12"
+
+      - name: Install the project (locked) and the Hugging Face client
+        run: |
+          uv sync --locked
+          uv tool install huggingface_hub
+
+      - name: Room on the runner
+        run: df -h "$RUNNER_TEMP" . | tail -n +1
+
+      - name: Download the latest published version (anonymous)
+        run: |
+          hf download "$DATASET" --repo-type dataset --local-dir "$RUNNER_TEMP/prev" > /dev/null
+          rm -rf "$RUNNER_TEMP/prev/.cache"
+          du -sh "$RUNNER_TEMP/prev"
+
+      - name: Build and check the next version
+        id: update
+        run: |
+          mkdir -p data/raw
+          uv run --no-sync python -I -m plainpairs update --from-pack "$RUNNER_TEMP/prev" \
+            --work "$RUNNER_TEMP/work" --workers 4 --max-calls 120 --max-bytes 4000000000
+          python3 -I - "$RUNNER_TEMP/work/summary.json" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          s = json.load(open(sys.argv[1]))
+          print(f"status={s['status']}")
+          PY
+
+      - name: Write the next pack and check it on its own
+        if: steps.update.outputs.status == 'ready'
+        run: |
+          version="$(python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1]))["version"].split("."); v[-1]=str(int(v[-1])+1); print(".".join(v))' "$RUNNER_TEMP/prev/manifest.json")"
+          uv run --no-sync python -I -m plainpairs release build --version "$version" \
+            --tables "$RUNNER_TEMP/work/tables" --out "$RUNNER_TEMP/next"
+          uv run --no-sync python -I -m plainpairs release check --pack "$RUNNER_TEMP/next"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: The run's counts
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/work/summary.json" ] && cat "$RUNNER_TEMP/work/summary.json" >> "$GITHUB_STEP_SUMMARY" || true
+
+  deliver:
+    name: Deliver as a pull request on the dataset
+    needs: update
+    if: false # switched off: becomes needs.update.result == 'success' && env.DELIVERY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: release # holds HF_TOKEN; deployments from main only
+    permissions:
+      contents: read
+    steps:
+      - run: echo "The delivery step uploads the checked pack with hf upload --create-pr."
