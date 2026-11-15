@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 from plainpairs import readability, spl, spl_release
@@ -169,16 +168,23 @@ def structured_row(blocks: list[spl.Block], json_text: str | None) -> dict[str, 
 
 
 def _json_texts(tables_dir: Path, ids: list[str]) -> dict[tuple[str, str], str]:
+    """The JSON text of each (set id, section) of ``ids``, read in batches (low memory)."""
+    import pyarrow.compute as pc
+
     out: dict[tuple[str, str], str] = {}
     if not ids:
         return out
+    wanted = pa.array(ids)
     for name in ("text_patient", "text_prescriber"):
-        t = ds.dataset(Path(tables_dir) / f"{name}.parquet").to_table(
-            columns=["set_id", "section", "part", "text"],
-            filter=(ds.field("set_id").isin(ids)) & (ds.field("part") == "text"),
-        )
-        for r in t.to_pylist():
-            out[(r["set_id"], r["section"])] = r["text"]
+        pf = pq.ParquetFile(Path(tables_dir) / f"{name}.parquet")
+        for batch in pf.iter_batches(
+            batch_size=5000, columns=["set_id", "section", "part", "text"]
+        ):
+            mask = pc.and_(
+                pc.is_in(batch["set_id"], value_set=wanted), pc.equal(batch["part"], "text")
+            )
+            for r in batch.filter(mask).to_pylist():
+                out[(r["set_id"], r["section"])] = r["text"]
     return out
 
 
