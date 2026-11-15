@@ -105,3 +105,7 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T14:07:34.128Z,GET,www.cdc.gov,/ccindex/index.html,,200,84521,1.202
 2026-11-15T14:07:36.334Z,GET,dailymed.nlm.nih.gov,/dailymed/archives/index.cfm,,200,461452,0.736
 2026-11-15T14:07:38.675Z,GET,dailymed.nlm.nih.gov,/dailymed/webservices-help/v2/spls_setid_history_api.cfm,,200,85122,0.066
+2026-11-15T14:08:19.977Z,GET,biotech.law.lsu.edu,/cases/devices/smithkline_v_watson.htm,,200,46124,0.875
+2026-11-15T14:08:21.854Z,GET,www.fda.gov,/drugs/fdas-labeling-resources-human-prescription-drugs/patient-medication-information-pmi,,200,46005,0.205
+2026-11-15T14:08:23.061Z,GET,www.reginfo.gov,/public/do/eAgendaViewRule,pubId=202510&RIN=0910-AH68,200,57237,0.987
+2026-11-15T14:08:25.203Z,GET,www.fda.gov,/industry/structured-product-labeling-resources/section-headings-loinc,,200,66508,0.107
