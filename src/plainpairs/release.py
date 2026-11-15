@@ -157,11 +157,13 @@ def check(
         info[f"release:{name}"] = chosen.num_rows
         info[f"marked:{name}"] = pc.sum(t["has_copyright_mark"]).as_py() or 0
         if verify_hashes and t.num_rows:
-            bad = sum(
-                1
-                for text, sha in zip(t["text"].to_pylist(), t["sha256"].to_pylist(), strict=True)
-                if hashlib.sha256(text.encode("utf-8")).hexdigest() != sha
-            )
+            bad = 0
+            pf = pq.ParquetFile(Path(out_dir) / f"{name}.parquet")
+            for batch in pf.iter_batches(batch_size=20_000, columns=["text", "sha256"]):
+                for text, sha in zip(
+                    batch["text"].to_pylist(), batch["sha256"].to_pylist(), strict=True
+                ):
+                    bad += hashlib.sha256(text.encode("utf-8")).hexdigest() != sha
             if bad:
                 problems.append(f"{name}: {bad} rows whose text does not match its SHA-256.")
     if verify_hashes:
