@@ -278,6 +278,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("build", help="build both layers from the parts of one export")
     p.add_argument("--export-date", required=True)
     p.add_argument("--out", default="data/interim/tables")
+    p.add_argument("--workers", type=int, default=1, help="parts read in parallel")
     p.set_defaults(func=cmd_build)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")

@@ -165,3 +165,22 @@ def test_parts_from_manifest_refuses_a_changed_or_missing_part(tmp_path):
         tables.parts_from_manifest(root, "2026-11-13")
     with pytest.raises(bulk.BulkError, match="No manifest"):
         tables.parts_from_manifest(root, "2026-11-20")
+
+
+def test_a_parallel_build_gives_the_same_tables(tmp_path, built):
+    out, stats = built
+    root = write_export(tmp_path / "bulk2")
+    out2 = tmp_path / "tables2"
+    stats2 = tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"),
+        out2,
+        "2026-11-13",
+        log=lambda s: None,
+        workers=2,
+    ).run()
+    assert stats2["counts"] == stats["counts"] and stats2["rows"] == stats["rows"]
+    for name in tables.SCHEMAS:
+        a = pq.read_table(out / f"{name}.parquet").drop_columns(["source"])
+        b = pq.read_table(out2 / f"{name}.parquet").drop_columns(["source"])
+        assert a.equals(b), name
+    assert not (out2 / "_parts").exists()

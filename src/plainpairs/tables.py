@@ -262,7 +262,9 @@ class Builder:
         out_dir: Path,
         export_date: str,
         log: Callable[[str], None] = print,
+        workers: int = 1,
     ) -> None:
+        self.workers = workers
         self.parts = parts
         self.out = Path(out_dir)
         self.export_date = export_date
@@ -278,68 +280,122 @@ class Builder:
         self.out.mkdir(parents=True, exist_ok=True)
         return pq.ParquetWriter(self.out / f"{name}.parquet", SCHEMAS[name], compression="zstd")
 
+    def scan_part(self, number: int, path: Path) -> dict[str, Any]:
+        """Pass 1 over one part: counts, records and the part's own text-layer files."""
+        c: Counter[str] = Counter()
+        errors: Counter[str] = Counter()
+        identity: Counter[str] = Counter()
+        excluded: list[dict[str, Any]] = []
+        buf: dict[str, list[dict[str, Any]]] = {name: [] for name in TEXT_TABLES}
+        for record in bulk.iter_labels(path):
+            c["labels_read"] += 1
+            for f in ("spl_medguide", "spl_patient_package_insert"):
+                if record.get(f):
+                    c[f"field:{f}"] += 1
+            if record.get("spl_medguide") or record.get("spl_patient_package_insert"):
+                c["field:either"] += 1
+            try:
+                row = label.parse_label(record, with_tables=self._candidate(record))
+            except label.LabelError as exc:
+                errors[str(exc).split(" of label")[0][:60]] += 1
+                continue
+            ident = row.identity
+            c[f"format:{ident.label_format}"] += 1
+            for conflict in label.format_conflicts(record, ident.product_type):
+                c[f"conflict:{conflict}"] += 1
+            for k in PATIENT:
+                if getattr(row.patient, k):
+                    c[f"parsed:{k}"] += 1
+            if row.patient.medication_guide or row.patient.patient_package_insert:
+                c["parsed:either"] += 1
+                c[f"either_by_format:{ident.label_format}"] += 1
+                if ident.product_type == "HUMAN OTC DRUG":
+                    excluded.append(
+                        {
+                            "source": SOURCE,
+                            "export_date": self.export_date,
+                            "set_id": ident.set_id,
+                            "version": ident.version,
+                            "product_type": ident.product_type,
+                            "label_format": ident.label_format,
+                            "has_medication_guide": bool(row.patient.medication_guide),
+                            "has_patient_package_insert": bool(row.patient.patient_package_insert),
+                        }
+                    )
+            marked = label.record_has_copyright_mark(record)
+            c["marked_any_label"] += marked
+            if not in_scope(row):
+                continue
+            c["in_scope"] += 1
+            c["in_scope_marked"] += marked
+            c[f"in_scope_harmonized:{ident.harmonized}"] += 1
+            self._identity(record, row, identity)
+            self._label(number, record, row, marked, buf)
+        parts_dir = self.out / "_parts"
+        parts_dir.mkdir(parents=True, exist_ok=True)
+        rows = {}
+        for name in TEXT_TABLES:
+            pq.write_table(
+                pa.Table.from_pylist(buf[name], SCHEMAS[name]),
+                parts_dir / f"{name}-{number:02d}.parquet",
+                compression="zstd",
+            )
+            rows[name] = len(buf[name])
+        return {
+            "number": number,
+            "counts": c,
+            "errors": errors,
+            "identity": identity,
+            "excluded": excluded,
+            "labels": self.labels,
+            "df": self.df,
+            "n_docs": self.n_docs,
+            "rows": rows,
+        }
+
+    def _map(self, fn: Callable[[tuple[Any, ...]], dict[str, Any]], jobs: list[tuple[Any, ...]]):
+        """Run ``fn`` over ``jobs``, in parallel when workers > 1; results in job order."""
+        if self.workers <= 1:
+            yield from map(fn, jobs)
+            return
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=self.workers) as pool:
+            yield from pool.map(fn, jobs)
+
+    def _merge_parts(self, names: tuple[str, ...]) -> None:
+        """Join the part files of each table, in part order, into one file per table."""
+        parts_dir = self.out / "_parts"
+        for name in names:
+            files = sorted(parts_dir.glob(f"{name}-*.parquet"))
+            with pq.ParquetWriter(
+                self.out / f"{name}.parquet", SCHEMAS[name], compression="zstd"
+            ) as w:
+                for f in files:
+                    w.write_table(pq.read_table(f))
+            for f in files:
+                f.unlink()
+
     def pass1(self) -> None:
         c: Counter[str] = Counter()
         errors: Counter[str] = Counter()
         identity: Counter[str] = Counter()
         excluded: list[dict[str, Any]] = []
-        writers = {name: self._writer(name) for name in TEXT_TABLES}
-        try:
-            for number, path in self.parts:
-                buf: dict[str, list[dict[str, Any]]] = {name: [] for name in TEXT_TABLES}
-                for record in bulk.iter_labels(path):
-                    c["labels_read"] += 1
-                    for f in ("spl_medguide", "spl_patient_package_insert"):
-                        if record.get(f):
-                            c[f"field:{f}"] += 1
-                    if record.get("spl_medguide") or record.get("spl_patient_package_insert"):
-                        c["field:either"] += 1
-                    try:
-                        row = label.parse_label(record, with_tables=self._candidate(record))
-                    except label.LabelError as exc:
-                        errors[str(exc).split(" of label")[0][:60]] += 1
-                        continue
-                    ident = row.identity
-                    c[f"format:{ident.label_format}"] += 1
-                    for conflict in label.format_conflicts(record, ident.product_type):
-                        c[f"conflict:{conflict}"] += 1
-                    for k in PATIENT:
-                        if getattr(row.patient, k):
-                            c[f"parsed:{k}"] += 1
-                    if row.patient.medication_guide or row.patient.patient_package_insert:
-                        c["parsed:either"] += 1
-                        c[f"either_by_format:{ident.label_format}"] += 1
-                        if ident.product_type == "HUMAN OTC DRUG":
-                            excluded.append(
-                                {
-                                    "source": SOURCE,
-                                    "export_date": self.export_date,
-                                    "set_id": ident.set_id,
-                                    "version": ident.version,
-                                    "product_type": ident.product_type,
-                                    "label_format": ident.label_format,
-                                    "has_medication_guide": bool(row.patient.medication_guide),
-                                    "has_patient_package_insert": bool(
-                                        row.patient.patient_package_insert
-                                    ),
-                                }
-                            )
-                    marked = label.record_has_copyright_mark(record)
-                    c["marked_any_label"] += marked
-                    if not in_scope(row):
-                        continue
-                    c["in_scope"] += 1
-                    c["in_scope_marked"] += marked
-                    c[f"in_scope_harmonized:{ident.harmonized}"] += 1
-                    self._identity(record, row, identity)
-                    self._label(number, record, row, marked, buf)
-                for name in TEXT_TABLES:
-                    if buf[name]:
-                        writers[name].write_table(pa.Table.from_pylist(buf[name], SCHEMAS[name]))
-                self.log(f"pass 1: part {number} read; {c['in_scope']:,} labels in scope so far")
-        finally:
-            for w in writers.values():
-                w.close()
+        jobs = [(n, p, self.out, self.export_date) for n, p in self.parts]
+        rows = self.stats.setdefault("rows", {})
+        for res in self._map(_scan_job, jobs):
+            c.update(res["counts"])
+            errors.update(res["errors"])
+            identity.update(res["identity"])
+            excluded += res["excluded"]
+            self.labels += res["labels"]
+            self.in_scope_ids.update(r["set_id"] for r in res["labels"])
+            self.df.update(res["df"])
+            self.n_docs += res["n_docs"]
+            for name, n in res["rows"].items():
+                rows[name] = rows.get(name, 0) + n
+            self.log(f"pass 1: part {res['number']} read; {c['in_scope']:,} labels in scope so far")
+        self._merge_parts(TEXT_TABLES)
         self.stats["counts"] = dict(c)
         self.stats["parse_errors"] = dict(errors)
         self.stats["identity"] = dict(identity)
@@ -570,31 +626,40 @@ class Builder:
         self.log(f"wrote {name}: {len(rows):,} rows")
 
     # -- pass 2: table C ---------------------------------------------------------------------
+    def pairs_part(
+        self, number: int, path: Path, idf: dict[str, float], default_idf: float
+    ) -> dict[str, Any]:
+        """Pass 2 over one part: the section pairs of its labels in scope, to a part file."""
+        rows: list[dict[str, Any]] = []
+        for record in bulk.iter_labels(path):
+            if record.get("set_id") not in self.in_scope_ids:
+                continue
+            try:
+                row = label.parse_label(record)
+            except label.LabelError:  # pragma: no cover - refused in pass 1 already
+                continue
+            if not in_scope(row):  # pragma: no cover - the same rule as pass 1
+                continue
+            rows += self._pairs(row, idf, default_idf)
+        parts_dir = self.out / "_parts"
+        parts_dir.mkdir(parents=True, exist_ok=True)
+        pq.write_table(
+            pa.Table.from_pylist(rows, SECTION_PAIRS_SCHEMA),
+            parts_dir / f"section_pairs-{number:02d}.parquet",
+            compression="zstd",
+        )
+        return {"number": number, "rows": len(rows)}
+
     def pass2(self) -> None:
         idf = align.idf_table(self.df, self.n_docs)
         default_idf = max(idf.values(), default=1.0)
-        writer = pq.ParquetWriter(
-            self.out / "section_pairs.parquet", SECTION_PAIRS_SCHEMA, compression="zstd"
-        )
+        ids = frozenset(self.in_scope_ids)
+        jobs = [(n, p, self.out, self.export_date, ids, idf, default_idf) for n, p in self.parts]
         n = 0
-        try:
-            for number, path in self.parts:
-                rows: list[dict[str, Any]] = []
-                for record in bulk.iter_labels(path):
-                    if record.get("set_id") not in self.in_scope_ids:
-                        continue
-                    try:
-                        row = label.parse_label(record)
-                    except label.LabelError:  # pragma: no cover - refused in pass 1 already
-                        continue
-                    if not in_scope(row):  # pragma: no cover - the same rule as pass 1
-                        continue
-                    rows += self._pairs(row, idf, default_idf)
-                writer.write_table(pa.Table.from_pylist(rows, SECTION_PAIRS_SCHEMA))
-                n += len(rows)
-                self.log(f"pass 2: part {number} read; {n:,} segments so far")
-        finally:
-            writer.close()
+        for res in self._map(_pairs_job, jobs):
+            n += res["rows"]
+            self.log(f"pass 2: part {res['number']} read; {n:,} segments so far")
+        self._merge_parts(("section_pairs",))
         self.stats.setdefault("rows", {})["section_pairs"] = n
 
     def _pairs(
@@ -640,10 +705,27 @@ class Builder:
         self.pass1()
         self.finish_records()
         self.pass2()
+        parts_dir = self.out / "_parts"
+        if parts_dir.exists() and not any(parts_dir.iterdir()):
+            parts_dir.rmdir()
         (self.out / "build_summary.json").write_text(
             json.dumps(self.stats, indent=1, sort_keys=True, default=str), encoding="utf-8"
         )
         return self.stats
+
+
+def _scan_job(job: tuple[Any, ...]) -> dict[str, Any]:
+    number, path, out_dir, export_date = job
+    return Builder([(number, path)], out_dir, export_date, log=lambda s: None).scan_part(
+        number, path
+    )
+
+
+def _pairs_job(job: tuple[Any, ...]) -> dict[str, Any]:
+    number, path, out_dir, export_date, ids, idf, default_idf = job
+    b = Builder([(number, path)], out_dir, export_date, log=lambda s: None)
+    b.in_scope_ids = set(ids)
+    return b.pairs_part(number, path, idf, default_idf)
 
 
 def parts_from_manifest(root: Path, export_date: str) -> list[tuple[int, Path]]:
