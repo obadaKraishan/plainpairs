@@ -49,7 +49,8 @@ FDA-regulated products."
 [`docs/`](docs/) holds the data card (`data-card.md`, a draft), the schema and the method
 (`schema.md`, `method.md`), the source check (`sources.md`), the prior art (`prior-art.md`),
 the counts, the sample and the XML test (`counts.md`, `sample.md`, `xml-test.md`), the hand
-sheet guide, and drafts of the codebook, the benchmark and the weekly update.
+sheet guide, the codebook of rule-based codes (`codebook.md`, a draft), the benchmark design
+(`benchmark-design.md`, a draft) and a draft of the weekly update.
 
 ## License
 The software in this repository is licensed under the Apache License, Version 2.0 (see

@@ -20,7 +20,9 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
    stop with nothing to do.
 3. **Download.** The 14 parts, one at a time, each streamed and checked against its size; the
    runner's disk (14 GB) holds the 1.9 GB zipped and nothing is unpacked.
-4. **Parse and build** the three tables (`docs/schema.md`) for labels in scope.
+4. **Parse and build** the three tables (`docs/schema.md`) for labels in scope, with the two
+   small listing files read the same day (`plainpairs listed-download`, then
+   `plainpairs build --listed`), then the codes (`plainpairs codes`).
 5. **Compare with the last release, by set id**, using only the record layer (every text has
    its SHA-256 there, so no text is needed to tell what changed):
    - **new label:** a set id not in the last release;
@@ -32,11 +34,14 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
      can enter or leave the scope this way);
    - **identity changed:** the `openfda` block appearing or disappearing, a format change, a
      copyright mark appearing or disappearing (which moves text in or out under the switch);
-   - **withdrawn:** a set id that left the source; kept in the release with its last export
-     date, flagged, unless the maintainer decides otherwise;
+   - **left the scope or withdrawn:** a set id no longer in the corpus, told apart by the
+     export's full list of set ids (`export_ids.parquet`): still in the export but out of
+     scope, or gone from the source; kept in the release with its last export date, flagged,
+     unless the maintainer decides otherwise;
    - **unchanged:** carried over as it is.
    The comparison writes one small table per release (`changes`: set id, old and new version,
-   what changed), so the history of wording is itself a dataset.
+   what changed), so the history of wording is itself a dataset. `plainpairs changes --old
+   <last build> --new <this build>` does this now; the schema is in `docs/schema.md`.
 6. **Checks before delivery:** counts within expected bounds of the last release (a sudden drop
    of more than a few percent stops the run), every row valid against the models, no duplicate
    keys, measures recomputed for changed rows only, a summary of changes.
