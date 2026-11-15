@@ -184,3 +184,49 @@ def test_a_parallel_build_gives_the_same_tables(tmp_path, built):
         b = pq.read_table(out2 / f"{name}.parquet").drop_columns(["source"])
         assert a.equals(b), name
     assert not (out2 / "_parts").exists()
+
+
+def test_a_label_typed_over_the_counter_is_listed_apart_even_in_a_prescription_format(tmp_path):
+    otc_plr = copy.deepcopy(PLR_WITH_GUIDE)
+    otc_plr.update(id="doc-0099", set_id="set-otcp")
+    otc_plr["openfda"] = dict(otc_plr["openfda"], product_type=["HUMAN OTC DRUG"])
+    root = tmp_path / "bulk"
+    import csv
+    import hashlib
+
+    folder = root / "2026-11-13"
+    folder.mkdir(parents=True)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        meta = {"last_updated": "2026-11-13", "results": {"skip": 0, "limit": 1, "total": 1}}
+        z.writestr("drug-label.json", json.dumps({"meta": meta, "results": [otc_plr]}))
+    name = "drug-label-0001-of-0001.json.zip"
+    (folder / name).write_bytes(buf.getvalue())
+    with (folder / "manifest.csv").open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=bulk.MANIFEST_FIELDS)
+        w.writeheader()
+        w.writerow(
+            {
+                "export_date": "2026-11-13",
+                "part": 1,
+                "of": 1,
+                "file": name,
+                "listed_mib": 0,
+                "listed_records": 1,
+                "bytes": len(buf.getvalue()),
+                "sha256": hashlib.sha256(buf.getvalue()).hexdigest(),
+                "meta_last_updated": "x",
+                "meta_skip": 0,
+                "meta_total": 1,
+                "added": "T",
+                "how": "test",
+            }
+        )
+    out = tmp_path / "t"
+    tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"), out, "2026-11-13", log=lambda s: None
+    ).run()
+    assert pq.read_table(out / "labels.parquet").num_rows == 0
+    assert [r["label_format"] for r in pq.read_table(out / "excluded_otc.parquet").to_pylist()] == [
+        "plr"
+    ]

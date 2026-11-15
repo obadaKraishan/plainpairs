@@ -39,6 +39,7 @@ from plainpairs.schema import PATIENT_SOURCES, PRESCRIBER_SOURCES, LabelRow
 
 SOURCE = "openFDA drug label bulk files (https://open.fda.gov/data/spl/)"
 IN_SCOPE_FORMATS = ("plr", "older")
+OTC = "HUMAN OTC DRUG"
 PRESCRIBER = tuple(PRESCRIBER_SOURCES)
 PATIENT = tuple(PATIENT_SOURCES)
 #: Patient texts that make a label part of a pair; the other two are kept as extra texts.
@@ -213,8 +214,12 @@ def measures(full: str, tables: list[str], headings: int) -> dict[str, Any]:
 
 
 def in_scope(row: LabelRow) -> bool:
-    return row.identity.label_format in IN_SCOPE_FORMATS and any(
-        getattr(row.patient, k) for k in PAIRING
+    """A prescription format by sections, a guide or an insert, and not typed over the counter
+    (those are listed in ``excluded_otc`` instead)."""
+    return (
+        row.identity.label_format in IN_SCOPE_FORMATS
+        and row.identity.product_type != OTC
+        and any(getattr(row.patient, k) for k in PAIRING)
     )
 
 
@@ -407,7 +412,7 @@ class Builder:
         types = (record.get("openfda") or {}).get("product_type") or [None]
         fmt = label.label_format(record, types[0])
         has_text = record.get("spl_medguide") or record.get("spl_patient_package_insert")
-        return fmt in IN_SCOPE_FORMATS and bool(has_text)
+        return fmt in IN_SCOPE_FORMATS and types[0] != OTC and bool(has_text)
 
     def _identity(self, record: dict[str, Any], row: LabelRow, out: Counter[str]) -> None:
         """How the medicine and maker can be told without the openfda block (counts only)."""

@@ -137,7 +137,9 @@ def check(
     if labels.num_rows:
         fmt_ok = pc.is_in(labels["label_format"], value_set=pa.array(tables.IN_SCOPE_FORMATS))
         pair_ok = pc.or_(labels["has_medication_guide"], labels["has_patient_package_insert"])
-        out = labels.num_rows - (pc.sum(pc.and_(fmt_ok, pair_ok)).as_py() or 0)
+        not_otc = pc.fill_null(pc.not_equal(labels["product_type"], tables.OTC), True)
+        ok = pc.and_(pc.and_(fmt_ok, pair_ok), not_otc)
+        out = labels.num_rows - (pc.sum(ok).as_py() or 0)
         if out:
             problems.append(f"{out} labels in the labels table are out of scope.")
     for name in tables.TEXT_TABLES:

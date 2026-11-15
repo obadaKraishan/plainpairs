@@ -237,3 +237,17 @@ def test_strip_tables_merges_overlapping_tables():
 def test_numbered_headings_are_counted():
     assert tx.count_numbered_headings("5.1 Liver Problems text 5.2 Rash 2.5 mg daily 10.12 X") == 3
     assert tx.table_cells("<table><tr><td> a </td><td></td></tr></table>") == ["a"]
+
+
+def test_prose_laid_out_in_a_table_is_never_cut():
+    box = (
+        "<table><tr><td>What is the most important information I should know about Zorvan? "
+        "Zorvan may make you very sleepy during the day.</td></tr></table>"
+    )
+    text = (
+        "What is the most important information I should know about Zorvan? Zorvan may make "
+        "you very sleepy during the day. Call your doctor."
+    )
+    assert tx.strip_tables(text, [box]) == (text, 0)
+    assert tx.is_data_table(["Headache", "2%", "Nausea", "1%"])
+    assert not tx.is_data_table([])

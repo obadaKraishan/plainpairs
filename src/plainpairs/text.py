@@ -285,17 +285,36 @@ def table_cells(markup: str) -> list[str]:
     return [c for c in (clean(m) for m in _CELL.findall(markup)) if c]
 
 
+#: A table whose cells hold more words than this (median) is prose laid out in a table, which
+#: patient texts use for their boxes; it is read as text and never cut.
+DATA_TABLE_MAX_CELL_WORDS = 8
+
+
+def is_data_table(cells: list[str]) -> bool:
+    """True for a table of short cells (numbers, names), false for prose laid out in a table."""
+    if not cells:
+        return False
+    counts = sorted(len(c.split()) for c in cells)
+    return counts[len(counts) // 2] <= DATA_TABLE_MAX_CELL_WORDS
+
+
 def strip_tables(text: str, tables: list[str], min_found: float = 0.6) -> tuple[str, int]:
-    """``text`` without the tables that the source also repeats inline, and the characters cut.
+    """``text`` without the data tables that the source also repeats inline, and the
+    characters cut.
 
     The source keeps each table twice: as HTML in a ``*_table`` field and, flattened, inside
-    the section's text. For each table, its cells are looked for in order in the text, each
-    within a short gap of the last; the stretch they cover is cut when at least ``min_found``
-    of the table's characters were found. A table not repeated inline is left alone.
+    the section's text. Only data tables (short cells, see :func:`is_data_table`) are cut;
+    prose laid out in a table stays. For each data table, its cells are looked for in order in
+    the text, each within a short gap of the last; the stretch they cover is cut when at least
+    ``min_found`` of the table's characters were found. A table not repeated inline is left
+    alone.
     """
     spans: list[tuple[int, int]] = []
     for markup in tables:
-        cells = [c for c in table_cells(markup) if len(c) >= 3]
+        all_cells = table_cells(markup)
+        if not is_data_table(all_cells):
+            continue
+        cells = [c for c in all_cells if len(c) >= 3]
         if not cells:
             continue
         total = sum(len(c) for c in cells)
