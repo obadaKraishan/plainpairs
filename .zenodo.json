@@ -1,0 +1,28 @@
+{
+  "title": "PlainPairs: software and documents for a research corpus pairing the prescriber and patient texts of US medicine labels",
+  "upload_type": "software",
+  "description": "<p>The software that builds PlainPairs, a research record of how United States medicine labels are worded for prescribers and for patients, with its documents (method, schema, codebook, data card, sources). <strong>This archive holds the code and documents only, no data table.</strong> The corpus itself is published on Hugging Face (obadakr/plainpairs). It is not medical information: never use it to decide anything about a medicine.</p>",
+  "creators": [
+    {
+      "name": "Kraishan, Obada",
+      "affiliation": "College of Media and Communication, Texas Tech University"
+    }
+  ],
+  "license": "Apache-2.0",
+  "keywords": [
+    "health literacy",
+    "health communication",
+    "readability",
+    "plain language",
+    "medication guides",
+    "research software"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://huggingface.co/datasets/obadakr/plainpairs",
+      "relation": "isSupplementTo",
+      "resource_type": "dataset"
+    }
+  ],
+  "access_right": "open"
+}

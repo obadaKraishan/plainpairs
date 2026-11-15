@@ -207,3 +207,11 @@ def test_the_removal_form_asks_for_what_the_document_names():
     assert "data/takedown.csv" in doc and "record" in doc and "14 days" in doc
     head = Path("data/takedown.csv").read_text(encoding="utf-8").splitlines()
     assert head == [",".join(pack.TAKEDOWN_FIELDS)]  # no real entry
+
+
+def test_zenodo_metadata_is_code_and_documents_only():
+    from pathlib import Path
+
+    z = json.loads(Path(".zenodo.json").read_text(encoding="utf-8"))
+    assert z["upload_type"] == "software" and z["license"] == "Apache-2.0"
+    assert "no data table" in z["description"] and "not medical information" in z["description"]
