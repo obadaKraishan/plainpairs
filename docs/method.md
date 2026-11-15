@@ -151,6 +151,24 @@ structure. The corpus uses it where it can, and says so on every label.
   It never asks whether the content is medically right. A heading's rule is released when 80%
   of its rows are "yes" or "partly"; otherwise its pairs are released with similarity scores
   only, and flagged (`docs/hand-sheet-guide.md`).
+- **Result** (the maintainer's sheet, seed 20261116, scored 2026-11-15; `section_pairs.rule_status`):
+
+  | heading key | yes | partly | no | yes or partly (95% interval) | `rule_status` |
+  |---|---:|---:|---:|---|---|
+  | how to take | 9 | 1 | 0 | 100% (72% to 100%) | `rule_released` |
+  | ingredients | 9 | 1 | 0 | 100% (72% to 100%) | `rule_released` |
+  | most important | 7 | 3 | 0 | 100% (72% to 100%) | `rule_released` |
+  | side effects | 9 | 1 | 0 | 100% (72% to 100%) | `rule_released` |
+  | storage | 6 | 3 | 1 | 90% (60% to 98%) | `rule_released` |
+  | what is | 7 | 3 | 0 | 100% (72% to 100%) | `rule_released` |
+  | who should not | 9 | 1 | 0 | 100% (72% to 100%) | `rule_released` |
+  | before taking | 0 | 7 | 3 | 70% (40% to 89%) | `similarity_only` |
+  | avoid | 1 | 4 | 5 | 50% (24% to 76%) | `similarity_only` |
+  | general information | 0 | 4 | 6 | 40% (17% to 69%) | `similarity_only` |
+
+  Ten rows a key make wide intervals: a key at 100% may still be well under it. The three keys
+  that failed are the two whose mapping points to three sections at once ("before taking",
+  "avoid") and the one whose mapping is this project's own choice ("general information").
 
 ## 8. Listed now
 Two small official lists say whether a label's product is still listed, each read on the day

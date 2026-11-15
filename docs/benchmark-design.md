@@ -129,7 +129,7 @@ The defaults for version 1, as decided. Nothing is built yet.
 | the unit | one heading segment per distinct text |
 | the target grade | grade 8 |
 | the splits | 1,000 test items and 200 development items |
-| which heading keys enter | only keys that pass the hand topic check (80% "yes" or "partly") |
+| which heading keys enter | only keys that pass the hand topic check (80% "yes" or "partly"): on the maintainer's sheet of 2026-11-15, how to take, ingredients, most important, side effects, storage, what is and who should not take it; not before taking, avoid or general information |
 | the input cap | 1,200 words, one section per item (section 1) |
 | the scores | rule-based scores only in version 1; a judge waits for version 2 and its agreement test |
 | where items come from | **the `current` configuration only**: labels DailyMed serves in the same version as the export, whose structure comes from DailyMed's XML (`docs/method.md`, section 6b). Labels of the `unlisted` configuration are never items |

@@ -62,6 +62,7 @@ and states:
 | configuration `current` (structure from DailyMed's XML) / `unlisted` (JSON only) | 19,778 / 15,399 |
 | distinct guides / inserts in `current` (at least one current label) | 7,182 of 12,006 / 4,576 of 7,769 |
 | section pairs in table C | 250,829 |
+| … whose heading key passed the hand topic check (`rule_status = rule_released`) / did not (`similarity_only`) | 7 keys / 3 keys (before taking, avoid, general information) |
 | labels typed over the counter with a guide or insert (listed apart, not in scope) | 100 |
 
 "Distinct medicines" are distinct sets of generic names from the source's `openfda` block,
