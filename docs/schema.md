@@ -167,6 +167,31 @@ too large for a 32-bit integer is null; the build summary counts them). Not a re
 names), and the flags `block_changed`, `format_changed`, `mark_changed`,
 `ndc_listing_changed`, `dailymed_listing_changed`. Ids, versions, names and flags only.
 
+## The NCI cancer information summaries (configuration `nci`; `plainpairs nci-build`)
+Every row of the three tables carries `configuration` (`nci`), `source`, `url` (NCI's address
+for the page), `date_read`, `nci_updated` (the date NCI gives for the page's last update) and
+`credit_line` ('"<title>" was originally published by the National Cancer Institute. <url>');
+the pairs carry each of these for both pages (`_a`, `_b`).
+
+- `nci_summaries` (record layer), one row per summary page: `language` (`en`, `es`),
+  `version` (`health_professional`, `patient`), `title` (NCI's own), `topic_id` (the smallest
+  address among the pages linked to it), `other_version_url`, `other_language_url`,
+  `text_sha256` (over its kept blocks), `n_blocks`, `references` (counted, not kept),
+  `left_out` (counts by kind: `figure`, `navigation`, `key_points`, `reference`,
+  `citation_mark`, `about_this`, `credit_line`, `credited_table`), `measures` (`words`,
+  `sentences`, `long_sentence_share`; English `flesch_kincaid` and `smog`; Spanish
+  `szigriszt_pazos` and `inflesz_band`; blocks by kind) and `codes` (the trusted codes, English
+  only; null for Spanish).
+- `nci_pairs` (record layer), one row per pair found by NCI's own links: `pair_kind`
+  (`version`: the health-professional and the patient summary in one language, `url_a` the
+  professional one; `language`: one version in English and Spanish, `url_a` the English one),
+  `language` or `version` (the one the pair shares), `url_a`, `url_b`, `linked_from` (`both`,
+  `a_only`, `b_only`), `topic_id`.
+- `nci_text` (text layer), one row per kept block: `block_index`, `kind` (`heading`,
+  `paragraph`, `item`, `cell`, `data_cell`, `caption`), `level` (a heading's level), `table`,
+  `text`, `sha256`. Released with its credit line under the switch for this configuration
+  (`docs/data-card.md`); never a left-out block.
+
 ## Release rules (`plainpairs release-check`)
 It fails when: the labels read differ from the manifest's listed records; a table's rows differ
 from the build summary, or its columns from the schema; a record-layer table has a `text` column
@@ -186,3 +211,9 @@ label, or a patient text that is not `current`, carrying measures from structure
 `patient_texts` or `section_pairs` that does not say its configuration; a section pair whose
 configuration differs from its label's), and when a code marked experimental in
 `docs/codebook.md` is a column of `codes`, a release table.
+
+**The NCI configuration.** When the `nci` tables are present it also fails when a table lacks
+its columns, holds a row of another configuration, or has a row without its address, date
+read, NCI update date or credit line (or a credit line that does not name NCI and end with the
+page's address); when `nci_text` holds a block of a left-out or unknown kind, or a block that
+carries a credit or permission line; and when a summary's text hash does not match its blocks.

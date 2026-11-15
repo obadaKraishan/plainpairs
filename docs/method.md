@@ -202,6 +202,61 @@ and `plainpairs text`, which
 rebuilds the text layer from the record layer and the bulk files of the same export date and
 confirms every row by its hash.
 
+## 14. The NCI cancer information summaries (configuration `nci`)
+The National Cancer Institute publishes cancer information summaries in a version for health
+professionals and a version for patients, in English and Spanish: the same kind of pair as a
+label and its Medication Guide. They are a third configuration, `nci`, with its own tables, and
+no number of it is ever pooled with the label configurations.
+
+- **The list.** `plainpairs.nci_pages` reads NCI's sitemap (`sitemaps/pageinstructions.xml`)
+  and keeps every page whose address ends in `-pdq`, less the one page that describes NCI's
+  editorial process. The version and language guessed from the address are checked against
+  the page itself.
+- **Reading.** Each page is read once through the polite client, at least 5 seconds apart, and
+  saved raw (written once, checked) under `data/raw/nci/` with a manifest; an address already
+  in the manifest is never read again. Only HTML pages are read: no image, PDF or script.
+- **Identity**, from each page: its address (`og:url`), language (`<html lang>`), version
+  (`dcterms.audience`: health professionals or patients), title (`og:title`) and the date NCI
+  gives for its last update (the "Updated" line at the foot of the summary).
+- **Blocks** (`plainpairs.nci`), from the summary body only, in reading order: headings with
+  their level, paragraphs, list items, table cells (prose cells, or data cells of tables of
+  short cells, by the same rule as the labels) and table captions. A line break ends a block.
+- **Left out, and counted:** images and figures with their captions; the page's navigation
+  (its tables of contents and the box that links the other version); the "Key Points" boxes of
+  patient summaries (they list the headings that follow); the reference lists (their items are
+  counted, their text is not kept) and the citation marks in the text; the closing "About This
+  Summary" sections (purpose, reviewers, levels of evidence, permission to use, citation,
+  disclaimer, contact); any block that carries a credit or permission line; and any table
+  whose caption or cells credit someone else for it ("reprinted with permission", "adapted
+  from", "source:"), which is left out whole.
+- **Pairs**, from NCI's own links only: a version pair is a health-professional summary and the
+  patient summary its version box links to (or that links back); a language pair is a summary
+  and its other-language page from the page's `hreflang` links. No other rule is used. A pair
+  records whether both pages link each other or only one does. Linked pages form a topic.
+- **Measures**, on sentences from structure (every paragraph, item, prose cell and caption cut
+  by rule `s1`; headings and data cells are not sentences): words, sentences and the share of
+  sentences over 20 words, and
+  - English: Flesch-Kincaid grade and SMOG grade, always together;
+  - Spanish: the Szigriszt-Pazos perspicuity index (Szigriszt Pazos F. *Sistemas predictivos de
+    legibilidad del mensaje escrito: fórmula de perspicuidad.* Tesis doctoral, Universidad
+    Complutense de Madrid, 1993), `206.835 - 62.3 x syllables/words - words/sentences`, read on
+    the INFLESZ scale (Barrio-Cantalejo IM, Simón-Lorda P, Melguizo M, Escalona I, Marijuán MI,
+    Hernando P. Validación de la Escala INFLESZ para evaluar la legibilidad de los textos
+    dirigidos a pacientes. *An Sist Sanit Navar* 2008;31(2):135-152). Syllables are counted by a
+    rule from Spanish spelling (`plainpairs.readability_es`), tested on words of known syllable
+    count; a silent h between vowels is read as a consonant, so a few words count one syllable
+    more than they are spoken. The index is an ease score, not a grade, and is never set beside
+    an English grade as if the two measured the same thing.
+- **Codes.** The trusted codes of the codebook, on English summaries only (the codes were
+  checked on labels, not on these summaries).
+- **Credit.** Every row carries the page's address, the date it was read, NCI's update date and
+  the credit line NCI asks for a digital reproduction: the original title, "was originally
+  published by the National Cancer Institute", and a link.
+- **Rebuilding the text.** `plainpairs nci-text` rebuilds the text layer by reading NCI's pages
+  again and parsing them the same way; a page NCI has updated since gives a different hash and
+  is counted as changed. With `--saved` it reads the saved copies instead. Its tests run on
+  invented pages only.
+
 ## 13. What the corpus is not
 A record of wording. No measure says what a medicine does, whether it is safe or what anyone
 should take. Every release repeats the source's disclaimer and states the export date.
