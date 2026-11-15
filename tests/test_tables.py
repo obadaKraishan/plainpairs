@@ -113,6 +113,12 @@ def test_medicine_key_comes_from_openfda_or_a_shared_text(built):
         "shared_text",
     )
     assert rows["set-iiii"]["medicine_key_source"] == "none"
+    assert (rows["set-aaaa"]["product_name"], rows["set-aaaa"]["product_name_source"]) == (
+        "ZORVAN",
+        "spl_product_data_elements",
+    )
+    assert rows["set-bbbb"]["product_name_source"] == "none"
+    assert rows["set-aaaa"]["medicine_key"] == "zorvanide"  # never merged with the name
     assert rows["set-iiii"]["has_copyright_mark"] is True
     assert rows["set-aaaa"]["p_boxed_warning"]["words"] > 0
     assert rows["set-iiii"]["p_use_in_specific_populations"] is None

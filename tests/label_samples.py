@@ -35,6 +35,7 @@ PLR_WITH_GUIDE = {
         "made-up medicine. How should I take ZORVAN? Take 1 tablet each day."
     ],
     "package_label_principal_display_panel": ["PRINCIPAL DISPLAY PANEL"],
+    "spl_product_data_elements": ["ZORVAN zorvanide ZORVANIDE LACTOSE MONOHYDRATE"],
 }
 
 OLDER_WITH_INSERT = {

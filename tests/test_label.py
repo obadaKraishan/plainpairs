@@ -133,3 +133,37 @@ def test_copyright_marks_anywhere_in_the_label_but_not_in_openfda():
 def test_tables_can_be_skipped_for_labels_that_are_only_counted():
     assert label.parse_label(PLR_WITH_GUIDE, with_tables=False).tables == ()
     assert label.parse_label(PLR_WITH_GUIDE).tables
+
+
+# --- the product name, on invented product data ----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ("Zorvanide Tablets Zorvanide Tablets ZORVANIDE LACTOSE", ("Zorvanide Tablets", "restart")),
+        ("ZORVAN XR ZORVAN XR zorvanide ZORVANIDE", ("ZORVAN XR", "restart")),
+        ("ZORVAN zorvanide ZORVANIDE STARCH", ("ZORVAN", "lowercase")),
+        ("Zorvan XR zorvanide ZORVANIDE", ("Zorvan XR", "lowercase")),
+        ("Exampla for Injection examplanide EXAMPLANIDE", ("Exampla for Injection", "lowercase")),
+        ("Zorvan Zorvanide ZORVANIDE LACTOSE", ("Zorvan", "ingredient")),
+        ("SPL PRODUCT DATA ELEMENTS SECTION ZORVAN zorvanide ZORVANIDE", ("ZORVAN", "lowercase")),
+        ("zorvanide tablets", (None, None)),
+        ("ZORVAN", (None, None)),
+        ("", (None, None)),
+    ],
+)
+def test_split_product_name(data, expected):
+    assert label.split_product_name(data) == expected
+
+
+def test_a_name_longer_than_eight_words_is_not_read():
+    data = "A B C D E F G H I J A zorvanide"
+    assert label.split_product_name(data) == (None, None)
+
+
+def test_product_name_of_a_record_says_where_it_came_from():
+    record = {"spl_product_data_elements": ["ZORVAN zorvanide ZORVANIDE"]}
+    assert label.product_name(record) == ("ZORVAN", "spl_product_data_elements", "lowercase")
+    assert label.product_name({}) == (None, "none", None)
+    assert label.product_name({"spl_product_data_elements": ["ZORVAN"]}) == (None, "none", None)

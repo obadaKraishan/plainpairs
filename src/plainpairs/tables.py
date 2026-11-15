@@ -95,6 +95,10 @@ LABELS_SCHEMA = pa.schema(
         ("pharm_classes_epc", STR_LIST),
         ("medicine_key", pa.string()),
         ("medicine_key_source", pa.string()),
+        #: Read from the structured product data, never merged into the medicine key.
+        ("product_name", pa.string()),
+        ("product_name_source", pa.string()),
+        ("product_name_rule", pa.string()),
         ("has_boxed_warning", pa.bool_()),
         ("has_medication_guide", pa.bool_()),
         ("has_patient_package_insert", pa.bool_()),
@@ -472,6 +476,13 @@ class Builder:
             "brand_names": list(ident.brand_names),
             "generic_names": list(ident.generic_names),
             "pharm_classes_epc": list(ident.pharm_classes_epc),
+            **dict(
+                zip(
+                    ("product_name", "product_name_source", "product_name_rule"),
+                    label.product_name(record),
+                    strict=True,
+                )
+            ),
             "has_boxed_warning": bool(row.prescriber.boxed_warning),
             "has_medication_guide": bool(row.patient.medication_guide),
             "has_patient_package_insert": bool(row.patient.patient_package_insert),
