@@ -11,8 +11,10 @@ matched section by section, with reading-level and plain-language measures on bo
 
 ## What it is not
 - **Not medical information.** A record of wording. The labels may be out of date, incomplete
-  or replaced; never use them to decide anything about a medicine. Read the label that comes
-  with the medicine and ask a doctor or pharmacist.
+  or replaced, and the cancer information text may be out of date too; never use any of it to
+  decide anything about a medicine or about care. Read the label that comes with the medicine
+  and ask a doctor or pharmacist; current cancer information is on the National Cancer
+  Institute's own site (https://www.cancer.gov).
 - **Not a judgment of any medicine.** The measures describe wording only.
 - **Not about people.** Labels hold no information about patients, and nothing is added.
 - **Not a list of medicines on the market.** The source keeps the latest version of each label
@@ -63,7 +65,7 @@ and states:
 | distinct guides / inserts in `current` (at least one current label) | 7,182 of 12,006 / 4,576 of 7,769 |
 | section pairs in table C | 250,829 |
 | … whose heading key passed the hand topic check (`rule_status = rule_released`) / did not (`similarity_only`) | 7 keys / 3 keys (before taking, avoid, general information) |
-| labels typed over the counter with a guide or insert (listed apart, not in scope) | 100 |
+| labels typed over the counter with a guide or insert (listed apart, not in scope; all such labels in the export, 92 in the Drug Facts format and 8 in the newer prescription format) | 100 |
 
 "Distinct medicines" are distinct sets of generic names from the source's `openfda` block,
 which most labels lack. A label without it borrows the key of labels that carry the same

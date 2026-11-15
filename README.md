@@ -29,10 +29,13 @@ drafts are in [`docs/`](docs/).
   and closing sections left out and a credit line on every row.
 
 ## What it is not
-- **Not medical information.** PlainPairs is a research record of how label text is worded.
-  The labels in it may be out of date, incomplete or replaced by newer versions. Never use it to
-  decide anything about a medicine. For that, read the current label that comes with the
-  medicine and talk to a doctor, pharmacist or other health care professional.
+- **Not medical information.** PlainPairs is a research record of how label text and cancer
+  information text are worded. The labels in it may be out of date, incomplete or replaced by
+  newer versions, and the cancer information text may be out of date too. Never use any of it
+  to decide anything about a medicine or about care. For a medicine, read the current label
+  that comes with it and talk to a doctor, pharmacist or other health care professional;
+  current cancer information is on the National Cancer Institute's own site
+  (<https://www.cancer.gov>).
 - **Not a judgment of any medicine.** The measures describe wording only. Nothing here says what
   a medicine does, whether it is safe or whether anyone should take it.
 - **Not about people.** Labels hold no information about patients, and PlainPairs adds none.

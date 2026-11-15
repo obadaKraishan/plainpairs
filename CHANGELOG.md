@@ -93,6 +93,17 @@ All notable changes to this project are recorded here. The format follows
   for the same `current` labels.
 
 ### Changed
+- The dataset card's `size_categories` is computed from the pack's row count and checked
+  (`1M<n<10M` for 1,409,294 rows).
+- The card's first-screen box, the README and the data card now cover the cancer information
+  text as well: it may be out of date, must never be used to decide about care, and current
+  information is on the National Cancer Institute's own site. `release check` fails when the
+  first screen leaves the NCI text out.
+- The card explains `excluded_otc`: every label in the export typed over the counter that
+  carries a guide or an insert (100), record fields only.
+- One citation, with the year, in the card, the Kaggle description and `CITATION.cff`
+  (`preferred-citation`, the dataset's version); `release check` fails when the card or the
+  Kaggle description does not cite the manifest's version.
 - The text switch for the first release: labels `unmarked`, the NCI configuration's kept text
   with its credit line; the Spanish index is marked provisional in the data card.
 - The hand topic check is scored: seven heading keys release their mapping rule
