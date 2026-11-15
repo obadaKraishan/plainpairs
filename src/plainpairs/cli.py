@@ -9,7 +9,8 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, bulk, pages, probe
+from plainpairs import __version__, bulk, label, pages, probe
+from plainpairs import profile as prof
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
 USAGE_LOG = Path("data/usage_log.csv")
@@ -101,6 +102,22 @@ def cmd_download_part(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_profile(args: argparse.Namespace) -> int:
+    rows = label.iter_rows(args.part)
+    summary = prof.profile(rows)
+    summary["source_part"] = Path(args.part).name
+    summary["source_meta"] = {
+        k: v for k, v in bulk.read_meta(args.part).items() if k != "disclaimer"
+    }
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(summary, indent=1, sort_keys=True, default=str), encoding="utf-8")
+    print(
+        f"Profiled {summary['labels']:,} labels ({summary['paired_labels']:,} paired) into {out}."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -140,6 +157,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-mb", type=float, default=200.0)
     caps(p)
     p.set_defaults(func=cmd_download_part)
+
+    p = sub.add_parser("profile", help="aggregates of one downloaded part (no label text)")
+    p.add_argument("part", help="path to a downloaded part (.json.zip)")
+    p.add_argument("--out", default="data/interim/profile/profile.json")
+    p.set_defaults(func=cmd_profile)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")

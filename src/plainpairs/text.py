@@ -82,6 +82,31 @@ def table_to_text(markup: str) -> str:
     return "\n".join(" | ".join(row) for row in parser.rows)
 
 
+#: Where the closing matter of a patient text begins: who makes or sells the medicine, the
+#: approval line, the revision date. Texts that differ only there are near duplicates.
+_CLOSING = re.compile(
+    r"\b(?:Manufactured (?:by|for)|Distributed (?:by|for)|Marketed by|Manufactured and "
+    r"distributed by|This (?:Medication Guide|Patient Information|Instructions for Use) "
+    r"(?:has|have) been approved|Revised:|Issued:|For more information,? (?:go to|call|visit))",
+    re.I,
+)
+
+
+def core(text: str) -> str:
+    """A patient text without its closing matter, when that begins in the last third."""
+    cut = len(text)
+    for m in _CLOSING.finditer(text):
+        if m.start() >= len(text) * 2 / 3:
+            cut = m.start()
+            break
+    return text[:cut]
+
+
+def core_hash(text: str) -> str:
+    """:func:`loose_hash` of :func:`core`: equal for texts that differ only in closing matter."""
+    return loose_hash(core(text))
+
+
 def text_hash(text: str) -> str:
     """SHA-256 of a text after spaces are normalized: equal texts get equal hashes."""
     return hashlib.sha256(_SPACE.sub(" ", text).strip().encode("utf-8")).hexdigest()
@@ -170,12 +195,28 @@ class Segment:
     body: str
 
 
+#: Words just before a heading that make it a reference to the heading, not the heading.
+_REFERENCE = re.compile(
+    r"""(?:\bsee|\bin|\bunder|\bread)\s*["'\u201c\u2018]?\s*$|["'\u201c\u2018]\s*$""", re.I
+)
+
+
+def is_reference(text: str, start: int) -> bool:
+    """True when the heading at ``start`` is cited in running text (``See "What is ...?"``)."""
+    return bool(_REFERENCE.search(text[max(0, start - 8) : start]))
+
+
 def find_headings(text: str) -> list[tuple[int, int, str]]:
-    """Standard headings in ``text``: (start, end, key), in order, never overlapping."""
+    """Standard headings in ``text``: (start, end, key), in order, never overlapping.
+
+    A heading quoted or cited in running text (after "see", "in", "under", "read" or an
+    opening quote mark) is a reference to that heading and is skipped.
+    """
     found: list[tuple[int, int, str]] = []
     for key, pattern in HEADINGS:
         for m in pattern.finditer(text):
-            found.append((m.start(), m.end(), key))
+            if not is_reference(text, m.start()):
+                found.append((m.start(), m.end(), key))
     found.sort(key=lambda h: (h[0], HEADING_KEYS.index(h[2])))
     kept: list[tuple[int, int, str]] = []
     for start, end, key in found:

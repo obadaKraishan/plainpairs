@@ -159,3 +159,23 @@ def test_readability_is_frozen():
     r = rd.measure("Fine words here.")
     with pytest.raises(ValidationError):
         r.words = 3
+
+
+def test_a_heading_cited_in_running_text_is_not_a_heading():
+    guide = (
+        "What is the most important information I should know about Zorvan? Sleepiness. "
+        'What are the possible side effects of Zorvan? See "What is the most important '
+        'information I should know about Zorvan?" Headache.'
+    )
+    assert [s.key for s in tx.segment_patient_text(guide)] == ["most_important", "side_effects"]
+    assert tx.is_reference("see “", 5)
+    assert not tx.is_reference("Sleepiness. ", 12)
+
+
+def test_core_drops_closing_matter_only_near_the_end():
+    a = "Take it daily with water. " * 5 + "Manufactured by: Example Pharma Inc. Revised: 1/2026"
+    b = "Take it daily with water. " * 5 + "Distributed by: Other Maker LLC Revised: 3/2026"
+    assert tx.core_hash(a) == tx.core_hash(b)
+    assert tx.loose_hash(a) != tx.loose_hash(b)
+    early = "Distributed by mail. " + "Take it daily. " * 2
+    assert tx.core(early) == early

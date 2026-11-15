@@ -65,3 +65,23 @@ def test_commands_that_write_raw_data_need_the_drive(tmp_path, monkeypatch):
     (tmp_path / "data" / "raw").symlink_to(tmp_path / "gone" / "plainpairs")
     with pytest.raises(SystemExit, match="Mount the Kraishan drive"):
         main(["download-part"])
+
+
+def test_profile_writes_aggregates(tmp_path, monkeypatch, capsys):
+    import json
+    import zipfile
+
+    from tests.label_samples import OLDER_WITH_INSERT, PLR_WITH_GUIDE
+
+    monkeypatch.chdir(tmp_path)
+    z = tmp_path / "p.json.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        body = {
+            "meta": {"last_updated": "2026-11-13"},
+            "results": [PLR_WITH_GUIDE, OLDER_WITH_INSERT],
+        }
+        zf.writestr("drug-label-0001-of-0001.json", json.dumps(body))
+    assert main(["profile", str(z), "--out", "out/p.json"]) == 0
+    saved = json.loads((tmp_path / "out" / "p.json").read_text())
+    assert saved["labels"] == 2 and saved["source_meta"] == {"last_updated": "2026-11-13"}
+    assert "2 paired" in capsys.readouterr().out
