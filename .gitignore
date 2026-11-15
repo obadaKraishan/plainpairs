@@ -12,6 +12,8 @@ data/raw
 data/raw/
 data/interim/
 data/release/
+# Copies of copyrighted papers kept by the maintainer for reading; never tracked or bundled.
+data/external/
 
 # Secrets
 *.env
