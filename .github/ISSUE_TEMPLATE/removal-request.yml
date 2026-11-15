@@ -1,0 +1,50 @@
+name: Removal request
+description: Ask that a text be taken out of PlainPairs (for a company, a rights holder or anyone else).
+title: "Removal request: "
+labels: ["takedown"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        PlainPairs is a research record of how medicine labels and cancer information summaries
+        are worded. It is not medical information. If you want a text taken out, tell us which
+        one and why. The text row is removed in the next version; the record row (identifiers,
+        dates and measures, no text) stays. We answer within 14 days. What happens next is in
+        docs/removal.md. Please do not include anyone's health information in this form.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is the text?
+      options:
+        - A medicine label (give its set id)
+        - An NCI cancer information summary page (give its address)
+    validations:
+      required: true
+  - type: input
+    id: identifier
+    attributes:
+      label: The set id or the page address
+      description: "A label's set id looks like 0a1b2c3d-...; an NCI page address starts with https://www.cancer.gov/."
+    validations:
+      required: true
+  - type: input
+    id: who
+    attributes:
+      label: Who is asking
+      description: Your name or the organization you act for, and your role (for example, the company that markets the medicine).
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it should be taken out
+      description: For example, a copyright claim, an error in the text, or a label that has been withdrawn.
+    validations:
+      required: true
+  - type: input
+    id: contact
+    attributes:
+      label: How to reach you (optional)
+      description: Leave this empty to be answered here, on this issue.
+    validations:
+      required: false
