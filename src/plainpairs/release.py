@@ -33,6 +33,22 @@ from plainpairs import bulk, label, tables
 SWITCH = ("all", "unmarked", "none")
 #: The longest string a record-layer cell may hold (heading templates are the longest kind).
 MAX_RECORD_STRING = 300
+#: Columns that come from the source's openfda block (names and codes, not label text). A
+#: product with many components has a long list of generic names, so these may be longer.
+OPENFDA_COLUMNS = frozenset(
+    {
+        "medicine_key",
+        "medicine_keys",
+        "generic_names",
+        "brand_names",
+        "manufacturers",
+        "pharm_classes_epc",
+        "routes",
+        "application_numbers",
+        "product_type",
+    }
+)
+MAX_OPENFDA_STRING = 2000
 _KEYS = {
     "labels": ("set_id",),
     "patient_texts": ("patient_text_id",),
@@ -129,7 +145,8 @@ def check(
         if "text" in t.column_names:
             problems.append(f"The record table {name} has a text column.")
         for col, n in _strings(t).items():
-            if n > MAX_RECORD_STRING and col != "set_ids":
+            limit = MAX_OPENFDA_STRING if col in OPENFDA_COLUMNS else MAX_RECORD_STRING
+            if n > limit:
                 problems.append(
                     f"The record table {name} holds strings of {n} characters in {col}."
                 )

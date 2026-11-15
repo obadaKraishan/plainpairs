@@ -132,3 +132,29 @@ def test_rebuild_reports_a_label_whose_text_changed(built, tmp_path):
     )
     report = release.rebuild_text(out / "labels.parquet", root, tmp_path / "r", log=lambda s: None)
     assert report["hash_mismatches"] == 4
+
+
+def test_long_names_from_the_openfda_block_are_allowed_but_not_without_limit(built):
+    _, out, manifest = built
+    rewrite(
+        out,
+        "labels",
+        lambda t: t.set_column(
+            t.schema.get_field_index("medicine_key"),
+            "medicine_key",
+            pa.array(["a|" * 400] * t.num_rows),
+        ),
+    )
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert problems == []
+    rewrite(
+        out,
+        "labels",
+        lambda t: t.set_column(
+            t.schema.get_field_index("medicine_key"),
+            "medicine_key",
+            pa.array(["a" * 2500] * t.num_rows),
+        ),
+    )
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("2500 characters in medicine_key" in p for p in problems)
