@@ -226,6 +226,24 @@ def find_headings(text: str) -> list[tuple[int, int, str]]:
     return kept
 
 
+def segment_spans(text: str) -> list[tuple[str, int, int, int]]:
+    """Segments of a patient text as character offsets: (key, start, heading end, end).
+
+    The same cut as :func:`segment_patient_text`; a ``preamble`` has no heading, so its
+    heading end equals its start. Offsets let the record layer point into a text it does not
+    hold.
+    """
+    heads = find_headings(text)
+    spans: list[tuple[str, int, int, int]] = []
+    first = heads[0][0] if heads else len(text)
+    if text[:first].strip():
+        spans.append(("preamble", 0, 0, first))
+    for i, (start, end, key) in enumerate(heads):
+        stop = heads[i + 1][0] if i + 1 < len(heads) else len(text)
+        spans.append((key, start, end, stop))
+    return spans
+
+
 def segment_patient_text(text: str) -> list[Segment]:
     """Cut a patient text at its standard headings.
 
