@@ -63,3 +63,19 @@ def test_stats_of_names_listings_and_codes(tmp_path):
     assert stats.code_summary(codes.SCHEMA.empty_table(), "patient") == {"texts": 0}
     assert s["section_pairs_empty"] == 0
     assert json.dumps(s, default=str)
+
+
+def test_nci_stats_stand_apart(tmp_path):
+    from tests.test_release import _nci_tables
+
+    out = tmp_path / "t"
+    _nci_tables(out, tmp_path)
+    n = stats.nci_stats(out)
+    assert n["configuration"] == "nci"
+    assert n["summaries"] == {"en:health_professional": 1, "en:patient": 1}
+    assert n["pairs"] == {"version:both": 1}
+    assert n["pairs_show"]["version_pairs:en"]["pairs"] == 1
+    assert "fk" in n["measures"]["en:patient"] and "smog" in n["measures"]["en:patient"]
+    assert n["codes_by_version"]["patient"]["summaries"] == 1
+    assert n["left_out"]["figure"] == 2 and n["references"] == 4
+    assert stats.nci_stats(tmp_path / "none") == {}

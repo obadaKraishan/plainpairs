@@ -261,6 +261,7 @@ def corpus_stats(out_dir: Path) -> dict[str, Any]:
     sw["labels_released_unmarked"] = sum(not r["has_copyright_mark"] for r in labels)
     s["switch"] = sw
     s["codes"] = codes_stats(out_dir)
+    s["nci"] = nci_stats(out_dir)
     return s
 
 
@@ -527,4 +528,156 @@ def codes_stats(out_dir: Path) -> dict[str, Any]:
         out[f"prescriber.{section}"] = code_summary(
             pr.filter(pc.equal(pr["section"], section)), "prescriber"
         )
+    return out
+
+
+# --- the NCI cancer information summaries (their own configuration; never pooled) -------------
+
+
+def _med(values: list[float | None]) -> float | None:
+    v = sorted(x for x in values if x is not None)
+    return round(statistics.median(v), 4) if v else None
+
+
+def nci_stats(out_dir: Path) -> dict[str, Any]:
+    """Aggregates of the ``nci`` configuration: counts, measures per language and version,
+    what the pairs show, and the trusted codes by version (English). Never pooled with the
+    label configurations."""
+    from plainpairs import nci
+
+    path = Path(out_dir) / "nci_summaries.parquet"
+    if not path.exists():
+        return {}
+    s = pq.read_table(path).to_pylist()
+    pairs = pq.read_table(Path(out_dir) / "nci_pairs.parquet").to_pylist()
+    by = {r["url"]: r for r in s}
+    out: dict[str, Any] = {"configuration": nci.CONFIGURATION}
+    out["summaries"] = dict(Counter(f"{r['language']}:{r['version']}" for r in s))
+    out["pairs"] = dict(Counter(f"{p['pair_kind']}:{p['linked_from']}" for p in pairs))
+    in_version = {u for p in pairs if p["pair_kind"] == "version" for u in (p["url_a"], p["url_b"])}
+    in_language = {
+        u for p in pairs if p["pair_kind"] == "language" for u in (p["url_a"], p["url_b"])
+    }
+    out["unpaired"] = {
+        "no_version_partner": dict(
+            Counter(f"{r['language']}:{r['version']}" for r in s if r["url"] not in in_version)
+        ),
+        "no_language_partner": dict(
+            Counter(f"{r['language']}:{r['version']}" for r in s if r["url"] not in in_language)
+        ),
+    }
+    out["left_out"] = {k: sum((r["left_out"] or {}).get(k, 0) for r in s) for k in nci.LEFT_OUT}
+    out["references"] = sum(r["references"] or 0 for r in s)
+    out["updated"] = {
+        "missing": sum(1 for r in s if not r["nci_updated"]),
+        "earliest": min((r["nci_updated"] for r in s if r["nci_updated"]), default=None),
+        "latest": max((r["nci_updated"] for r in s if r["nci_updated"]), default=None),
+    }
+    m: dict[str, Any] = {}
+    for key in sorted({f"{r['language']}:{r['version']}" for r in s}):
+        group = [r["measures"] for r in s if f"{r['language']}:{r['version']}" == key]
+        entry: dict[str, Any] = {
+            "summaries": len(group),
+            "words": q([g["words"] for g in group]),
+            "sentences": q([g["sentences"] for g in group]),
+            "long_sentence_share": q([g["long_sentence_share"] for g in group]),
+        }
+        if key.startswith("en:"):
+            entry.update(
+                fk=q([g["flesch_kincaid"] for g in group]),
+                smog=q([g["smog"] for g in group]),
+                fk_above_8=_above(group, "flesch_kincaid"),
+                smog_above_8=_above(group, "smog"),
+            )
+        else:
+            entry.update(
+                szigriszt_pazos=q([g["szigriszt_pazos"] for g in group]),
+                inflesz_bands=dict(Counter(g["inflesz_band"] for g in group)),
+            )
+        m[key] = entry
+    out["measures"] = m
+    show: dict[str, Any] = {}
+    for lang in ("en", "es"):
+        vp = [p for p in pairs if p["pair_kind"] == "version" and p["language"] == lang]
+        hp = [by[p["url_a"]]["measures"] for p in vp]
+        pt = [by[p["url_b"]]["measures"] for p in vp]
+        entry = {
+            "pairs": len(vp),
+            "patient_over_professional_words": _med(
+                [b["words"] / a["words"] for a, b in zip(hp, pt, strict=True) if a["words"]]
+            ),
+            "patient_long_sentence_share": _med([b["long_sentence_share"] for b in pt]),
+            "professional_long_sentence_share": _med([a["long_sentence_share"] for a in hp]),
+        }
+        if lang == "en":
+            for f in ("flesch_kincaid", "smog"):
+                entry[f"{f}_professional"] = _med([a[f] for a in hp])
+                entry[f"{f}_patient"] = _med([b[f] for b in pt])
+                entry[f"{f}_difference_median"] = _med(
+                    [
+                        b[f] - a[f]
+                        for a, b in zip(hp, pt, strict=True)
+                        if a[f] is not None and b[f] is not None
+                    ]
+                )
+                entry[f"{f}_patient_lower_share"] = _share(
+                    sum(1 for a, b in zip(hp, pt, strict=True) if (b[f] or 99) < (a[f] or 0)),
+                    len(vp),
+                )
+        else:
+            f = "szigriszt_pazos"
+            entry[f"{f}_professional"] = _med([a[f] for a in hp])
+            entry[f"{f}_patient"] = _med([b[f] for b in pt])
+            entry[f"{f}_difference_median"] = _med(
+                [
+                    b[f] - a[f]
+                    for a, b in zip(hp, pt, strict=True)
+                    if a[f] is not None and b[f] is not None
+                ]
+            )
+        show[f"version_pairs:{lang}"] = entry
+    for version in ("health_professional", "patient"):
+        lp = [p for p in pairs if p["pair_kind"] == "language" and p["version"] == version]
+        en = [by[p["url_a"]]["measures"] for p in lp]
+        es = [by[p["url_b"]]["measures"] for p in lp]
+        show[f"language_pairs:{version}"] = {
+            "pairs": len(lp),
+            "spanish_over_english_words": _med(
+                [b["words"] / a["words"] for a, b in zip(en, es, strict=True) if a["words"]]
+            ),
+            "english_words_per_sentence": _med(
+                [a["words"] / a["sentences"] for a in en if a["sentences"]]
+            ),
+            "spanish_words_per_sentence": _med(
+                [b["words"] / b["sentences"] for b in es if b["sentences"]]
+            ),
+        }
+    out["pairs_show"] = show
+    rates: dict[str, Any] = {}
+    for version in ("health_professional", "patient"):
+        rows = [r for r in s if r["language"] == "en" and r["version"] == version and r["codes"]]
+        words = sum(r["measures"]["words"] or 0 for r in rows)
+        sents = sum(r["measures"]["sentences"] or 0 for r in rows)
+        tot = {f: sum(r["codes"][f] for r in rows) for f in nci.CODE_FIELDS}
+        rates[version] = {
+            "summaries": len(rows),
+            **{
+                f"{f}_per_1000_words": _per_1000(tot[f], words)
+                for f in ("you_words", "percentages", "one_in_n", "frequencies", "doses")
+            },
+            "sentences_with_you_share": _share(tot["sentences_with_you"], sents),
+            "command_sentence_share": _share(tot["command_sentences"], sents),
+            "conditional_command_share": _share(tot["conditional_commands"], sents),
+            "contact_sentences_per_1000_words": _per_1000(tot["contact_sentences"], words),
+            "sentences_over_20_share": _share(tot["sentences_over_20"], sents),
+            "sentences_over_40_share": _share(tot["sentences_over_40"], sents),
+            "distinct_actions_median": _med([r["codes"]["distinct_actions"] for r in rows]),
+        }
+    a, b = rates.get("health_professional", {}), rates.get("patient", {})
+    ratio = {
+        k: round(b[k] / a[k], 2)
+        for k in a
+        if k != "summaries" and isinstance(a.get(k), (int, float)) and a[k] and b.get(k) is not None
+    }
+    out["codes_by_version"] = {**rates, "patient_over_professional": ratio}
     return out
