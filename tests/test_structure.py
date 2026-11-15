@@ -157,3 +157,15 @@ def test_length_codes_parts():
         "longest_part_words": 45,
         "parts_over_250": 0,
     }
+
+
+def test_structured_row_json_repeats():
+    from plainpairs import spl
+
+    blocks = [spl.Block("title", "1 INDICATIONS"), spl.Block("paragraph", "Outer words here.")]
+    json_text = "1 INDICATIONS Outer words here. Outer words here."
+    row = structure.structured_row(blocks, json_text, "1 INDICATIONS Outer words here.", json_text)
+    assert row["xml_match"] == "json_repeats"
+    assert row["words"] == 3
+    plain = structure.structured_row(blocks, json_text, "1 INDICATIONS Outer words here.")
+    assert plain["xml_match"] == "not" and plain["words"] is None

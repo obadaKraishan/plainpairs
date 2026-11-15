@@ -40,6 +40,8 @@ PATIENT_KINDS = (
     "patient_medication_information",
 )
 CONFIGURATIONS = ("current", "unlisted")
+#: Word matches under which the XML holds the label's text (see :func:`structured_row`).
+SAME_WORDS = ("exact", "near", "json_repeats")
 #: Why a label is not ``current``, in the order they are tested.
 UNLISTED_REASONS = (
     "not_in_release",  # DailyMed's release has no document with this set id
@@ -151,12 +153,24 @@ def length_codes(blocks: list[spl.Block]) -> dict[str, int]:
 
 
 def structured_row(
-    blocks: list[spl.Block], json_text: str | None, flat: str | None = None
+    blocks: list[spl.Block],
+    json_text: str | None,
+    flat: str | None = None,
+    repeated: str | None = None,
 ) -> dict[str, Any]:
     """The ``structured`` struct of one section: whether the XML holds the same words as the
     JSON (its flat text against the JSON text), how much of the JSON the blocks cover, and
-    (when the words agree exactly or nearly) the measures and length codes from structure."""
+    (when the words agree) the measures and length codes from structure.
+
+    ``xml_match`` is ``exact``, ``near``, ``json_repeats`` (the JSON holds the XML's words
+    with the subsections that carry their parent's section code a second time, which is how
+    the JSON flattens such sections; the XML's own reading is measured), ``not``,
+    ``json_missing`` or ``xml_missing``."""
     m = spl.word_match(flat if flat is not None else spl.all_text(blocks), json_text or "")
+    if m["match"] == "not" and repeated:
+        again = spl.word_match(repeated, json_text or "")
+        if again["match"] != "not":
+            m = {**again, "match": "json_repeats"}
     covered = spl.word_match(spl.all_text(blocks), json_text or "")
     out: dict[str, Any] = {
         "xml_match": m["match"] if json_text else "json_missing",
@@ -166,7 +180,7 @@ def structured_row(
         "blocks_dice": covered["dice"],
         **dict.fromkeys(_MEASURE_KEYS),
     }
-    if out["xml_match"] in ("exact", "near"):
+    if out["xml_match"] in SAME_WORDS:
         out.update(spl.measure(blocks))
         out.update(length_codes(blocks))
     return {k: out.get(k) for k in [f.name for f in STRUCTURED]}
@@ -207,7 +221,7 @@ def read_part(
     counts: Counter[str] = Counter()
     index: list[dict[str, Any]] = []
     blocks_rows: list[dict[str, Any]] = []
-    matched: dict[str, tuple[int | None, dict[str, list[spl.Block]], dict[str, str]]] = {}
+    matched: dict[str, tuple[Any, ...]] = {}
     codes_seen: Counter[str] = Counter()
     name = Path(part_path).name
     for doc in spl_release.iter_documents(part_path, counts):
@@ -247,13 +261,14 @@ def read_part(
             row["fields"] = sorted(parsed["fields"])
             sections = spl.section_blocks(parsed["fields"])
             flats = {k: " ".join(v) for k, v in spl.section_blocks(parsed["flat"]).items()}
+            reps = {k: " ".join(v) for k, v in spl.section_blocks(parsed["flat_repeated"]).items()}
             if sid in matched:
                 counts["duplicate_matched_documents"] += 1
-            matched[sid] = (ident["version"], sections, flats)
+            matched[sid] = (ident["version"], sections, flats, reps)
         index.append(row)
     texts = _json_texts(tables_dir, sorted(matched))
     structure_rows: list[dict[str, Any]] = []
-    for sid, (version, sections, flats) in sorted(matched.items()):
+    for sid, (version, sections, flats, reps) in sorted(matched.items()):
         names = set(sections) | {s for (i, s) in texts if i == sid}
         for section in sorted(names):
             blocks = sections.get(section, [])
@@ -262,7 +277,9 @@ def read_part(
                 structured = {k: None for k in [f.name for f in STRUCTURED]}
                 structured["xml_match"] = "xml_missing"
             else:
-                structured = structured_row(blocks, texts.get((sid, section)), flats.get(section))
+                structured = structured_row(
+                    blocks, texts.get((sid, section)), flats.get(section), reps.get(section)
+                )
                 for i, b in enumerate(blocks):
                     blocks_rows.append(
                         {
@@ -394,7 +411,7 @@ def decide(
                 if s is None or s["xml_match"] == "xml_missing":
                     reason = "patient_text_missing"
                     break
-                if s["xml_match"] not in ("exact", "near"):
+                if s["xml_match"] not in SAME_WORDS:
                     reason = "patient_text_differs"
                     break
         out[lab["set_id"]] = {

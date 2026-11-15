@@ -73,6 +73,8 @@ _SENTENCE_LIKE_END = ".:;!,"
 _STYLED = re.compile(r"bold|underline|emphasis", re.I)
 #: Typed list marks: those the JSON's ``s2`` rule breaks at, and the white circle.
 _TYPED_MARK = re.compile(r"\s*[\u2022\u25cf\u25aa\u25a0\u25e6\u2023\u25cb]\s*")
+#: A line that cites a heading instead of being one ("See What is ...?").
+_REFERENCE_LINE = re.compile(r"[(\[\s\"'\u201c]*(?:see|read)\b", re.I)
 _SKIP = {"renderMultiMedia", "observationMedia", "subject", "id", "code"}
 _INLINE = {"content", "sub", "sup", "linkHtml", "footnoteRef", "footnote", "span", "a"}
 
@@ -140,8 +142,12 @@ class _Walker:
             return
         styled_chars = sum(len(s.strip()) for s, st in line.parts if st)
         all_chars = sum(len(s.strip()) for s, _ in line.parts)
+        # a bold list item is an emphasized item, and a bold "See ..." line a cross-reference:
+        # neither is a heading
+        may_head = kind != "item" and not _REFERENCE_LINE.match(whole)
         if (
-            styled_chars == all_chars
+            may_head
+            and styled_chars == all_chars
             and len(readability.words(whole)) <= HEADING_MAX_WORDS
             and whole[-1] not in _SENTENCE_LIKE_END
         ):
@@ -155,7 +161,7 @@ class _Walker:
             else:
                 break
         head = text.clean("".join(lead))
-        if head.endswith("?") and len(readability.words(head)) <= HEADING_MAX_WORDS:
+        if may_head and head.endswith("?") and len(readability.words(head)) <= HEADING_MAX_WORDS:
             rest = text.clean("".join(s for s, _ in line.parts[len(lead) :]))
             if rest:
                 add("heading", head)
@@ -354,12 +360,29 @@ def parse_document(
         code = sec.find(f"{NS}code")
         out["codes"][code.get("code") if code is not None else "(none)"] += 1
     out["flat"] = {}
+    out["flat_repeated"] = {}
     for f, sec in _top_sections(root):
         w = _Walker()
         w.section(sec, 0)
         out["fields"].setdefault(f, []).extend(w.blocks)
         out["flat"].setdefault(f, []).append(flat_text(sec))
+        # the JSON repeats a subsection that carries its parent's section code: the same
+        # reading with those subsections read a second time
+        again = [flat_text(inner) for inner in _same_field_inside(sec, f)]
+        out["flat_repeated"].setdefault(f, []).append(" ".join([flat_text(sec), *again]))
     return out
+
+
+def _same_field_inside(sec: Any, f: str) -> list[Any]:
+    """Sections inside ``sec`` (at any depth) whose code is filed under the same field."""
+    found = []
+    for inner in sec.iter(f"{NS}section"):
+        if inner is sec:
+            continue
+        code = inner.find(f"{NS}code")
+        if _FIELD_OF.get(code.get("code") if code is not None else "") == f:
+            found.append(inner)
+    return found
 
 
 def flat_text(sec: Any) -> str:

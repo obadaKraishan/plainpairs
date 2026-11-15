@@ -221,3 +221,23 @@ def test_flat_text_reads_every_text_node_with_spaces():
         d["flat"]["description"][0], "11 DESCRIPTION The formula is C 9 H 17. Figure A"
     )
     assert m["match"] == "exact"
+
+
+def test_bold_items_and_references_are_not_headings():
+    body = (
+        '<list><item><content styleCode="bold">a rash</content></item></list>'
+        '<paragraph><content styleCode="bold">See "What is Zorvan?"</content></paragraph>'
+        '<paragraph><content styleCode="bold">See What is Zorvan?</content> More.</paragraph>'
+    )
+    blocks = spl.parse_document(doc(section("42231-1", "GUIDE", body)))["fields"]["spl_medguide"]
+    assert [b.kind for b in blocks] == ["title", "item", "paragraph", "paragraph"]
+
+
+def test_flat_repeated_reads_same_code_subsections_twice():
+    inner = section("34067-9", "1.1 Use", "<paragraph>Inner words.</paragraph>")
+    outer = section("34067-9", "1 INDICATIONS", "<paragraph>Outer words.</paragraph>", inner)
+    d = spl.parse_document(doc(outer))
+    assert d["flat"]["indications_and_usage"] == ["1 INDICATIONS Outer words. 1.1 Use Inner words."]
+    assert d["flat_repeated"]["indications_and_usage"] == [
+        "1 INDICATIONS Outer words. 1.1 Use Inner words. 1.1 Use Inner words."
+    ]
