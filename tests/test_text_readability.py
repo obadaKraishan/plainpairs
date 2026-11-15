@@ -312,3 +312,16 @@ def test_three_forms_in_a_row_are_still_one_heading():
     assert tx.count_restated(guide) == 2
     _key, start, head_end, end = spans[0]
     assert guide[start:head_end].endswith("taking Zorvan?") and end == len(guide)
+
+
+def test_measure_units_matches_measure_for_the_same_cut():
+    units = ["The cat sat on the mat.", "It was a sunny day in the invented town."]
+    got = rd.measure_units([*units, "", "123"])
+    ref = rd.measure(" ".join(units), "s1")
+    assert got["sentences"] == 2 and ref.sentences == 2
+    assert got["words"] == ref.words
+    assert got["flesch_kincaid"] == ref.flesch_kincaid_grade
+    assert got["smog"] == ref.smog_grade
+    assert got["smog_short_text"] is True
+    empty = rd.measure_units([])
+    assert empty["words"] == 0 and empty["flesch_kincaid"] is None

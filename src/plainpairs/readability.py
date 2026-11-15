@@ -189,3 +189,41 @@ def measure_rules(text: str, rules: tuple[str, ...] = RULES) -> dict[str, Readab
 def measure(text: str, rule: str = "s2") -> Readability:
     """Readability of ``text`` by one sentence rule. Grades are None for a text with no words."""
     return measure_rules(text, (rule,))[rule]
+
+
+def measure_units(units: list[str]) -> dict[str, float | int | bool | None]:
+    """The same counts and grades as :func:`measure`, over sentences already cut (for text
+    read with its structure, where every list item and paragraph ends a sentence).
+
+    Units without a word are dropped. Keys follow the build's measures: ``words``,
+    ``sentences``, ``syllables``, ``polysyllables``, ``long_sentence_share``, ``numbers``,
+    ``percentages``, ``flesch_kincaid``, ``flesch_reading_ease``, ``smog``, ``smog_short_text``.
+    """
+    kept = [u for u in units if words(u)]
+    lengths = [len(words(u)) for u in kept]
+    syl = [syllables(w) for u in kept for w in words(u)]
+    n_words, n_sent, n_syl = sum(lengths), len(kept), sum(syl)
+    poly = sum(1 for s in syl if s >= 3)
+    joined = " ".join(kept)
+    out: dict[str, float | int | bool | None] = {
+        "words": n_words,
+        "sentences": n_sent,
+        "syllables": n_syl,
+        "polysyllables": poly,
+        "long_sentence_share": None,
+        "numbers": count_numbers(joined),
+        "percentages": count_percentages(joined),
+        "flesch_kincaid": None,
+        "flesch_reading_ease": None,
+        "smog": None,
+        "smog_short_text": n_sent < 30,
+    }
+    if n_words:
+        fk, fre, smog = _grades(n_words, n_sent, n_syl, poly)
+        out.update(
+            long_sentence_share=round(sum(n > LONG_SENTENCE for n in lengths) / n_sent, 4),
+            flesch_kincaid=fk,
+            flesch_reading_ease=fre,
+            smog=smog,
+        )
+    return out
