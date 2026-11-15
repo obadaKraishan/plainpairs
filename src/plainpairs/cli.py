@@ -80,6 +80,12 @@ def cmd_page_text(args: argparse.Namespace) -> int:
 
 def cmd_quotes_check(args: argparse.Namespace) -> int:
     results = pages.check_quotes(Path(args.quotes), PAGES_ROOT)
+    if NCI_ROOT.exists():  # quotes from NCI's summary pages are checked on the saved pages
+        again = pages.check_quotes(Path(args.quotes), NCI_ROOT)
+        results = [
+            b if (not a.found and a.reason == "no saved copy of this page") else a
+            for a, b in zip(results, again, strict=True)
+        ]
     bad = [r for r in results if not r.found]
     for r in bad:
         print(f"MISSING ({r.reason}): {r.url}\n    {r.quote[:120]}")
