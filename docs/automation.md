@@ -74,6 +74,25 @@ rule). Each release lists the export date it was built from, and the `labels` ta
 - Actions pinned to commit SHAs; the token scoped to the one dataset and to pull requests.
 - No model calls in the weekly run.
 
+## The route (2026-11-15)
+`plainpairs update` does the weekly run (`--from-pack` starts it from the published version:
+the record layer is public data, and the structure of every unchanged `current` label is read
+back from its measures). The workflow `.github/workflows/weekly-update.yml` runs it on GitHub
+Actions; it is **switched off** (no schedule, no delivery) until the repository is public.
+
+| | needs |
+|---|---|
+| disk | about 6 to 8 GB: openFDA's 14 parts (1.9 GB), DailyMed's daily updates for the week (about 0.7 GB), the last pack (0.56 GB) and two builds; a standard runner has 14 GB free |
+| memory | the build's workers (about 120 MB each) and the pack writer, which holds one text table at a time (about 2 GB); a standard public runner has 16 GB, a private one 7 GB |
+| time | two builds, the codes and the pack: about 20 minutes on this project's laptop with six workers; an estimated 50 to 60 minutes on a four-core public runner, 90 on a two-core private one (not yet measured on a runner) |
+| minutes | free once the repository is public; while it is private, about 90 billed minutes a run, about 390 a month, which this account's private quota cannot carry |
+| secrets | `HF_TOKEN` in the environment `release`, able to open pull requests on `obadakr/plainpairs` only, for the delivery job |
+
+So: **a standard runner can do it**, once the repository is public. Until then the weekly run
+is done from the maintainer's Mac with the same command (`plainpairs update --work ...`), and
+delivered with the publish script's `update` step. The first real run waits for openFDA's next
+export after 2026-11-13 (none was listed on 2026-11-15).
+
 ## The NCI cancer information summaries (configuration `nci`)
 NCI updates its summaries one at a time, each with its own "Updated" date, and its sitemap's
 dates are a site-wide publishing date, not a change date (752 of 757 summary pages carried one
