@@ -1,6 +1,6 @@
 # Benchmark sketch (phase 2; nothing built)
 
-**A sketch for discussion, not a plan.** Planned for S5, on Kaggle Community Benchmarks.
+**Superseded by `docs/benchmark-design.md`.** Kept as the first sketch for the record.
 
 ## Task
 Given a prescriber section (or the prescriber sections a heading draws on, from `section_pairs`)
@@ -43,9 +43,10 @@ cutoff can be told apart from its score on older ones.
   an official leaflet. Generated answers are never published as text, only as scores; the
   benchmark's pages say plainly that outputs are not medical information; items keep the
   official disclaimer.
-- **The gold is not ideal.** Official patient texts score above grade 8 in nearly every case
-  (`docs/sample.md`), so a model that writes plainer text than the gold should not be penalized
-  for it; that is why the reading-level score is against the target, not against the gold.
+- **The gold is not ideal.** Official patient texts are often written above the usual
+  plain-language targets, so a model that writes plainer text than the gold should not be
+  penalized for it; that is why the reading-level score is against the target, not against the
+  gold.
 - **Alignment errors** put the wrong gold next to a prompt; only hand-checked heading keys are
   used.
 - **Generic copies** would weight a few medicines heavily; items are drawn per distinct text and
