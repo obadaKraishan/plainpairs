@@ -44,6 +44,9 @@ or an insert are listed in `excluded_otc` and are not in any other table.
 | `harmonized` | bool | whether the source's `openfda` block is present |
 | `product_type`, `routes`, `application_numbers`, `manufacturers`, `brand_names`, `generic_names`, `pharm_classes_epc` | string, lists | from the `openfda` block; empty without it |
 | `medicine_key`, `medicine_key_source` | string | see below |
+| `product_name`, `product_name_source`, `product_name_rule` | string | the name at the head of the label's structured product data (`spl_product_data_elements`); the source is `spl_product_data_elements` or `none`; the rule is `restart`, `lowercase` or `ingredient` (`docs/method.md`, section 4). Never merged into the medicine key |
+| `listed_in_ndc_directory`, `ndc_match` | bool, string | in the current NDC directory, matched by `set_id` or by `spl_id` (the document id), or `none`; null when the build had no directory file |
+| `served_by_dailymed`, `dailymed_version` | bool, int | DailyMed's zip file metadata lists the set id, and the version it serves; null when the build had no such file |
 | `has_boxed_warning`, `has_medication_guide`, `has_patient_package_insert`, `has_instructions_for_use`, `has_other_patient_text` | bool | presence of each text |
 | `has_copyright_mark` | bool | any text field of the label shows the copyright sign, the word "copyright" or "all rights reserved" |
 | `n_tables`, `tables_sha256` | int, list | the label's tables in the text layer, and the hash of each |
@@ -88,7 +91,9 @@ heading with the medicine's name replaced by `[medicine]`), `seg_start`, `headin
 `seg_end` (character offsets into the patient text), `measures` (of the segment's body),
 `mapped_sections`, `mapped_present`, `best_section`, `best_similarity`,
 `mapped_best_similarity`, `best_is_mapped`, `section17_similarity`, `rule_status`
-(`pending_hand_check` until the hand sheet is scored).
+(`pending_hand_check` until the hand sheet is scored). A heading followed at once by its
+restatement is one segment (`docs/method.md`, section 7). The mapping of `general` is this
+project's choice, not the regulation's (`plainpairs.align.mapping_source`).
 
 ## `excluded_otc`
 `product_type`, `label_format`, `has_medication_guide`, `has_patient_package_insert`.
@@ -98,6 +103,27 @@ heading with the medicine's name replaced by `[medicine]`), `seg_start`, `headin
 (0 for the text, 1, 2... for its tables), `text`, `sha256`, `has_copyright_mark` (the label's
 flag), `text_has_copyright_mark` (this row's own text).
 
+## `codes`: one row per text of the text layer (record layer; `plainpairs codes`)
+`source`, `export_date`, `set_id`, `version`, `section`, `side` (`patient` or `prescriber`),
+`patient_text_id` (patient texts only), `code_version`, then one count per code: `words`,
+`sentences`, `you_words`, `sentences_with_you`, `command_sentences`, `conditional_commands`,
+`distinct_actions`, `percentages`, `one_in_n`, `frequencies`, `doses`, `risk_sentences`,
+`risk_sentences_with_number`, `vague_core`, `vague_extended`, `explained_in_brackets`,
+`explained_called`, `abbreviations_in_brackets`, `sentences_over_20`, `sentences_over_40`,
+`longest_sentence_words`, `sections`, `longest_section_words`, `sections_over_250`,
+`contact_sentences`, `contact_sentences_with_when`. Rules and limits: `docs/codebook.md`.
+
+## `export_ids.parquet` (next to the build)
+`export_date`, `set_id`, `version` of every label in the export, in scope or not. Not a release
+table; `plainpairs changes` reads it to tell a label that left the scope from one withdrawn.
+
+## `changes`: one row per label that differs between two builds (`plainpairs changes`)
+`old_export_date`, `new_export_date`, `set_id`, `change` (`new_label`, `gone`, `left_scope`,
+`withdrawn`, `new_version_same_texts`, `texts_changed`, `record_only`), `old_version`,
+`new_version`, `sections_changed`, `patient_texts_added`, `patient_texts_dropped` (section
+names), and the flags `block_changed`, `format_changed`, `mark_changed`,
+`ndc_listing_changed`, `dailymed_listing_changed`. Ids, versions, names and flags only.
+
 ## Release rules (`plainpairs release-check`)
 It fails when: the labels read differ from the manifest's listed records; a table's rows differ
 from the build summary, or its columns from the schema; a record-layer table has a `text` column
@@ -105,4 +131,6 @@ or a string longer than 300 characters; a text row lacks a mark flag; the switch
 marked text; an id is duplicated (`set_id`; `patient_text_id`; set id, kind and segment; set id,
 section, part and index); a label in `labels` is out of scope; a row lacks its source, export
 date or set id, or holds another export date; a text does not match its hash, or the hashes in
-`labels` do not match the text layer.
+`labels` do not match the text layer. When a `codes` table is present it also fails if its
+columns differ from the schema, a text appears twice, a row is for a label not in `labels`, or
+a string is longer than 300 characters.
