@@ -8,3 +8,5 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 - The repository: Apache-2.0 license, README, NOTICE and a draft citation file.
+- CI: ruff and pytest on Python 3.10 to 3.13, with every action pinned to a commit.
+- Runtime dependencies: pydantic (frozen record models) and requests (HTTP).
