@@ -148,3 +148,8 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T15:20:44.827Z,GET,dailymed.nlm.nih.gov,/dailymed/services/v2/spls/d1f09c5c-8f31-0911-e053-2a95a90af1b8.xml,,200,136371,0.072
 2026-11-15T15:20:45.904Z,GET,dailymed.nlm.nih.gov,/dailymed/services/v2/spls/4a7c4354-1596-42ee-b3d9-e9f111c95d82.xml,,404,0,0.058
 2026-11-15T15:20:46.963Z,GET,dailymed.nlm.nih.gov,/dailymed/services/v2/spls/3d3d6a0c-b501-4171-bd02-92e829864fba.xml,,404,0,0.059
+2026-11-15T16:04:04.976Z,GET,api.fda.gov,/download.json,,200,602365,0.574
+2026-11-15T16:04:20.099Z,GET,dailymed.nlm.nih.gov,/dailymed/spl-resources-all-mapping-files.cfm,,200,82762,0.417
+2026-11-15T16:04:38.161Z,GET,dailymed.nlm.nih.gov,/dailymed/app-support-mapping-files.cfm,,200,85341,0.319
+2026-11-15T16:07:50.640Z,GET,download.open.fda.gov,/drug/ndc/drug-ndc-0001-of-0001.json.zip,,200,28247165,1.667
+2026-11-15T16:07:53.309Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_zip_files_meta_data.zip,,200,7649371,1.049
