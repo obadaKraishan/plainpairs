@@ -8,7 +8,8 @@ a reading level; it never produces, checks or publishes information about medici
 **Task:** rewrite a passage written for prescribers so that a general reader can follow it, at
 a set reading level, for one patient-text heading.
 
-**One item per distinct patient text.** The unit is a distinct Medication Guide or patient
+**One item per distinct patient text.** Items come from the `current` configuration only
+(section 7). The unit is a distinct Medication Guide or patient
 package insert (by core hash, the `patient_texts` table), never a label: a guide shared by 40
 labels is one item. For each distinct text, one of its heading segments is drawn with a seed,
 balanced across heading keys, so that every key has about the same number of items. Only
@@ -21,7 +22,7 @@ hand topic check (80% "yes" or "partly", `docs/hand-sheet-guide.md`).
 - the prescriber section the heading is mapped to (`section_pairs.mapped_present`); where a
   heading maps to two or three sections, the one with the highest similarity to the segment,
   so that the input is one section; cut at 1,200 words, with the cut marked;
-- the target: "Write for a reader at about US school grade 6" (or 8; see section 7).
+- the target: "Write for a reader at about US school grade 8" (section 7).
 
 **What the model never sees:** the official patient segment (the gold), other parts of the
 patient text, or any score.
@@ -31,7 +32,7 @@ exact text is most common in the group).
 
 ## 2. Splits, held-out items and fresh items
 - **Splits by distinct text,** stratified by heading key and by text kind (guide or insert):
-  a small development split (about 10%) and a test split. Near-duplicate texts (the same
+  a development split of 200 items and a test split of 1,000 (section 7). Near-duplicate texts (the same
   loose hash, or a trigram Jaccard of 0.8 or more between segments) go to the same split.
 - **Held out:** the test split's gold texts are not put in the benchmark's released files; only
   their ids, hashes and dates are. This limits how often input and gold sit side by side in a
@@ -120,14 +121,27 @@ shown on a page or shared, someone could take it as information about their medi
 - **Private first:** tasks stay private until the maintainer approves them, as with every
   release.
 
-## 7. Choices for the maintainer
-1. The unit: one heading segment per distinct text (this design), or all of a text's headings.
-2. The target grade: 6, 8, or both (doubles the calls).
-3. The size of the test split (1,000 items here) and of the development split.
-4. Whether the development split's texts are released, which follows the corpus's text switch
-   (all, unmarked, none).
-5. Which heading keys enter: only those that pass the hand topic check.
-6. The input cap (1,200 words) and the one-section rule for headings mapped to several sections.
-7. Version 1 only (rules), or a judge model for key facts and additions later.
-8. The fresh-item threshold (trigram Jaccard 0.8) and the reporting cadence (weekly or monthly).
-9. Which models are run, and how much quota a run may use.
+## 7. The maintainer's choices (2026-11-15)
+The defaults for version 1, as decided. Nothing is built yet.
+
+| choice | decided |
+|---|---|
+| the unit | one heading segment per distinct text |
+| the target grade | grade 8 |
+| the splits | 1,000 test items and 200 development items |
+| which heading keys enter | only keys that pass the hand topic check (80% "yes" or "partly") |
+| the input cap | 1,200 words, one section per item (section 1) |
+| the scores | rule-based scores only in version 1; a judge waits for version 2 and its agreement test |
+| where items come from | **the `current` configuration only**: labels DailyMed serves in the same version as the export, whose structure comes from DailyMed's XML (`docs/method.md`, section 6b). Labels of the `unlisted` configuration are never items |
+| which models | chosen at build time, within the free quota |
+
+Still open, for the build session: whether the development split's texts are released (this
+follows the corpus's text switch: all, unmarked, none), and the fresh-item threshold and
+cadence (trigram Jaccard 0.8; weekly or monthly), which waits until two exports have been
+compared.
+
+With one target grade, a version 1 run is 1,000 calls per model (section 6). The reading level
+reached is scored by the corpus's own rules; since items come from `current`, the gold's own
+grade beside it is the grade measured on its structure (`docs/method.md`). That is not the
+basis the output is measured on (plain text, sentence rule `s2`), so the gold's grade is shown
+beside the score and never compared with the output's.
