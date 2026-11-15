@@ -117,7 +117,7 @@ Standard headings found by their wording in 520 Medication Guides, with the medi
 | What are [medicine]? | 442 | 85.0% | 231 | 85.2% |
 | Who should not take [medicine]? | 262 | 50.4% | 128 | 47.2% |
 
-Standard headings per guide: 0: 13, 1: 52, 2: 8, 4: 1, 5: 13, 6: 51, 7: 29, 8: 115, 9: 147, 10: 91. Of the 65 guides with none or one, 56 are full length (3,000 characters or more) and 59 contain no question mark at all: their headings are written without one, which the patterns require. S2 widens the patterns and checks them by hand on a sample.
+Standard headings per guide: 0: 13, 1: 52, 2: 8, 4: 1, 5: 13, 6: 51, 7: 29, 8: 115, 9: 147, 10: 91. Of the 65 guides with none or one, 56 are full length (3,000 characters or more) and 59 contain no question mark at all. A later count in the same part found that heading phrases written without a question mark are rare (at most 2% for any heading key; for example 11 of 1,053 "most important information"), so these guides do not use the standard headings at all; they are short class-wide texts or follow another plan. The patterns are not widened.
 
 ## Which prescriber section each heading draws on (a first proposal)
 
