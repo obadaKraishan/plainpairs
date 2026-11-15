@@ -162,3 +162,7 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T16:54:26.448Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part5.zip,,200,3220228946,81.024
 2026-11-15T16:56:14.064Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part6.zip,,200,1959820499,49.990
 2026-11-15T16:57:20.639Z,GET,dailymed.nlm.nih.gov,/dailymed/spl-resources-all-drug-labels.cfm,,200,110482,0.112
+2026-11-15T17:04:37.806Z,GET,dailymed.nlm.nih.gov,/dailymed/help.cfm,,200,88231,0.409
+2026-11-15T17:04:41.180Z,GET,dailymed.nlm.nih.gov,/dailymed/services/v2/spls/5cf490d1-edb7-4b3f-9a01-a44ec7e8369c/history.json,,200,577,0.063
+2026-11-15T17:04:43.929Z,GET,dailymed.nlm.nih.gov,/dailymed/archives/index.cfm,query=5cf490d1-edb7-4b3f-9a01-a44ec7e8369c,200,93621,0.124
+2026-11-15T17:05:17.238Z,HEAD,dailymed.nlm.nih.gov,/dailymed/getArchivalFile.cfm,archive_id=134193,200,0,0.254

@@ -153,6 +153,25 @@ need to treat that text with care whatever the dataset page says (decision for t
   daily, weekly and monthly updates (October 2026: 4,131 labels, 1.67 GB).
   > Warning: The full human prescription and OTC archive files, dm_spl_release_human_rx.zip and
   > dm_spl_release_human_otc.zip, are no longer available due to size considerations.
+- **Labels DailyMed no longer serves** (checked 2026-11-15). The archive page
+  (<https://dailymed.nlm.nih.gov/dailymed/archives/index.cfm>) says:
+  > This archive allows the user to retrieve the label current for a given date. By default,
+  > only archived labels for this year are returned.
+
+  > If you wish to request all labels for a given date, please visit our customer support.
+
+  For one of the seven labels that DailyMed's single-label service answered with 404 in the
+  20-label test (`docs/xml-test.md`), the history service (`/spls/{SETID}/history.json`) still
+  lists both of its versions (with no title), and an archive search by its set id finds both,
+  each with a download link. That link (`/dailymed/getArchivalFile.cfm?archive_id=...`)
+  answers with `application/zip`, a file named `<date>_<set id>.zip`: the same form as the
+  per-label zips inside the full release (one SPL XML document and its images). The version
+  the corpus holds is one of the two. So the archive does keep labels DailyMed no longer
+  serves, as SPL XML, one version at a time. Nothing was downloaded from it: one request per
+  label is not a reasonable load for the labels concerned, and the bulk route the page names
+  goes through customer support, which this project has not contacted. Four requests were
+  made for this check: the help page, the history answer, the archive search and the headers
+  of one archive file (no body).
 - **The list of labels DailyMed serves** (for the "listed now" flag). The zip file metadata,
   `dm_spl_zip_files_meta_data.zip` (7.30 MB as listed, MD5 as listed, last modified
   2026-11-13), on the mapping files page
