@@ -336,6 +336,10 @@ class Builder:
             c[f"in_scope_harmonized:{ident.harmonized}"] += 1
             self._identity(record, row, identity)
             self._label(number, record, row, marked, buf)
+            for k in PAIRING:
+                t = getattr(row.patient, k)
+                if t:
+                    c[f"restated_headings:{k}"] += text.count_restated(t)
         parts_dir = self.out / "_parts"
         parts_dir.mkdir(parents=True, exist_ok=True)
         rows = {}

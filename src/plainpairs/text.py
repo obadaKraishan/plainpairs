@@ -206,11 +206,22 @@ def is_reference(text: str, start: int) -> bool:
     return bool(_REFERENCE.search(text[max(0, start - 8) : start]))
 
 
-def find_headings(text: str) -> list[tuple[int, int, str]]:
+#: What may stand between a heading and its restatement: spaces, list marks and punctuation.
+#: A letter or a digit in between is a body, however short, so the two stay apart.
+_NOTHING_BETWEEN = re.compile(r"[^0-9A-Za-z]*")
+
+
+def find_headings(text: str, merge_restated: bool = True) -> list[tuple[int, int, str]]:
     """Standard headings in ``text``: (start, end, key), in order, never overlapping.
 
     A heading quoted or cited in running text (after "see", "in", "under", "read" or an
     opening quote mark) is a reference to that heading and is skipped.
+
+    A heading followed at once by another form of the same heading (the question, then
+    "Before taking ..., tell your healthcare provider"; or the same question twice), with
+    nothing but spaces, list marks or punctuation between them, is one heading: the first is
+    kept and the restatement starts its body. ``merge_restated=False`` keeps both, for
+    counting how often this happens.
     """
     found: list[tuple[int, int, str]] = []
     for key, pattern in HEADINGS:
@@ -219,11 +230,26 @@ def find_headings(text: str) -> list[tuple[int, int, str]]:
                 found.append((m.start(), m.end(), key))
     found.sort(key=lambda h: (h[0], HEADING_KEYS.index(h[2])))
     kept: list[tuple[int, int, str]] = []
+    last: tuple[int, int, str] | None = None  # the heading just before, kept or merged
     for start, end, key in found:
-        if kept and start < kept[-1][1]:
+        if last is not None and start < last[1]:
+            continue
+        if (
+            merge_restated
+            and last is not None
+            and key == last[2]
+            and _NOTHING_BETWEEN.fullmatch(text, last[1], start)
+        ):
+            last = (start, end, key)
             continue
         kept.append((start, end, key))
+        last = (start, end, key)
     return kept
+
+
+def count_restated(text: str) -> int:
+    """How many headings of ``text`` restate the heading just before them (see above)."""
+    return len(find_headings(text, merge_restated=False)) - len(find_headings(text))
 
 
 def segment_spans(text: str) -> list[tuple[str, int, int, int]]:

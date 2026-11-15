@@ -251,3 +251,64 @@ def test_prose_laid_out_in_a_table_is_never_cut():
     assert tx.strip_tables(text, [box]) == (text, 0)
     assert tx.is_data_table(["Headache", "2%", "Nausea", "1%"])
     assert not tx.is_data_table([])
+
+
+def test_a_question_then_its_restatement_is_one_heading_with_one_body():
+    guide = (
+        "What is Zorvan? Zorvan is a made-up medicine. "
+        "What should I tell my healthcare provider before taking Zorvan? "
+        "Before taking Zorvan, tell your healthcare provider about all of your medical "
+        "conditions. How should I take Zorvan? Take it once a day."
+    )
+    segs = tx.segment_patient_text(guide)
+    assert [s.key for s in segs] == ["what_is", "before", "how_to_take"]
+    before = segs[1]
+    assert before.heading == "What should I tell my healthcare provider before taking Zorvan?"
+    assert before.body.startswith("Before taking Zorvan, tell your healthcare provider about")
+    assert tx.count_restated(guide) == 1
+    keys = [k for *_, k in tx.find_headings(guide, merge_restated=False)]
+    assert keys == ["what_is", "before", "before", "how_to_take"]
+
+
+def test_list_marks_between_a_heading_and_its_restatement_still_merge():
+    guide = (
+        "What should I tell my doctor before using Zorvan? • Before using Zorvan, tell your "
+        "doctor if you are pregnant. What should I avoid while using Zorvan? Avoid the sun."
+    )
+    assert [s.key for s in tx.segment_patient_text(guide)] == ["before", "avoid"]
+    twice = (
+        "What is the most important information I should know about Zorvan? : What is the most "
+        "important information I should know about Zorvan? Zorvan may cause sleepiness."
+    )
+    segs = tx.segment_patient_text(twice)
+    assert [s.key for s in segs] == ["most_important"]
+    assert segs[0].body.endswith("Zorvan may cause sleepiness.")
+
+
+def test_a_body_between_two_same_headings_keeps_them_apart():
+    guide = (
+        "What should I tell my healthcare provider before taking Zorvan? Zorvan may not be "
+        "right for you. Before taking Zorvan, tell your healthcare provider if you are "
+        "pregnant."
+    )
+    segs = tx.segment_patient_text(guide)
+    assert [s.key for s in segs] == ["before", "before"]
+    assert segs[0].body == "Zorvan may not be right for you."
+    assert tx.count_restated(guide) == 0
+    # a digit is a body too, and so is a different heading
+    assert tx.count_restated("What is Zorvan? 1 What is Zorvan? Text.") == 0
+    other = "What is Zorvan? How should I take Zorvan? Once a day."
+    assert [s.key for s in tx.segment_patient_text(other)] == ["what_is", "how_to_take"]
+
+
+def test_three_forms_in_a_row_are_still_one_heading():
+    guide = (
+        "What should I tell my healthcare provider before taking Zorvan? "
+        "What should I tell my healthcare provider before taking Zorvan? "
+        "Before taking Zorvan, tell your healthcare provider about your conditions."
+    )
+    spans = tx.segment_spans(guide)
+    assert [s[0] for s in spans] == ["before"]
+    assert tx.count_restated(guide) == 2
+    _key, start, head_end, end = spans[0]
+    assert guide[start:head_end].endswith("taking Zorvan?") and end == len(guide)

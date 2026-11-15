@@ -27,8 +27,8 @@ def records():
     ]
 
 
-def write_export(root, date="2026-11-13"):
-    parts = records()
+def write_export(root, date="2026-11-13", parts=None):
+    parts = parts or records()
     total = sum(len(p) for p in parts)
     folder = root / date
     folder.mkdir(parents=True)
@@ -230,3 +230,21 @@ def test_a_label_typed_over_the_counter_is_listed_apart_even_in_a_prescription_f
     assert [r["label_format"] for r in pq.read_table(out / "excluded_otc.parquet").to_pylist()] == [
         "plr"
     ]
+
+
+def test_the_build_counts_restated_headings_and_pairs_them_once(tmp_path):
+    guide = copy.deepcopy(PLR_WITH_GUIDE)
+    guide["spl_medguide"] = [
+        "MEDICATION GUIDE ZORVAN What should I tell my healthcare provider before taking "
+        "ZORVAN? Before taking ZORVAN, tell your healthcare provider about your conditions. "
+        "How should I take ZORVAN? Take 1 tablet each day."
+    ]
+    root = write_export(tmp_path / "bulk", parts=[[guide]])
+    out = tmp_path / "t"
+    stats = tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"), out, "2026-11-13", log=lambda s: None
+    ).run()
+    assert stats["counts"]["restated_headings:medication_guide"] == 1
+    pairs = pq.read_table(out / "section_pairs.parquet").to_pylist()
+    assert [r["heading_key"] for r in pairs] == ["before", "how_to_take"]
+    assert pairs[0]["measures"]["words"] > 5
