@@ -7,6 +7,17 @@ All notable changes to this project are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- `release build` and `release check`: the release pack, one Hugging Face config per table of
+  each configuration (16, no default), the switch and the takedown list applied as it is
+  written, a manifest, the dataset card and LICENSES.md, and the Kaggle mirror's folder; the
+  check runs on the pack alone.
+- `update`: the weekly run from the last build, or from a published pack, to the newest export
+  (openFDA's parts and NDC file, DailyMed's list and daily updates), with the structure of
+  unchanged labels carried forward, the `changes` table, the checks and a counts-only summary.
+- The weekly workflow (`.github/workflows/weekly-update.yml`), switched off: no schedule, no
+  delivery, actions pinned, least permissions.
+- The removal route: an issue form, `docs/removal.md` and the takedown list `data/takedown.csv`.
+- `.zenodo.json` (the code and documents only, no data table).
 - The NCI cancer information summaries as a third configuration, `nci`: `nci-build` reads the
   summary pages (listed from NCI's sitemap and read once each, 5 seconds apart, by
   `plainpairs.nci_pages`) into three tables, `nci_summaries`, `nci_pairs` and `nci_text`. Pairs
@@ -82,6 +93,8 @@ All notable changes to this project are recorded here. The format follows
   for the same `current` labels.
 
 ### Changed
+- The text switch for the first release: labels `unmarked`, the NCI configuration's kept text
+  with its credit line; the Spanish index is marked provisional in the data card.
 - The hand topic check is scored: seven heading keys release their mapping rule
   (`rule_status = rule_released`), three are released with similarity scores only
   (`similarity_only`): before taking, avoid and general information.
