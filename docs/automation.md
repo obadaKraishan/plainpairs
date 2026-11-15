@@ -20,10 +20,21 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
    stop with nothing to do.
 3. **Download.** The 14 parts, one at a time, each streamed and checked against its size; the
    runner's disk (14 GB) holds the 1.9 GB zipped and nothing is unpacked.
-4. **Parse and build** the three tables (`docs/schema.md`) for labels in scope, with the two
+4. **Structure from DailyMed** (for the `current` configuration). The full release (6 parts,
+   18.1 GB) is read once; each week only DailyMed's update files since the last run are
+   fetched: the weekly update zip (2026-11-02 to 06: 1,590 labels of every kind, 679.93 MB as
+   listed) or, to match the export day exactly, the daily update zips up to it (38 to 226 MB a
+   day in the week of 2026-11-09). A label changed since the last run is read from the update
+   that holds its new version; an unchanged label keeps the structure of the last build. The
+   zip file metadata (7.65 MB) is read again for the "served" flag. About 0.7 GB a week, read
+   in place like the full release. The full release does not fit a standard runner's disk
+   (14 GB), so the weekly run starts from the last build's structure table and reads only
+   update files; whether the full release must be read again from time to time (DailyMed
+   replaces it on its own schedule) is checked against the update files' counts in S4.
+5. **Parse and build** the three tables (`docs/schema.md`) for labels in scope, with the two
    small listing files read the same day (`plainpairs listed-download`, then
-   `plainpairs build --listed`), then the codes (`plainpairs codes`).
-5. **Compare with the last release, by set id**, using only the record layer (every text has
+   `plainpairs build --listed --structure`), then the codes (`plainpairs codes --structure`).
+6. **Compare with the last release, by set id**, using only the record layer (every text has
    its SHA-256 there, so no text is needed to tell what changed):
    - **new label:** a set id not in the last release;
    - **new version, same texts:** a higher `version` with every section hash unchanged (the
@@ -42,13 +53,13 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
    The comparison writes one small table per release (`changes`: set id, old and new version,
    what changed), so the history of wording is itself a dataset. `plainpairs changes --old
    <last build> --new <this build>` does this now; the schema is in `docs/schema.md`.
-6. **Checks before delivery:** counts within expected bounds of the last release (a sudden drop
+7. **Checks before delivery:** counts within expected bounds of the last release (a sudden drop
    of more than a few percent stops the run), every row valid against the models, no duplicate
    keys, measures recomputed for changed rows only, a summary of changes.
-7. **Deliver** as a pull request on the Hugging Face dataset, with the change summary in its
+8. **Deliver** as a pull request on the Hugging Face dataset, with the change summary in its
    description, from a token that can only open pull requests; the maintainer merges it to
    publish. A failed run opens an issue in this repository.
-8. **Kaggle mirror and Zenodo:** by hand, monthly and at minor releases, as for CommonsWire.
+9. **Kaggle mirror and Zenodo:** by hand, monthly and at minor releases, as for CommonsWire.
 
 ## Versions over time
 The source keeps only the current version of each label, so the weekly releases become the
