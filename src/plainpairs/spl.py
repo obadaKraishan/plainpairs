@@ -339,8 +339,9 @@ def parse_document(
     sections read only when they are wanted.
 
     Returns ``{"set_id", "version", "document_id", "effective_time", "document_type",
-    "fields": {field: [Block, ...]}, "codes": Counter of every section code seen}``. A field
-    found in several places has the blocks of each, in document order.
+    "fields": {field: [Block, ...]}, "flat": {field: [str, ...]}, "codes": Counter of every
+    section code seen}``. A field found in several places has the blocks (and one flat text)
+    of each, in document order.
     """
     try:
         root = ElementTree.fromstring(xml)
@@ -352,17 +353,25 @@ def parse_document(
     for sec in root.iter(f"{NS}section"):
         code = sec.find(f"{NS}code")
         out["codes"][code.get("code") if code is not None else "(none)"] += 1
+    out["flat"] = {}
     for f, sec in _top_sections(root):
         w = _Walker()
         w.section(sec, 0)
         out["fields"].setdefault(f, []).extend(w.blocks)
+        out["flat"].setdefault(f, []).append(flat_text(sec))
     return out
 
 
-def section_blocks(fields: dict[str, list[Block]]) -> dict[str, list[Block]]:
-    """The blocks of each corpus section (the names of :mod:`plainpairs.schema`), joined from
-    its fields as the JSON reader joins them."""
-    out: dict[str, list[Block]] = {}
+def flat_text(sec: Any) -> str:
+    """Every text node of a section, a space between each (image text and captions
+    included): the closest reading of how the JSON flattens the same section."""
+    return text.clean(" ".join(t for t in sec.itertext() if t.strip()))
+
+
+def section_blocks(fields: dict[str, list[Any]]) -> dict[str, list[Any]]:
+    """The blocks (or flat texts) of each corpus section (the names of
+    :mod:`plainpairs.schema`), joined from its fields as the JSON reader joins them."""
+    out: dict[str, list[Any]] = {}
     for section, sources in PRESCRIBER_SOURCES.items():
         blocks = [b for s in sources for b in fields.get(s, [])]
         if blocks:

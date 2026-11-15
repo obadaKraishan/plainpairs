@@ -87,6 +87,7 @@ STRUCTURED = pa.struct(
         ("xml_dice", pa.float32()),
         ("xml_tokens", pa.int32()),
         ("json_tokens", pa.int32()),
+        ("blocks_dice", pa.float32()),
         ("words", pa.int32()),
         ("sentences", pa.int32()),
         ("syllables", pa.int32()),
@@ -124,7 +125,7 @@ STRUCTURE_SCHEMA = pa.schema(
         ("structured", STRUCTURED),
     ]
 )
-_MEASURE_KEYS = [f.name for f in STRUCTURED][4:]
+_MEASURE_KEYS = [f.name for f in STRUCTURED][5:]
 
 
 def length_codes(blocks: list[spl.Block]) -> dict[str, int]:
@@ -149,15 +150,20 @@ def length_codes(blocks: list[spl.Block]) -> dict[str, int]:
     }
 
 
-def structured_row(blocks: list[spl.Block], json_text: str | None) -> dict[str, Any]:
-    """The ``structured`` struct of one section: the word match with the JSON, and (when the
-    words agree exactly or nearly) the measures and length codes from structure."""
-    m = spl.word_match(spl.all_text(blocks), json_text or "")
+def structured_row(
+    blocks: list[spl.Block], json_text: str | None, flat: str | None = None
+) -> dict[str, Any]:
+    """The ``structured`` struct of one section: whether the XML holds the same words as the
+    JSON (its flat text against the JSON text), how much of the JSON the blocks cover, and
+    (when the words agree exactly or nearly) the measures and length codes from structure."""
+    m = spl.word_match(flat if flat is not None else spl.all_text(blocks), json_text or "")
+    covered = spl.word_match(spl.all_text(blocks), json_text or "")
     out: dict[str, Any] = {
         "xml_match": m["match"] if json_text else "json_missing",
         "xml_dice": m["dice"],
         "xml_tokens": m["xml_tokens"],
         "json_tokens": m["json_tokens"],
+        "blocks_dice": covered["dice"],
         **dict.fromkeys(_MEASURE_KEYS),
     }
     if out["xml_match"] in ("exact", "near"):
@@ -201,7 +207,7 @@ def read_part(
     counts: Counter[str] = Counter()
     index: list[dict[str, Any]] = []
     blocks_rows: list[dict[str, Any]] = []
-    matched: dict[str, tuple[int | None, dict[str, list[spl.Block]]]] = {}
+    matched: dict[str, tuple[int | None, dict[str, list[spl.Block]], dict[str, str]]] = {}
     codes_seen: Counter[str] = Counter()
     name = Path(part_path).name
     for doc in spl_release.iter_documents(part_path, counts):
@@ -240,13 +246,14 @@ def read_part(
             codes_seen.update(parsed["codes"])
             row["fields"] = sorted(parsed["fields"])
             sections = spl.section_blocks(parsed["fields"])
+            flats = {k: " ".join(v) for k, v in spl.section_blocks(parsed["flat"]).items()}
             if sid in matched:
                 counts["duplicate_matched_documents"] += 1
-            matched[sid] = (ident["version"], sections)
+            matched[sid] = (ident["version"], sections, flats)
         index.append(row)
     texts = _json_texts(tables_dir, sorted(matched))
     structure_rows: list[dict[str, Any]] = []
-    for sid, (version, sections) in sorted(matched.items()):
+    for sid, (version, sections, flats) in sorted(matched.items()):
         names = set(sections) | {s for (i, s) in texts if i == sid}
         for section in sorted(names):
             blocks = sections.get(section, [])
@@ -255,7 +262,7 @@ def read_part(
                 structured = {k: None for k in [f.name for f in STRUCTURED]}
                 structured["xml_match"] = "xml_missing"
             else:
-                structured = structured_row(blocks, texts.get((sid, section)))
+                structured = structured_row(blocks, texts.get((sid, section)), flats.get(section))
                 for i, b in enumerate(blocks):
                     blocks_rows.append(
                         {

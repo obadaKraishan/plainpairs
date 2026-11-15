@@ -204,3 +204,20 @@ def test_highlights_excerpt_is_read_and_flagged():
         ("Short summary.", True),
     ]
     assert spl.measure(blocks)["blocks_in_highlights"] == 1
+
+
+def test_flat_text_reads_every_text_node_with_spaces():
+    sec = (
+        '<component><section><code code="34089-3"/><title>11 DESCRIPTION</title><text>'
+        "<paragraph>The formula is C<sub>9</sub>H<sub>17</sub>.</paragraph>"
+        '<renderMultiMedia referencedObject="f1"/></text>'
+        "<component><observationMedia><text>Figure A</text></observationMedia></component>"
+        "</section></component>"
+    )
+    d = spl.parse_document(doc(sec))
+    assert d["flat"]["description"] == ["11 DESCRIPTION The formula is C 9 H 17 . Figure A"]
+    assert spl.all_text(d["fields"]["description"]) == "11 DESCRIPTION The formula is C9H17."
+    m = spl.word_match(
+        d["flat"]["description"][0], "11 DESCRIPTION The formula is C 9 H 17. Figure A"
+    )
+    assert m["match"] == "exact"
