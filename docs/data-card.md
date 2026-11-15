@@ -87,7 +87,10 @@ reported beside the 1,713 or more distinct medicines: a product name is not a me
 
 3,781 of the 35,177 labels (10.7%) show a copyright sign, the word
 "copyright" or "all rights reserved" somewhere in their text. The switch decides what text a
-release carries:
+release carries. **For the first release the maintainer chose `unmarked`:** 68,156 text rows of
+marked labels are held back; their record rows stay, and their text can be rebuilt from the
+source with `plainpairs text`. The NCI configuration's kept text is released with its credit
+line.
 
 Rows of the text layer (a section's text and each of its tables are separate rows):
 
@@ -191,7 +194,9 @@ In each of the 131 English version pairs the patient version reads lower on both
 (median differences: Flesch-Kincaid 4.84 grades, SMOG 3.90 grades), and it is less than half as
 long (median 0.47 of the professional version's words). The Spanish index is a Spanish measure
 of ease on the INFLESZ scale, validated on texts written for patients; it is not a school
-grade and is never set beside an English grade. These figures describe NCI's summaries only:
+grade and is never set beside an English grade. It is **provisional**: its syllable rule was
+tested on 46 words, and a silent h is read as a consonant, so a few words count one syllable
+too many. These figures describe NCI's summaries only:
 they are a different kind of text from the labels and are never compared with the labels'
 figures as if they were one corpus.
 

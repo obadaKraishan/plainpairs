@@ -63,8 +63,10 @@ sheet guide, the codebook of rule-based codes (`codebook.md`, a draft), the benc
 
 ## License
 The software in this repository is licensed under the Apache License, Version 2.0 (see
-[`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)). The terms for the corpus itself will be stated
-with its first release.
+[`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)). The corpus is distributed separately, as a
+Hugging Face dataset; what applies to each of its configurations (the sources' terms, the
+credit lines, and the CC0 dedication of the project's own measures) is in that dataset's
+`LICENSES.md`, from the first release on.
 
 ## Development
 ```bash
