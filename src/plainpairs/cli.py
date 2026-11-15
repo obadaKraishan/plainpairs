@@ -337,7 +337,7 @@ def cmd_release_build(args: argparse.Namespace) -> int:
 
 
 def cmd_release_pack_check(args: argparse.Namespace) -> int:
-    problems = pack.check_pack(Path(args.pack))
+    problems = pack.check_pack(Path(args.pack), Path(args.takedown) if args.takedown else None)
     if args.kaggle:
         problems += pack.check_kaggle(Path(args.kaggle), Path(args.pack))
     if problems:
@@ -725,6 +725,7 @@ def build_parser() -> argparse.ArgumentParser:
     rc = rsub.add_parser("check", help="check a pack folder alone (and its Kaggle folder)")
     rc.add_argument("--pack", required=True)
     rc.add_argument("--kaggle")
+    rc.add_argument("--takedown", default="data/takedown.csv", help="the takedown list")
     rc.set_defaults(func=cmd_release_pack_check)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")

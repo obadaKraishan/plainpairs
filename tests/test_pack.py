@@ -186,3 +186,24 @@ def test_release_commands(made, tmp_path, monkeypatch, capsys):
     assert main(["release", "check", "--pack", str(q), "--kaggle", str(tmp_path / "k2")]) == 0
     with pytest.raises(pack.PackError, match="not empty"):
         pack.build_pack(out, q, "0.1.0")
+
+
+def test_the_check_fails_on_a_taken_down_text(made, tmp_path):
+    _out, p, _m = made
+    sid = pq.read_table(p / "data/current/text_patient.parquet")["set_id"].to_pylist()[0]
+    take = tmp_path / "later.csv"
+    take.write_text(f"kind,id,received,reason\nset_id,{sid},2026-11-16,invented\n")
+    assert any("takedown list" in x for x in pack.check_pack(p, take))
+    assert pack.check_pack(p, tmp_path / "missing.csv") == []
+
+
+def test_the_removal_form_asks_for_what_the_document_names():
+    from pathlib import Path
+
+    form = Path(".github/ISSUE_TEMPLATE/removal-request.yml").read_text(encoding="utf-8")
+    for want in ("set id", "page address", "Who is asking", "Why", "14 days", "takedown"):
+        assert want in form
+    doc = Path("docs/removal.md").read_text(encoding="utf-8")
+    assert "data/takedown.csv" in doc and "record" in doc and "14 days" in doc
+    head = Path("data/takedown.csv").read_text(encoding="utf-8").splitlines()
+    assert head == [",".join(pack.TAKEDOWN_FIELDS)]  # no real entry

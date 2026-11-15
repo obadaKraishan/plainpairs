@@ -327,9 +327,11 @@ def card_problems(text: str, files: list[dict[str, Any]]) -> list[str]:
     return problems
 
 
-def check_pack(pack_dir: Path) -> list[str]:
-    """Every problem the pack folder has; empty when it may be uploaded."""
+def check_pack(pack_dir: Path, takedown_path: Path | None = None) -> list[str]:
+    """Every problem the pack folder has; empty when it may be uploaded. With a takedown list,
+    also every text row of an entry on it."""
     root = Path(pack_dir)
+    takedown = read_takedowns(takedown_path)
     problems: list[str] = []
     try:
         manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
@@ -358,6 +360,13 @@ def check_pack(pack_dir: Path) -> list[str]:
         if t.num_rows != f["rows"]:
             problems.append(f"{f['path']} has {t.num_rows} rows; the manifest says {f['rows']}.")
         problems += _check_file(f, t)
+        if f["layer"] == "text" and t.num_rows:
+            col, ids = ("url", takedown["url"]) if f["configuration"] == "nci" else (
+                "set_id", takedown["set_id"])  # fmt: skip
+            values = t[col].to_pylist()
+            hits = sum(1 for v in values if (v.lower() if col == "set_id" else v) in ids)
+            if hits:
+                problems.append(f"{f['path']}: {hits} text rows of entries on the takedown list.")
     if (root / "README.md").exists():
         problems += card_problems((root / "README.md").read_text(encoding="utf-8"), files)
     return problems
