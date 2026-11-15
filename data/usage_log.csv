@@ -153,3 +153,12 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T16:04:38.161Z,GET,dailymed.nlm.nih.gov,/dailymed/app-support-mapping-files.cfm,,200,85341,0.319
 2026-11-15T16:07:50.640Z,GET,download.open.fda.gov,/drug/ndc/drug-ndc-0001-of-0001.json.zip,,200,28247165,1.667
 2026-11-15T16:07:53.309Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_zip_files_meta_data.zip,,200,7649371,1.049
+2026-11-15T16:47:00.868Z,GET,dailymed.nlm.nih.gov,/dailymed/spl-resources-all-drug-labels.cfm,,200,110482,0.441
+2026-11-15T16:47:13.361Z,GET,dailymed.nlm.nih.gov,/dailymed/spl-resources-all-drug-labels.cfm,,200,110482,0.378
+2026-11-15T16:47:14.744Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part1.zip,,200,3220947402,83.694
+2026-11-15T16:49:04.117Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part2.zip,,200,3220769486,82.805
+2026-11-15T16:50:52.733Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part3.zip,,200,3221022836,82.049
+2026-11-15T16:52:38.888Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part4.zip,,200,3221020080,81.695
+2026-11-15T16:54:26.448Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part5.zip,,200,3220228946,81.024
+2026-11-15T16:56:14.064Z,GET,dailymed-data.nlm.nih.gov,/public-release-files/dm_spl_release_human_rx_part6.zip,,200,1959820499,49.990
+2026-11-15T16:57:20.639Z,GET,dailymed.nlm.nih.gov,/dailymed/spl-resources-all-drug-labels.cfm,,200,110482,0.112
