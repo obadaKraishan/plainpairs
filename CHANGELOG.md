@@ -17,3 +17,9 @@ All notable changes to this project are recorded here. The format follows
   patient texts, cleaned of markup with headings kept, and its tables as plain rows.
 - Readability measures (Flesch-Kincaid grade, Flesch reading ease, SMOG) and the standard
   headings of Medication Guides found by their wording.
+- `download-all`: every part of one export, checked against a hash manifest and the listing,
+  resumable.
+- A second sentence rule (`s2`) that breaks at list marks, numbered headings and headings in
+  capitals; measures now also give the share of long sentences and counts of numbers and
+  percentages.
+- Runtime dependency: pyarrow, to write the tables as Parquet.

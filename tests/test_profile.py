@@ -11,7 +11,7 @@ def rows():
     second["openfda"] = dict(second["openfda"], manufacturer_name=["Other Maker LLC"])
     third = copy.deepcopy(PLR_WITH_GUIDE)
     third.update(id="doc-0006", set_id="set-ffff")
-    third["spl_medguide"] = [PLR_WITH_GUIDE["spl_medguide"][0].upper() + " © 2026 Example"]
+    third["spl_medguide"] = [PLR_WITH_GUIDE["spl_medguide"][0].upper() + " \u00a9 2026 Example"]
     records = [PLR_WITH_GUIDE, second, third, OLDER_WITH_INSERT, OTC_DRUG_FACTS, MISSING_SECTIONS]
     return [label.parse_label(r) for r in records]
 

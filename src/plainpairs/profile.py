@@ -30,7 +30,7 @@ from plainpairs.schema import LabelRow, PatientTexts, PrescriberSections
 PRESCRIBER = tuple(PrescriberSections.model_fields)
 PATIENT = tuple(PatientTexts.model_fields)
 #: A copyright mark: the sign, the word, or "all rights reserved".
-COPYRIGHT = re.compile(r"©|\bcopyright\b|all rights reserved", re.I)
+COPYRIGHT = re.compile(r"\u00a9|\bcopyright\b|all rights reserved", re.I)
 _TOKEN = re.compile(r"[a-z]{3,}")
 STOPWORDS = frozenset(
     (

@@ -126,7 +126,7 @@ def test_syllables_by_rule(word, count):
 
 
 def test_sentences_ignore_abbreviations_and_decimals():
-    s = rd.sentences("Take 2.5 mg. daily, e.g. at noon. Ask your doctor! Why? Fine")
+    s = rd.sentences("Take 2.5 mg. daily, e.g. at noon. Ask your doctor! Why? Fine", "s1")
     assert s == [
         "Take 2\u20245 mg\u2024 daily, e.g\u2024 at noon",
         "Ask your doctor",
@@ -136,7 +136,7 @@ def test_sentences_ignore_abbreviations_and_decimals():
 
 
 def test_measure_matches_the_formulas_by_hand():
-    r = rd.measure("The cat sat. The dog ran far away.")
+    r = rd.measure("The cat sat. The dog ran far away.", "s1")
     # 8 words, 2 sentences, 9 syllables (a-way = 2), no polysyllables
     assert (r.words, r.sentences, r.syllables, r.polysyllables) == (8, 2, 9, 0)
     assert r.flesch_kincaid_grade == round(0.39 * 4 + 11.8 * 9 / 8 - 15.59, 2)
@@ -168,7 +168,7 @@ def test_a_heading_cited_in_running_text_is_not_a_heading():
         'information I should know about Zorvan?" Headache.'
     )
     assert [s.key for s in tx.segment_patient_text(guide)] == ["most_important", "side_effects"]
-    assert tx.is_reference("see “", 5)
+    assert tx.is_reference("see \u201c", 5)
     assert not tx.is_reference("Sleepiness. ", 12)
 
 
@@ -179,3 +179,36 @@ def test_core_drops_closing_matter_only_near_the_end():
     assert tx.loose_hash(a) != tx.loose_hash(b)
     early = "Distributed by mail. " + "Take it daily. " * 2
     assert tx.core(early) == early
+
+
+def test_s2_breaks_at_list_marks_numbered_headings_and_capital_headings():
+    text = (
+        "5 WARNINGS AND PRECAUTIONS 5.1 Sleepiness Zorvan may cause: \u2022 headache "
+        "\u2022 tiredness \u2022 dizziness Tell your doctor."
+    )
+    assert len(rd.sentences(text, "s1")) == 1
+    assert rd.sentences(text, "s2") == [
+        "WARNINGS AND PRECAUTIONS",
+        "5\u20241 Sleepiness Zorvan may cause:",
+        "headache",
+        "tiredness",
+        "dizziness Tell your doctor",
+    ]
+    with pytest.raises(ValueError, match="Unknown sentence rule"):
+        rd.sentences(text, "s9")
+
+
+def test_measure_rules_counts_once_and_grades_by_each_rule():
+    text = "Zorvan may cause: \u2022 headache \u2022 tiredness. Take 2 tablets, 50% of the dose."
+    m = rd.measure_rules(text)
+    assert m["s1"].words == m["s2"].words
+    assert m["s2"].sentences > m["s1"].sentences
+    assert m["s2"].flesch_kincaid_grade < m["s1"].flesch_kincaid_grade
+    assert (m["s2"].numbers, m["s2"].percentages) == (2, 1)
+    assert 0 <= m["s2"].long_sentence_share <= 1
+    assert rd.measure("12 34 !").long_sentence_share is None
+
+
+def test_counts_of_numbers_and_percentages():
+    assert rd.count_numbers("Take 1 or 2.5 mg, up to 1,000 mg; not 3rd") == 3
+    assert rd.count_percentages("12% and 0.5 % and five percent") == 3
