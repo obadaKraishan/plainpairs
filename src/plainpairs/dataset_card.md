@@ -7,7 +7,7 @@ language:
 - es
 pretty_name: PlainPairs
 size_categories:
-- 100K<n<1M
+- $size_category
 tags:
 - health-literacy
 - readability
@@ -20,12 +20,14 @@ $configs
 
 # PlainPairs
 
-> **Not medical information.** PlainPairs is a research record of how the text of United
-> States medicine labels is worded, for prescribers and for patients. The labels in it may be
-> out of date, incomplete or replaced by newer versions. **Never use it to decide anything
-> about a medicine.** For that, read the current label that comes with the medicine and talk
-> to a doctor or pharmacist. Nothing here says what a medicine does, whether it is safe, or
-> who should take it.
+> **Not medical information.** PlainPairs is a research record of how text is worded for
+> prescribers and for patients: the text of United States medicine labels, and $nci_name.
+> The labels in it may be out of date, incomplete or replaced by newer versions, and the cancer
+> information text may be out of date too. **Never use any of it to decide anything about a
+> medicine or about care.** For a medicine, read the current label that comes with it and talk
+> to a doctor or pharmacist. Current cancer information is on the National Cancer Institute's
+> own site, https://www.cancer.gov. The project's measures describe wording only: they do not
+> say what a medicine or a treatment does, whether it is safe, or who should use it.
 
 Version $version, built from the openFDA drug label export of $export.
 
@@ -61,6 +63,13 @@ trusted codes; or summaries and pairs) and its text tables. **No number in this 
 project's documents combines two configurations,** and no file holds rows of two. They hold
 different sets of texts, measured in different ways: a difference between them is not a
 measured change.
+
+`excluded_otc` is a list, not a configuration: the $n_excluded_otc labels in the export that the
+source's `openfda` block types as over-the-counter drugs but that carry a Medication Guide or a
+patient package insert, all such labels in the export. PlainPairs covers prescription labels, so
+they are in no other table; the list holds record fields only (set id, version, product type,
+format, which patient text the label has), no text and no measures, so that the choice can be
+seen.
 
 ## What "listed" means, and what it does not
 Every label carries two flags, read on the days the two lists were read (the NDC directory of
@@ -164,9 +173,10 @@ version, the record row stays, and the request is answered within 14 days.
   built from the JSON, carry the repeat too.
 
 ## How to cite
-Kraishan, O. PlainPairs: a research corpus pairing the prescriber and patient texts of US
-medicine labels, version $version. https://huggingface.co/datasets/obadakr/plainpairs. Please
-also give the sources' credit lines above.
+$citation
+
+Please also give the sources' credit lines above. The project's repository holds the same
+citation in `CITATION.cff`.
 
 ## Files
 $files_table

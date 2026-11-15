@@ -1,4 +1,5 @@
-# DRAFT: nothing has been released yet. The version, date and DOI are filled in at release.
+# DRAFT: nothing has been released yet. The preferred citation is the dataset's version
+# 0.1.0; the release date and the DOI are filled in at release.
 cff-version: 1.2.0
 message: "If you use PlainPairs, please cite it as below."
 type: software
@@ -23,3 +24,15 @@ keywords:
   - plain language
   - medication guides
   - dataset
+preferred-citation:
+  type: data
+  title: "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
+  authors:
+    - family-names: Kraishan
+      given-names: Obada
+      affiliation: "College of Media and Communication, Texas Tech University"
+  year: 2026
+  version: "0.1.0"
+  publisher:
+    name: "Hugging Face"
+  url: "https://huggingface.co/datasets/obadakr/plainpairs"

@@ -215,3 +215,59 @@ def test_zenodo_metadata_is_code_and_documents_only():
     z = json.loads(Path(".zenodo.json").read_text(encoding="utf-8"))
     assert z["upload_type"] == "software" and z["license"] == "Apache-2.0"
     assert "no data table" in z["description"] and "not medical information" in z["description"]
+
+
+def test_the_size_category_comes_from_the_row_count(made):
+    assert pack.size_category(0) == "n<1K"
+    assert pack.size_category(999_999) == "100K<n<1M"
+    assert pack.size_category(1_000_000) == "1M<n<10M"
+    assert pack.size_category(1_409_294) == "1M<n<10M"
+    assert pack.size_category(10**13) == "n>1T"
+    _out, p, m = made
+    card = (p / "README.md").read_text(encoding="utf-8")
+    assert f"size_categories:\n- {pack.size_category(m['rows'])}\n" in card
+    wrong = card.replace(f"- {pack.size_category(m['rows'])}\n", "- 1M<n<10M\n", 1)
+    if wrong != card:
+        (p / "README.md").write_text(wrong, encoding="utf-8")
+        assert any("size_categories" in x for x in pack.check_pack(p))
+
+
+def test_the_first_screen_covers_the_nci_text_and_excluded_otc_is_explained(made):
+    _out, p, m = made
+    card = (p / "README.md").read_text(encoding="utf-8")
+    first = " ".join(card.split("\n---\n", 1)[1][:2500].replace("\n>", " ").split())
+    assert "cancer information text may be out of date" in first
+    assert "https://www.cancer.gov" in first and "about care" in first
+    n = next(f["rows"] for f in m["files"] if f["config"] == "excluded_otc")
+    flat = " ".join(card.split())
+    assert f"`excluded_otc` is a list, not a configuration: the {n:,} labels" in flat
+    (p / "README.md").write_text(card.replace("site, https://www.cancer.gov.", "site."))
+    assert any("does not cover the NCI text" in x for x in pack.check_pack(p))
+
+
+def test_card_kaggle_and_citation_file_cite_the_same_version(made, tmp_path):
+    import re
+    from pathlib import Path
+
+    _out, p, m = made
+    cite = pack.citation("0.1.0", "2026-11-15")
+    assert cite.startswith("Kraishan, O. (2026). PlainPairs: a research corpus")
+    assert "(Version 0.1.0) [Data set]. Hugging Face. https://huggingface.co/" in cite
+    card = (p / "README.md").read_text(encoding="utf-8")
+    assert cite in card
+    meta = pack.build_kaggle(p, tmp_path / "k")
+    assert cite in meta["description"] and "https://www.cancer.gov" in meta["description"]
+    cff = Path("CITATION.cff").read_text(encoding="utf-8")
+    pref = cff.split("preferred-citation:\n", 1)[1]
+    assert re.search(r"^  type: data$", pref, re.M)
+    assert re.search(r'^  title: "(.+)"$', pref, re.M).group(1) == pack.TITLE
+    assert re.search(r"^  year: (\d{4})$", pref, re.M).group(1) == m["created"][:4]
+    assert re.search(r'^  version: "(.+)"$', pref, re.M).group(1) == m["version"]
+    assert re.search(r'^  url: "(.+)"$', pref, re.M).group(1) == pack.HF_URL
+    assert re.search(r'^    name: "(.+)"$', pref, re.M).group(1) == "Hugging Face"
+    assert "family-names: Kraishan" in pref and "given-names: Obada" in pref
+    (p / "README.md").write_text(card.replace("(2026)", "(2025)"), encoding="utf-8")
+    assert any("does not cite this version" in x for x in pack.check_pack(p))
+    meta["description"] = meta["description"].replace("(2026)", "")
+    (tmp_path / "k" / "dataset-metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    assert any("does not cite" in x for x in pack.check_kaggle(tmp_path / "k", p))

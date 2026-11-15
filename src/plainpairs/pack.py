@@ -69,6 +69,40 @@ TAKEDOWN_FIELDS = ("kind", "id", "received", "reason")
 NCI_NAME = (
     "text from the National Cancer Institute's cancer information summaries, with parts left out"
 )
+#: The dataset's title and address, as the card, the Kaggle mirror and CITATION.cff cite it.
+TITLE = (
+    "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
+)
+HF_URL = "https://huggingface.co/datasets/obadakr/plainpairs"
+#: Hugging Face's size categories by number of rows: (exclusive upper bound, category).
+SIZE_CATEGORIES = (
+    (1_000, "n<1K"),
+    (10_000, "1K<n<10K"),
+    (100_000, "10K<n<100K"),
+    (1_000_000, "100K<n<1M"),
+    (10_000_000, "1M<n<10M"),
+    (100_000_000, "10M<n<100M"),
+    (1_000_000_000, "100M<n<1B"),
+    (10_000_000_000, "1B<n<10B"),
+    (100_000_000_000, "10B<n<100B"),
+    (1_000_000_000_000, "100B<n<1T"),
+)
+
+
+def size_category(rows: int) -> str:
+    """Hugging Face's ``size_categories`` value for a dataset of ``rows`` rows in all."""
+    for bound, name in SIZE_CATEGORIES:
+        if rows < bound:
+            return name
+    return "n>1T"
+
+
+def citation(version: str, created: str) -> str:
+    """How to cite one version; the year is the year the version was built."""
+    return (
+        f"Kraishan, O. ({created[:4]}). {TITLE} (Version {version}) [Data set]. "
+        f"Hugging Face. {HF_URL}"
+    )
 
 
 class PackError(RuntimeError):
@@ -262,6 +296,8 @@ def _template(name: str, manifest: dict[str, Any]) -> str:
         "dailymed_release": manifest["sources"]["dailymed_release"] or "",
         "nci_read": manifest["sources"]["nci_pages_read"] or "",
         "configs": _configs_yaml(manifest["files"]),
+        "size_category": size_category(manifest["rows"]),
+        "citation": citation(manifest["version"], manifest["created"]),
         "nci_name": NCI_NAME,
         "held_marked": f"{manifest['held_back']['label_text_rows_marked']:,}",
         "megabytes": f"{manifest['bytes'] / 1e6:,.1f}",
@@ -320,10 +356,15 @@ def card_problems(text: str, files: list[dict[str, Any]]) -> list[str]:
         problems.append("the card's configs do not match the manifest's files")
     if re.search(r"^\s+default: true", front, re.M):
         problems.append("the card names a default config")
+    want = size_category(sum(f["rows"] for f in files))
+    if re.findall(r"^size_categories:\n- (\S+)$", front, re.M) != [want]:
+        problems.append(f"the card's size_categories is not {want}, the files' row count")
     body = text[m.end() :]
     first = body[:2500].lower()
     if "not medical information" not in first:
         problems.append("the first screen of the card does not say it is not medical information")
+    if any(f["configuration"] == "nci" for f in files) and "https://www.cancer.gov" not in first:
+        problems.append("the first screen of the card does not cover the NCI text")
     return problems
 
 
@@ -368,7 +409,11 @@ def check_pack(pack_dir: Path, takedown_path: Path | None = None) -> list[str]:
             if hits:
                 problems.append(f"{f['path']}: {hits} text rows of entries on the takedown list.")
     if (root / "README.md").exists():
-        problems += card_problems((root / "README.md").read_text(encoding="utf-8"), files)
+        text = (root / "README.md").read_text(encoding="utf-8")
+        problems += card_problems(text, files)
+        cite = citation(manifest.get("version", ""), manifest.get("created", ""))
+        if cite not in text:
+            problems.append("the card does not cite this version as the manifest gives it")
     return problems
 
 
@@ -456,10 +501,13 @@ def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
         "keywords": ["health", "nlp", "text"],
         "description": (
             f"Version {manifest['version']} of PlainPairs, mirrored from Hugging Face "
-            "(https://huggingface.co/datasets/obadakr/plainpairs). Not medical information: a "
-            "research record of how label text is worded; labels may be out of date; never use "
-            "it to decide about a medicine. Three configurations, never pooled: current, "
-            f"unlisted and nci ({NCI_NAME}). The terms for each are in LICENSES.md."
+            f"({HF_URL}). Not medical information: a research record of how medicine label "
+            "text and cancer information text are worded. Both may be out of date; never use "
+            "either to decide anything about a medicine or about care. Current cancer "
+            "information is on the National Cancer Institute's own site, https://www.cancer.gov. "
+            "Three configurations, never pooled: current, unlisted and nci "
+            f"({NCI_NAME}). The terms for each are in LICENSES.md. Cite as: "
+            f"{citation(manifest['version'], manifest['created'])}"
         ),
         "resources": resources,
     }
@@ -490,4 +538,6 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
         or "not medical information" not in meta.get("description", "").lower()
     ):
         problems.append("the Kaggle metadata lacks its id or the not-medical-information line.")
+    if citation(manifest["version"], manifest["created"]) not in meta.get("description", ""):
+        problems.append("the Kaggle description does not cite this version as the card does.")
     return problems
