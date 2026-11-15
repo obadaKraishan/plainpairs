@@ -104,7 +104,7 @@ def test_subsections_nesting_and_skips():
         "43685-7",
         "5 WARNINGS AND PRECAUTIONS",
         "<paragraph>Intro text.</paragraph>",
-        subs=sub + "<excerpt><highlight><text>Not read.</text></highlight></excerpt>",
+        subs=sub + "<observationMedia><text>Not read.</text></observationMedia>",
     )
     guide = section("42231-1", "MEDICATION GUIDE", "<paragraph>Guide words.</paragraph>")
     counsel = section("34076-0", "17 PATIENT COUNSELING", "<paragraph>Counsel.</paragraph>", guide)
@@ -176,3 +176,31 @@ def test_bad_documents():
         spl.identity(b"not xml")
     with pytest.raises(spl.SplError, match="setId"):
         spl.identity(b'<document xmlns="urn:hl7-org:v3"><id root="x"/></document>')
+
+
+def test_break_inside_styled_text_keeps_the_rest_of_the_line():
+    body = (
+        '<paragraph><content styleCode="bold">How should I take Zorvan?<br/>Take it '
+        "with water.</content> Then rest.</paragraph>"
+    )
+    d = spl.parse_document(doc(section("42231-1", "GUIDE", body)))
+    assert kinds(d["fields"]["spl_medguide"])[1:] == [
+        ("heading", "How should I take Zorvan?"),
+        ("paragraph", "Take it with water. Then rest."),
+    ]
+
+
+def test_highlights_excerpt_is_read_and_flagged():
+    sec = (
+        '<component><section><code code="34067-9"/><title>1 INDICATIONS</title>'
+        "<text><paragraph>Full text.</paragraph></text>"
+        "<excerpt><highlight><text><paragraph>Short summary.</paragraph></text></highlight>"
+        "</excerpt></section></component>"
+    )
+    blocks = spl.parse_document(doc(sec))["fields"]["indications_and_usage"]
+    assert [(b.text, b.highlights) for b in blocks] == [
+        ("1 INDICATIONS", False),
+        ("Full text.", False),
+        ("Short summary.", True),
+    ]
+    assert spl.measure(blocks)["blocks_in_highlights"] == 1

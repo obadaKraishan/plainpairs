@@ -76,6 +76,7 @@ BLOCKS_SCHEMA = pa.schema(
         ("depth", pa.int16()),
         ("list_depth", pa.int16()),
         ("table", pa.int16()),
+        ("highlights", pa.bool_()),
         ("text", pa.string()),
     ]
 )
@@ -104,6 +105,7 @@ STRUCTURED = pa.struct(
         ("blocks_cell", pa.int32()),
         ("blocks_caption", pa.int32()),
         ("blocks_data_cell", pa.int32()),
+        ("blocks_in_highlights", pa.int32()),
         ("subsection_titles", pa.int32()),
         ("sentences_over_20", pa.int32()),
         ("sentences_over_40", pa.int32()),
@@ -265,6 +267,7 @@ def read_part(
                             "depth": b.depth,
                             "list_depth": b.list_depth,
                             "table": b.table,
+                            "highlights": b.highlights,
                             "text": b.text,
                         }
                     )

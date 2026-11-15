@@ -20,7 +20,8 @@ the same section in the JSON (:data:`FIELD_CODES`).
   which the JSON measures cut as well.
 
 A line break (``<br/>``) ends a line, so a heading and its body set apart by a break become two
-blocks. Images (``renderMultiMedia``), the highlights (``excerpt``), media descriptions and
+blocks. A newer-format section's Highlights excerpt is read too, with ``highlights`` set, since
+the JSON keeps it in the same field. Images (``renderMultiMedia``), media descriptions and
 product data are not read.
 
 **Sentences from structure** (:func:`units`): every ``paragraph``, ``item``, ``cell`` and
@@ -72,7 +73,7 @@ _SENTENCE_LIKE_END = ".:;!,"
 _STYLED = re.compile(r"bold|underline|emphasis", re.I)
 #: Typed list marks: those the JSON's ``s2`` rule breaks at, and the white circle.
 _TYPED_MARK = re.compile(r"\s*[\u2022\u25cf\u25aa\u25a0\u25e6\u2023\u25cb]\s*")
-_SKIP = {"renderMultiMedia", "excerpt", "observationMedia", "subject", "id", "code"}
+_SKIP = {"renderMultiMedia", "observationMedia", "subject", "id", "code"}
 _INLINE = {"content", "sub", "sup", "linkHtml", "footnoteRef", "footnote", "span", "a"}
 
 
@@ -90,6 +91,9 @@ class Block:
     list_depth: int = 0
     #: 1-based number of the table it sits in within its section (0 = not in a table).
     table: int = 0
+    #: True for the section's Highlights excerpt (newer-format labels), which the JSON keeps
+    #: in the same field.
+    highlights: bool = False
 
 
 def _local(tag: Any) -> str:
@@ -114,6 +118,7 @@ class _Ctx:
     depth: int = 0
     list_depth: int = 0
     table: int = 0
+    highlights: bool = False
 
 
 class _Walker:
@@ -128,7 +133,7 @@ class _Walker:
             return
 
         def add(k: str, s: str) -> None:
-            self.blocks.append(Block(k, s, ctx.depth, ctx.list_depth, ctx.table))
+            self.blocks.append(Block(k, s, ctx.depth, ctx.list_depth, ctx.table, ctx.highlights))
 
         if kind in ("title", "data_cell"):
             add(kind, whole)
@@ -162,7 +167,11 @@ class _Walker:
             if piece:
                 add("item" if (i > 0 or lead_mark) else kind, piece)
 
-    def _inline(self, el: Any, line: _Line, styled: bool, flush, kind: str, ctx: _Ctx) -> None:
+    def _inline(
+        self, el: Any, state: dict[str, _Line], styled: bool, flush, kind: str, ctx: _Ctx
+    ) -> None:
+        """Inline markup inside a line. ``state["line"]`` is the open line; a break inside
+        the markup closes it and opens a new one, so it is looked up every time."""
         tag = _local(el.tag)
         if tag == "br":
             flush()
@@ -170,10 +179,10 @@ class _Walker:
             return
         elif tag in _INLINE:
             st = styled or _styled(el)
-            line.add(el.text, st)
+            state["line"].add(el.text, st)
             for ch in el:
-                self._inline(ch, line, st, flush, kind, ctx)
-                line.add(ch.tail, st)
+                self._inline(ch, state, st, flush, kind, ctx)
+                state["line"].add(ch.tail, st)
         else:  # a block inside a line: end the line, then read the block
             flush()
             self._child(el, kind, ctx)
@@ -182,14 +191,13 @@ class _Walker:
     def container(self, el: Any, kind: str, ctx: _Ctx) -> None:
         """One paragraph, item, cell, caption or title (or a section's loose text), by lines."""
         styled = _styled(el)
-        line = _Line()
+        state = {"line": _Line()}
 
         def flush() -> None:
-            nonlocal line
-            self._emit(line, kind, ctx)
-            line = _Line()
+            self._emit(state["line"], kind, ctx)
+            state["line"] = _Line()
 
-        line.add(el.text, styled)
+        state["line"].add(el.text, styled)
         for ch in el:
             tag = _local(ch.tag)
             if tag in ("list", "table", "paragraph", "caption"):
@@ -198,8 +206,8 @@ class _Walker:
             elif tag == "br":
                 flush()
             elif tag not in _SKIP:
-                self._inline(ch, line, styled, flush, kind, ctx)
-            line.add(ch.tail, styled)
+                self._inline(ch, state, styled, flush, kind, ctx)
+            state["line"].add(ch.tail, styled)
         flush()
 
     def _child(self, el: Any, kind: str, ctx: _Ctx) -> None:
@@ -207,7 +215,7 @@ class _Walker:
         cell's kind."""
         tag = _local(el.tag)
         if tag == "list":
-            inner = _Ctx(ctx.depth, ctx.list_depth + 1, ctx.table)
+            inner = _Ctx(ctx.depth, ctx.list_depth + 1, ctx.table, ctx.highlights)
             item_kind = "data_cell" if kind == "data_cell" else "item"
             for ch in el:
                 t = _local(ch.tag)
@@ -225,7 +233,7 @@ class _Walker:
 
     def table(self, el: Any, ctx: _Ctx) -> None:
         self.tables += 1
-        here = _Ctx(ctx.depth, ctx.list_depth, self.tables)
+        here = _Ctx(ctx.depth, ctx.list_depth, self.tables, ctx.highlights)
         cells = _own_cells(el)
         flat = [text.clean("".join(c.itertext())) for c in cells]
         kind = "data_cell" if text.is_data_table([c for c in flat if c]) else "cell"
@@ -243,6 +251,12 @@ class _Walker:
                 self.container(ch, "title", ctx)
             elif tag == "text":
                 self.container(ch, "paragraph", ctx)
+            elif tag == "excerpt":
+                hl = _Ctx(depth, highlights=True)
+                for h in ch:
+                    for t in h if _local(h.tag) == "highlight" else ():
+                        if _local(t.tag) == "text":
+                            self.container(t, "paragraph", hl)
             elif tag == "component":
                 for sub in ch:
                     if _local(sub.tag) == "section":
@@ -420,5 +434,6 @@ def measure(blocks: list[Block]) -> dict[str, Any]:
     return {
         **m,
         **{f"blocks_{k}": kinds.get(k, 0) for k in BLOCK_KINDS},
+        "blocks_in_highlights": sum(1 for b in blocks if b.highlights),
         "subsection_titles": sum(1 for b in blocks if b.kind == "title" and b.depth > 0),
     }
