@@ -32,7 +32,7 @@ def make_client(since: str, max_calls: int, max_bytes: int) -> PoliteClient:
 def _check_drive(path: Path) -> None:
     if not path.resolve().parent.exists():
         raise SystemExit(
-            f"{path} does not lead to a folder on the drive. Mount the Kraishan drive and check "
+            f"{path} does not lead to a folder on the drive. Mount the external data drive and check "
             "that data/raw is a symlink to it."
         )
 

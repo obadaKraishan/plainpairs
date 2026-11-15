@@ -63,7 +63,7 @@ def test_commands_that_write_raw_data_need_the_drive(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data").mkdir()
     (tmp_path / "data" / "raw").symlink_to(tmp_path / "gone" / "plainpairs")
-    with pytest.raises(SystemExit, match="Mount the Kraishan drive"):
+    with pytest.raises(SystemExit, match="Mount the external data drive"):
         main(["download-part"])
 
 

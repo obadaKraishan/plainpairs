@@ -29,7 +29,7 @@ PMI = `patient_medication_information`.
 | no MG field, but "medication guide" in `spl_unclassified_section` | 775 | 0.3% |
 | no MG field, but "medication guide" in IFP | 1,147 | 0.4% |
 
-The planner's figures are confirmed: 264,748 labels, 23,224 with MG, 12,837 with PPI, 35,840 with either, 67,916 with IFP and 1,380 with PMI.
+These match a first count taken earlier the same day: 264,748 labels, 23,224 with MG, 12,837 with PPI, 35,840 with either, 67,916 with IFP and 1,380 with PMI.
 
 ## The five patient fields, alone and together
 

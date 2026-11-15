@@ -40,7 +40,15 @@ drafts are in [`docs/`](docs/).
 The labels come from the drug label dataset that the U.S. Food and Drug Administration publishes
 through its openFDA program. The companies that market each medicine write its label.
 [`docs/sources.md`](docs/sources.md) quotes the terms of use, the disclaimer and the citation the
-source asks for, and the open questions about rights in label text.
+source asks for, and the open questions about rights in label text. The source's own
+disclaimer applies to everything here: "Do not rely on openFDA to make decisions regarding
+medical care. Always speak to your health provider about the risks and benefits of
+FDA-regulated products."
+
+## Documents
+[`docs/`](docs/) holds the source check (`sources.md`), the prior art (`prior-art.md`), the counts
+and the sample (`counts.md`, `sample.md`), and drafts of the schema, method, codebook, benchmark,
+backfill and weekly update.
 
 ## License
 The software in this repository is licensed under the Apache License, Version 2.0 (see
