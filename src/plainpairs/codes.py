@@ -345,7 +345,8 @@ CODEBOOK: dict[str, tuple[tuple[str, ...], str]] = {
         "experimental",
     ),
     "long_sections": (("sections", "longest_section_words", "sections_over_250"), "experimental"),
-    "whom_to_call": (("contact_sentences", "contact_sentences_with_when"), "trusted"),
+    "whom_to_call": (("contact_sentences",), "trusted"),
+    "when_to_call": (("contact_sentences_with_when",), "experimental"),
     "long_sentences_structured": (
         (
             "structured_sentences",
