@@ -27,6 +27,7 @@ from plainpairs import (
     stats,
     structure,
     tables,
+    update,
 )
 from plainpairs import profile as prof
 from plainpairs.client import Budget, PoliteClient, UsageLog
@@ -347,6 +348,29 @@ def cmd_release_pack_check(args: argparse.Namespace) -> int:
         return 1
     print(f"Pack check passed: {args.pack}")
     return 0
+
+
+def cmd_update(args: argparse.Namespace) -> int:
+    _check_drive(Path("data/raw"))
+    work = Path(args.work)
+    if args.from_pack:
+        prev_tables, prev_structure = update.previous_from_pack(
+            Path(args.from_pack), work / "previous"
+        )
+    else:
+        prev_tables, prev_structure = Path(args.from_tables), Path(args.from_structure)
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    sources = update.OnlineSources(
+        client, BULK_ROOT, LISTED_ROOT, PAGES_ROOT, Path("data/raw/dailymed/updates"), today_utc(),
+        log=lambda s: print(s, flush=True),
+    )  # fmt: skip
+    summary = update.run(
+        prev_tables, prev_structure, work, sources, workers=args.workers,
+        log=lambda s: print(s, flush=True),
+    )  # fmt: skip
+    print(json.dumps(summary, indent=1, sort_keys=True))
+    print(f"Calls: {client.budget.calls}; bytes: {client.budget.nbytes:,}.")
+    return 0 if summary["status"] in ("ready", "no_new_export") else 1
 
 
 def _listing_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None]:
@@ -727,6 +751,15 @@ def build_parser() -> argparse.ArgumentParser:
     rc.add_argument("--kaggle")
     rc.add_argument("--takedown", default="data/takedown.csv", help="the takedown list")
     rc.set_defaults(func=cmd_release_pack_check)
+
+    p = sub.add_parser("update", help="from the last build to the newest export (counts only)")
+    p.add_argument("--from-tables", default="data/interim/tables", help="the last build")
+    p.add_argument("--from-structure", default="data/interim/structure")
+    p.add_argument("--from-pack", help="start from a published pack instead of a local build")
+    p.add_argument("--work", required=True, help="a folder for the new build and summary.json")
+    p.add_argument("--workers", type=int, default=6)
+    caps(p)
+    p.set_defaults(func=cmd_update)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
     p.add_argument("--tables", default="data/interim/tables")
