@@ -148,3 +148,48 @@ def test_a_parallel_codes_run_gives_the_same_rows(tmp_path):
     one = pq.read_table(out / "codes.parquet")
     codes.build(out, workers=2, batch_size=2, log=lambda s: None)
     assert pq.read_table(out / "codes.parquet").equals(one)
+
+
+def test_version_1_brackets_names_pronunciations_and_plain_first():
+    got = c(
+        "Take ZORVAN\u00ae (zorvanide tablets). Zorvan (zor van' ide) is a tablet. "
+        "You may have trouble sleeping (insomnia). It is used with Brandex (zorvanide). "
+        "Use it (sometimes taken at night) as told."
+    )
+    assert got["explained_in_brackets"] == 1  # only "trouble sleeping (insomnia)"
+
+
+def test_version_1_vague_words_leave_out_the_month_and_reporting():
+    got = c("Revised: May 2024. You may report side effects to FDA. You may get a rash.")
+    assert got["vague_core"] == 1
+
+
+def test_version_1_contact_is_not_informing_patients():
+    got = c(
+        "Inform patients about the risks. Your doctor may tell you to stop. "
+        "Advise patients to contact their healthcare provider if a rash occurs."
+    )
+    assert got["contact_sentences"] == 1
+    assert got["contact_sentences_with_when"] == 1
+
+
+def test_version_1_risk_size_numbers_only():
+    got = c(
+        "5.6 Liver problems Zorvan may cause liver problems [see Warnings and Precautions (5.1)]. "
+        "Rash may occur after 1 dose of 10 mg each day. Rash occurred in 12 patients (3%). "
+        "The risk was twice as high in older adults."
+    )
+    assert got["risk_sentences"] == 4
+    assert got["risk_sentences_with_number"] == 2
+
+
+def test_version_1_one_in_n_leaves_out_packaging():
+    got = c("PACKAGING: 30 in 1 BOX. About 1 in 500 people had it.")
+    assert got["one_in_n"] == 1
+
+
+def test_every_code_has_a_status_and_the_tables_split_by_it():
+    assert set(codes.STATUS) == set(codes.FIELDS) - set(codes.COUNTS) | set(codes.STRUCTURED_FIELDS)
+    assert set(codes.STATUS.values()) == {"trusted", "experimental"}
+    assert not set(codes.EXPERIMENTAL) & set(codes.SCHEMA.names)
+    assert set(codes.EXPERIMENTAL) <= set(codes.EXPERIMENTAL_SCHEMA.names)
