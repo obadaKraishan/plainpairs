@@ -104,6 +104,8 @@ All notable changes to this project are recorded here. The format follows
 - One citation, with the year, in the card, the Kaggle description and `CITATION.cff`
   (`preferred-citation`, the dataset's version); `release check` fails when the card or the
   Kaggle description does not cite the manifest's version.
+- The data card records that version 0.1.0 is on Hugging Face as a private dataset; nothing
+  is public yet.
 - The text switch for the first release: labels `unmarked`, the NCI configuration's kept text
   with its credit line; the Spanish index is marked provisional in the data card.
 - The hand topic check is scored: seven heading keys release their mapping rule

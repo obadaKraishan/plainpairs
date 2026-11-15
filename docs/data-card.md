@@ -1,7 +1,9 @@
 # PlainPairs data card (DRAFT)
 
-**DRAFT for the maintainer's review. Nothing has been released.** Sizes are those of the build
-from the openFDA drug label export of 2026-11-13.
+**DRAFT for the maintainer's review. Nothing is public yet:** version 0.1.0 is on Hugging Face
+as a private dataset (`obadakr/plainpairs`, 16 configs, 1,409,294 rows, 563.0 MB) for the
+maintainer's look. Sizes are those of the build from the openFDA drug label export of
+2026-11-13.
 
 ## What it is
 A research record of how United States medicine labels are worded for two readers. For every
