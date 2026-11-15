@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, bulk, label, pages, probe, sheet, tables
+from plainpairs import __version__, bulk, dailymed, label, pages, probe, release, sheet, tables
 from plainpairs import profile as prof
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
@@ -157,7 +157,11 @@ def cmd_build(args: argparse.Namespace) -> int:
     parts = tables.parts_from_manifest(BULK_ROOT, args.export_date)
     print(f"{len(parts)} parts of {args.export_date} match their manifest.", flush=True)
     builder = tables.Builder(
-        parts, Path(args.out), args.export_date, log=lambda s: print(s, flush=True)
+        parts,
+        Path(args.out),
+        args.export_date,
+        log=lambda s: print(s, flush=True),
+        workers=args.workers,
     )
     stats = builder.run()
     print(json.dumps(stats.get("rows", {}), sort_keys=True), flush=True)
@@ -222,6 +226,90 @@ def cmd_sheet_check(args: argparse.Namespace) -> int:
         )
     if args.json:
         Path(args.json).write_text(json.dumps(out, indent=1, sort_keys=True), encoding="utf-8")
+    return 0
+
+
+def cmd_release_check(args: argparse.Namespace) -> int:
+    src = Path(args.tables)
+    summary = json.loads((src / "build_summary.json").read_text(encoding="utf-8"))
+    manifest = bulk.read_manifest(bulk.manifest_path(BULK_ROOT, summary["export_date"]))
+    problems, info = release.check(src, manifest, args.switch, args.allow_marked)
+    for k, v in sorted(info.items()):
+        print(f"{k}: {v}")
+    if problems:
+        print(f"RELEASE CHECK FAILED ({len(problems)} problems):")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+    print(f"Release check passed for the switch setting {args.switch!r}.")
+    return 0
+
+
+def cmd_text(args: argparse.Namespace) -> int:
+    report = release.rebuild_text(
+        Path(args.labels), BULK_ROOT, Path(args.out), log=lambda s: print(s, flush=True)
+    )
+    print(json.dumps(report, sort_keys=True))
+    ok = report["missing"] == 0 and report["hash_mismatches"] == 0
+    print(
+        "The text layer was rebuilt and every row matches its hash."
+        if ok
+        else "REBUILD DID NOT MATCH."
+    )
+    return 0 if ok else 1
+
+
+def cmd_dailymed_test(args: argparse.Namespace) -> int:
+    src = Path(args.tables)
+    labels = (
+        tables.read_table(src, "labels")
+        .select(
+            [
+                "set_id",
+                "version",
+                "label_format",
+                "has_medication_guide",
+                "has_patient_package_insert",
+            ]
+        )
+        .to_pylist()
+    )
+    picks = dailymed.choose(labels, args.per_stratum, args.seed)
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    root = Path("data/raw/dailymed")
+    robots = pages.fetch_page(client, "https://dailymed.nlm.nih.gov/robots.txt", root, today_utc())
+    print(f"robots.txt: HTTP {robots.status}, {robots.nbytes} bytes; read it before going on.")
+    if args.robots_only:
+        return 0
+    ids = [p["set_id"] for p in picks]
+    texts = {
+        **_texts(src / "text_prescriber.parquet", ids),
+        **_texts(src / "text_patient.parquet", ids),
+    }
+    results = []
+    for p in picks:
+        url = dailymed.SERVICE.format(set_id=p["set_id"])
+        saved = pages.fetch_page(client, url, root, today_utc())
+        row = {
+            "set_id": p["set_id"],
+            "stratum": p["stratum"],
+            "json_version": p["version"],
+            "status": saved.status,
+        }
+        if saved.status == 200:
+            doc = dailymed.parse_spl(saved.path.read_bytes())
+            own = {name: t for (sid, name), t in texts.items() if sid == p["set_id"]}
+            row.update(xml_version=doc["version"], sections=dailymed.compare(own, doc))
+        results.append(row)
+        print(
+            f"{p['stratum']:32} HTTP {saved.status} versions json {p['version']} "
+            f"xml {row.get('xml_version')}",
+            flush=True,
+        )
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=1, sort_keys=True), encoding="utf-8")
+    print(f"{len(results)} labels compared into {out}; {client.budget.calls} calls this session.")
     return 0
 
 
@@ -295,6 +383,26 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--key", required=True)
     p.add_argument("--json", default="")
     p.set_defaults(func=cmd_sheet_check)
+
+    p = sub.add_parser("release-check", help="fail loudly on anything a release must not have")
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--switch", choices=release.SWITCH, default="unmarked")
+    p.add_argument("--allow-marked", action="store_true")
+    p.set_defaults(func=cmd_release_check)
+
+    p = sub.add_parser("text", help="rebuild the text layer from the record layer and bulk files")
+    p.add_argument("--labels", default="data/interim/tables/labels.parquet")
+    p.add_argument("--out", default="data/interim/rebuilt")
+    p.set_defaults(func=cmd_text)
+
+    p = sub.add_parser("dailymed-test", help="compare DailyMed XML with the JSON for a few labels")
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--per-stratum", type=int, default=5)
+    p.add_argument("--seed", type=int, default=20261115)
+    p.add_argument("--out", default="data/interim/dailymed/compare.json")
+    p.add_argument("--robots-only", action="store_true")
+    caps(p)
+    p.set_defaults(func=cmd_dailymed_test)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")

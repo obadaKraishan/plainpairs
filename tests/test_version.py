@@ -151,3 +151,23 @@ def test_sheet_and_sheet_check_from_built_tables(tmp_path, monkeypatch, capsys):
     assert "not answered" in capsys.readouterr().out
     assert json.loads((tmp_path / "c.json").read_text())
     assert cli is not None
+
+
+def test_build_passes_the_workers_on(tmp_path, monkeypatch):
+    from plainpairs import cli, tables
+
+    seen = {}
+    real = tables.Builder
+
+    class Spy(real):
+        def __init__(self, *a, **kw):
+            seen.setdefault("workers", kw.get("workers"))
+            super().__init__(*a, **kw)
+
+    from tests.test_tables import write_export
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "BULK_ROOT", write_export(tmp_path / "bulk"))
+    monkeypatch.setattr(cli.tables, "Builder", Spy)
+    assert main(["build", "--export-date", "2026-11-13", "--out", "t", "--workers", "1"]) == 0
+    assert seen["workers"] == 1

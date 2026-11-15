@@ -115,3 +115,72 @@ def measure_blocks(blocks: list[str]) -> readability.Readability:
     """Readability with a sentence break at the end of every block (title, paragraph, item)."""
     joined = " ".join(b if b[-1:] in ".!?" else b + "." for b in blocks)
     return readability.measure(joined, "s1")
+
+
+STRATA = (
+    ("plr", "medication_guide"),
+    ("older", "medication_guide"),
+    ("plr", "patient_package_insert"),
+    ("older", "patient_package_insert"),
+)
+
+
+def choose(
+    labels: list[dict[str, Any]], per_stratum: int = 5, seed: int = 20261115
+) -> list[dict[str, Any]]:
+    """Labels for the test: guides and inserts (without a guide), in both formats."""
+    import random
+
+    rng = random.Random(seed)
+    picks = []
+    for fmt, kind in STRATA:
+        pool = sorted(
+            (
+                r
+                for r in labels
+                if r["label_format"] == fmt
+                and (
+                    r["has_medication_guide"]
+                    if kind == "medication_guide"
+                    else r["has_patient_package_insert"] and not r["has_medication_guide"]
+                )
+            ),
+            key=lambda r: r["set_id"],
+        )
+        for r in rng.sample(pool, min(per_stratum, len(pool))):
+            picks.append({**r, "stratum": f"{fmt}:{kind}"})
+    return picks
+
+
+def compare(json_texts: dict[str, str], doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Per section: words and grades from the JSON (both rules) and from the XML's blocks."""
+    out: dict[str, dict[str, Any]] = {}
+    for name, sec in doc["sections"].items():
+        js = json_texts.get(name)
+        if not js or not sec["blocks"]:
+            continue
+        jm = readability.measure_rules(js)
+        xm = measure_blocks(sec["blocks"])
+        out[name] = {
+            "json_words": jm["s2"].words,
+            "xml_words": xm.words,
+            "json_sentences_s1": jm["s1"].sentences,
+            "json_sentences_s2": jm["s2"].sentences,
+            "xml_sentences": xm.sentences,
+            "json_fk_s1": jm["s1"].flesch_kincaid_grade,
+            "json_fk_s2": jm["s2"].flesch_kincaid_grade,
+            "xml_fk": xm.flesch_kincaid_grade,
+            "json_smog_s2": jm["s2"].smog_grade,
+            "xml_smog": xm.smog_grade,
+            "xml_titles": sec.get("titles", 0),
+            "xml_paragraphs": sec.get("paragraphs", 0),
+            "xml_list_items": sec.get("list_items", 0),
+            "xml_tables": sec.get("tables", 0),
+            "xml_subsections": max(sec.get("sections", 1) - 1, 0),
+            "json_list_marks": sum(
+                js.count(m) for m in ("\u2022", "\u25cf", "\u25aa", "\u25a0", "\u25e6")
+            ),
+            "json_standard_headings": len(text.find_headings(js)),
+            "json_numbered_headings": text.count_numbered_headings(js),
+        }
+    return out
