@@ -59,6 +59,7 @@ def cmd_fetch_page(args: argparse.Namespace) -> int:
     raw = Path("data/raw")
     _check_drive(raw)
     client = make_client(args.since, args.max_calls, args.max_bytes)
+    client.min_interval = args.min_interval
     for url in args.urls:
         saved = pages.fetch_page(client, url, PAGES_ROOT, args.day)
         print(f"{saved.status} {saved.nbytes:>9,} bytes  {url}")
@@ -506,6 +507,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("fetch-page", help="save source pages raw to the drive, as evidence")
     p.add_argument("urls", nargs="+")
     p.add_argument("--day", default=today_utc())
+    p.add_argument("--min-interval", type=float, default=1.0, help="seconds between requests")
     caps(p)
     p.set_defaults(func=cmd_fetch_page)
 
