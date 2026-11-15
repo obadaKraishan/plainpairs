@@ -12,6 +12,7 @@ from pathlib import Path
 from plainpairs import (
     __version__,
     bulk,
+    changes,
     codes,
     dailymed,
     label,
@@ -364,6 +365,19 @@ def cmd_dailymed_test(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_changes(args: argparse.Namespace) -> int:
+    summary = changes.write(Path(args.old), Path(args.new), Path(args.out))
+    if args.json:
+        Path(args.json).write_text(json.dumps(summary, indent=1, sort_keys=True), encoding="utf-8")
+    print(
+        f"{summary['old_export_date']} -> {summary['new_export_date']}: "
+        f"{summary['rows']:,} labels changed, {summary['unchanged']:,} unchanged; "
+        + ", ".join(f"{k} {v:,}" for k, v in summary["changes"].items()),
+        flush=True,
+    )
+    return 0
+
+
 def cmd_codes(args: argparse.Namespace) -> int:
     n = codes.build(Path(args.tables), workers=args.workers, log=lambda s: print(s, flush=True))
     print(f"Coded {n:,} texts (codebook version {codes.CODE_VERSION}).", flush=True)
@@ -484,6 +498,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--robots-only", action="store_true")
     caps(p)
     p.set_defaults(func=cmd_dailymed_test)
+
+    p = sub.add_parser("changes", help="what changed between two builds (record layers)")
+    p.add_argument("--old", required=True, help="the older build's tables folder")
+    p.add_argument("--new", required=True, help="the newer build's tables folder")
+    p.add_argument("--out", required=True, help="where to write changes.parquet")
+    p.add_argument("--json", help="also write the counts to this file")
+    p.set_defaults(func=cmd_changes)
 
     p = sub.add_parser("codes", help="rule-based codes of every text (counts, no text)")
     p.add_argument("--tables", default="data/interim/tables")
