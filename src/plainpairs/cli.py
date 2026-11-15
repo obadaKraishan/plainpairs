@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, bulk, label, pages, probe
+from plainpairs import __version__, bulk, label, pages, probe, tables
 from plainpairs import profile as prof
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
@@ -153,6 +153,17 @@ def cmd_download_all(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_build(args: argparse.Namespace) -> int:
+    parts = tables.parts_from_manifest(BULK_ROOT, args.export_date)
+    print(f"{len(parts)} parts of {args.export_date} match their manifest.", flush=True)
+    builder = tables.Builder(
+        parts, Path(args.out), args.export_date, log=lambda s: print(s, flush=True)
+    )
+    stats = builder.run()
+    print(json.dumps(stats.get("rows", {}), sort_keys=True), flush=True)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -202,6 +213,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-mb", type=float, default=200.0, help="the largest part allowed")
     caps(p)
     p.set_defaults(func=cmd_download_all)
+
+    p = sub.add_parser("build", help="build both layers from the parts of one export")
+    p.add_argument("--export-date", required=True)
+    p.add_argument("--out", default="data/interim/tables")
+    p.set_defaults(func=cmd_build)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")

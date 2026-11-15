@@ -115,3 +115,16 @@ def test_download_all_checks_the_listing_before_and_after(tmp_path, monkeypatch,
     monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake2)
     assert main(["download-all"]) == 0
     assert "share one export date" in capsys.readouterr().out
+
+
+def test_build_runs_from_the_manifest(tmp_path, monkeypatch, capsys):
+    from plainpairs import cli
+    from tests.test_tables import write_export
+
+    monkeypatch.chdir(tmp_path)
+    root = write_export(tmp_path / "bulk")
+    monkeypatch.setattr(cli, "BULK_ROOT", root)
+    assert main(["build", "--export-date", "2026-11-13", "--out", "t"]) == 0
+    out = capsys.readouterr().out
+    assert "2 parts of 2026-11-13 match their manifest" in out
+    assert (tmp_path / "t" / "build_summary.json").exists()
