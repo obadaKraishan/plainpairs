@@ -27,3 +27,8 @@ All notable changes to this project are recorded here. The format follows
   the text layer (`text_prescriber`, `text_patient`) as Parquet, from the parts of one export.
 - `sheet` and `sheet-check`: the blind topic-check hand sheet (.xlsx with a dropdown, its key
   kept apart) and its scores per heading, with `docs/hand-sheet-guide.md`.
+- `release-check` and `text` (rebuild the text layer from the record layer and the bulk files,
+  confirmed by hash); the release switch (all, unmarked, none).
+- A reader for DailyMed's SPL XML, used to compare its structure with the JSON on 20 labels.
+- Runtime dependency: defusedxml, because SPL XML comes from outside and is parsed without
+  expanding entities or reading document type declarations.

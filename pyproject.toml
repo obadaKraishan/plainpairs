@@ -33,6 +33,7 @@ classifiers = [
     "Topic :: Text Processing :: Linguistic",
 ]
 dependencies = [
+    "defusedxml>=0.7.1",
     "pyarrow>=14",
     "pydantic>=2.6",
     "requests>=2.31",
