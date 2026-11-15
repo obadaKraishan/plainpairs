@@ -9,7 +9,18 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, bulk, dailymed, label, pages, probe, release, sheet, tables
+from plainpairs import (
+    __version__,
+    bulk,
+    dailymed,
+    label,
+    pages,
+    probe,
+    release,
+    sheet,
+    stats,
+    tables,
+)
 from plainpairs import profile as prof
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
@@ -313,6 +324,18 @@ def cmd_dailymed_test(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_stats(args: argparse.Namespace) -> int:
+    s = stats.corpus_stats(Path(args.tables))
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(
+        json.dumps(s, indent=1, sort_keys=True, default=str), encoding="utf-8"
+    )
+    print(
+        f"{s['labels']:,} labels, {s['section_pairs']:,} section pairs; aggregates in {args.out}."
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -403,6 +426,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--robots-only", action="store_true")
     caps(p)
     p.set_defaults(func=cmd_dailymed_test)
+
+    p = sub.add_parser("stats", help="aggregates of a built corpus (no text)")
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--out", default="data/interim/stats/corpus_stats.json")
+    p.set_defaults(func=cmd_stats)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")
