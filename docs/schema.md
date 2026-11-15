@@ -167,7 +167,7 @@ too large for a 32-bit integer is null; the build summary counts them). Not a re
 names), and the flags `block_changed`, `format_changed`, `mark_changed`,
 `ndc_listing_changed`, `dailymed_listing_changed`. Ids, versions, names and flags only.
 
-## The NCI cancer information summaries (configuration `nci`; `plainpairs nci-build`)
+## Text from the National Cancer Institute's cancer information summaries, with parts left out (configuration `nci`; `plainpairs nci-build`)
 Every row of the three tables carries `configuration` (`nci`), `source`, `url` (NCI's address
 for the page), `date_read`, `nci_updated` (the date NCI gives for the page's last update) and
 `credit_line` ('"<title>" was originally published by the National Cancer Institute. <url>');

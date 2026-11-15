@@ -1,4 +1,4 @@
-"""The NCI cancer information summaries: the list of pages, and reading each page once.
+"""NCI's cancer information summary pages: the list of pages, and reading each page once.
 
 The National Cancer Institute publishes its cancer information summaries on cancer.gov, each in
 a version for health professionals and a version for patients, in English and Spanish. The

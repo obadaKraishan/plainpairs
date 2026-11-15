@@ -722,7 +722,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--verify", action="store_true", help="check each part's SHA-256 first")
     p.set_defaults(func=cmd_structure)
 
-    p = sub.add_parser("nci-build", help="the NCI cancer information summaries' three tables")
+    p = sub.add_parser(
+        "nci-build", help="the three nci tables: text from NCI's cancer information summaries"
+    )
     p.add_argument("--root", default=str(NCI_ROOT), help="where the summary pages are saved")
     p.add_argument("--out", default="data/interim/tables")
     p.set_defaults(func=cmd_nci_build)

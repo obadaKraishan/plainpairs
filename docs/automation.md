@@ -93,7 +93,7 @@ is done from the maintainer's Mac with the same command (`plainpairs update --wo
 delivered with the publish script's `update` step. The first real run waits for openFDA's next
 export after 2026-11-13 (none was listed on 2026-11-15).
 
-## The NCI cancer information summaries (configuration `nci`)
+## Text from NCI's cancer information summaries (configuration `nci`)
 NCI updates its summaries one at a time, each with its own "Updated" date, and its sitemap's
 dates are a site-wide publishing date, not a change date (752 of 757 summary pages carried one
 day in October 2026). So a change cannot be seen without reading the pages.

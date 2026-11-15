@@ -220,7 +220,7 @@ and `plainpairs text`, which
 rebuilds the text layer from the record layer and the bulk files of the same export date and
 confirms every row by its hash.
 
-## 14. The NCI cancer information summaries (configuration `nci`)
+## 14. Text from the National Cancer Institute's cancer information summaries, with parts left out (configuration `nci`)
 The National Cancer Institute publishes cancer information summaries in a version for health
 professionals and a version for patients, in English and Spanish: the same kind of pair as a
 label and its Medication Guide. They are a third configuration, `nci`, with its own tables, and

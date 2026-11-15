@@ -109,7 +109,7 @@ source's own bulk files of the same export date, and confirms every row by its h
 
 ## Configurations
 The release has three configurations. Two hold the labels, and no reading level is ever
-computed across both; the third, `nci`, holds the NCI cancer information summaries (below):
+computed across both; the third, `nci`, holds text from the National Cancer Institute's cancer information summaries, with parts left out (below):
 
 - **`current`** (19,778 labels): DailyMed's full release of human prescription labels of the
   same week (2026-11-13) holds the label in the same version, and each of its patient texts
@@ -150,7 +150,7 @@ and run higher than the structure's on the same texts (guides: Flesch-Kincaid 10
 8.67, SMOG 12.94 against 11.10), because lists that lost their marks read as long sentences.
 No figure combines the two configurations.
 
-## The NCI cancer information summaries (configuration `nci`)
+## Text from the National Cancer Institute's cancer information summaries, with parts left out (configuration `nci`)
 A third configuration, apart from the labels and never pooled with them in any number: text
 taken from the National Cancer Institute's cancer information summaries, which NCI writes in a
 version for health professionals and a version for patients, in English and Spanish. Read from

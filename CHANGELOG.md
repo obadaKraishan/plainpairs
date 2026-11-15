@@ -18,7 +18,7 @@ All notable changes to this project are recorded here. The format follows
   delivery, actions pinned, least permissions.
 - The removal route: an issue form, `docs/removal.md` and the takedown list `data/takedown.csv`.
 - `.zenodo.json` (the code and documents only, no data table).
-- The NCI cancer information summaries as a third configuration, `nci`: `nci-build` reads the
+- Text from NCI's cancer information summaries, with parts left out, as a third configuration, `nci`: `nci-build` reads the
   summary pages (listed from NCI's sitemap and read once each, 5 seconds apart, by
   `plainpairs.nci_pages`) into three tables, `nci_summaries`, `nci_pairs` and `nci_text`. Pairs
   come from NCI's own links between versions and languages. Figures, navigation, key-point

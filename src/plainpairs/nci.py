@@ -1,4 +1,4 @@
-"""The NCI cancer information summaries as their own configuration (``nci``).
+"""Text from NCI's cancer information summaries, with parts left out (configuration ``nci``).
 
 Each summary page saved by :mod:`plainpairs.nci_pages` is read here into:
 
@@ -43,7 +43,10 @@ import pyarrow.parquet as pq
 from plainpairs import codes, readability, readability_es, text
 
 CONFIGURATION = "nci"
-SOURCE = "NCI cancer information summaries (https://www.cancer.gov)"
+SOURCE = (
+    "text from the National Cancer Institute's cancer information summaries, with parts left "
+    "out (https://www.cancer.gov)"
+)
 VERSIONS = {"Health Professionals": "health_professional", "Patients": "patient"}
 PROSE_KINDS = ("paragraph", "item", "cell", "caption")
 LEFT_OUT = (

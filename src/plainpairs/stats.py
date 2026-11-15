@@ -531,7 +531,7 @@ def codes_stats(out_dir: Path) -> dict[str, Any]:
     return out
 
 
-# --- the NCI cancer information summaries (their own configuration; never pooled) -------------
+# --- text from NCI's cancer information summaries (configuration nci; never pooled) ----------
 
 
 def _med(values: list[float | None]) -> float | None:
