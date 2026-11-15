@@ -150,6 +150,10 @@ def check(
                 problems.append(
                     f"The record table {name} holds strings of {n} characters in {col}."
                 )
+    codes_path = Path(out_dir) / "codes.parquet"
+    if codes_path.exists():
+        problems += _check_codes(pq.read_table(codes_path), loaded["labels"])
+        info["rows:codes"] = pq.ParquetFile(codes_path).metadata.num_rows
     labels = loaded["labels"]
     if labels.num_rows:
         fmt_ok = pc.is_in(labels["label_format"], value_set=pa.array(tables.IN_SCOPE_FORMATS))
@@ -188,6 +192,29 @@ def check(
     if verify_hashes:
         problems += _cross_hashes(labels, loaded["text_prescriber"], loaded["text_patient"])
     return problems, info
+
+
+def _check_codes(t: pa.Table, labels: pa.Table) -> list[str]:
+    """The codes table (optional): counts only, every label in scope, one row per text."""
+    from plainpairs import codes
+
+    problems = []
+    if t.schema.names != codes.SCHEMA.names:
+        problems.append("codes does not have the expected columns; run `plainpairs codes` again.")
+        return problems
+    for col, n in _strings(t).items():
+        if n > MAX_RECORD_STRING:
+            problems.append(f"The record table codes holds strings of {n} characters in {col}.")
+    if t.num_rows:
+        grouped = t.group_by(["set_id", "version", "section"]).aggregate([([], "count_all")])
+        dupes = pc.sum(pc.greater(grouped["count_all"], 1)).as_py() or 0
+        if dupes:
+            problems.append(f"codes: {dupes} texts appear more than once.")
+        known = pc.is_in(t["set_id"], value_set=labels["set_id"])
+        out = t.num_rows - (pc.sum(known).as_py() or 0)
+        if out:
+            problems.append(f"codes: {out} rows are for labels not in the labels table.")
+    return problems
 
 
 def _cross_hashes(labels: pa.Table, prescriber: pa.Table, patient: pa.Table) -> list[str]:

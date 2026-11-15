@@ -283,3 +283,17 @@ def test_listed_download_reuses_the_listing_saved_today(tmp_path, monkeypatch, c
     assert "export 2026-11-13, 1.5 MiB listed" in out and "DailyMed zip file metadata" in out
     assert len(session.calls) == 3
     assert pages.latest_pages(cli.PAGES_ROOT)
+
+
+def test_codes_command_codes_the_built_tables(tmp_path, monkeypatch, capsys):
+    from plainpairs import tables
+    from tests.test_tables import write_export
+
+    monkeypatch.chdir(tmp_path)
+    root = write_export(tmp_path / "bulk")
+    tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"), tmp_path / "t", "2026-11-13", log=print
+    ).run()
+    assert main(["codes", "--tables", "t"]) == 0
+    assert "(codebook version 0)" in capsys.readouterr().out
+    assert (tmp_path / "t" / "codes.parquet").exists()

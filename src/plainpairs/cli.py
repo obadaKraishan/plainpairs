@@ -12,6 +12,7 @@ from pathlib import Path
 from plainpairs import (
     __version__,
     bulk,
+    codes,
     dailymed,
     label,
     listed,
@@ -363,6 +364,12 @@ def cmd_dailymed_test(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_codes(args: argparse.Namespace) -> int:
+    n = codes.build(Path(args.tables), workers=args.workers, log=lambda s: print(s, flush=True))
+    print(f"Coded {n:,} texts (codebook version {codes.CODE_VERSION}).", flush=True)
+    return 0
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     s = stats.corpus_stats(Path(args.tables))
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
@@ -477,6 +484,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--robots-only", action="store_true")
     caps(p)
     p.set_defaults(func=cmd_dailymed_test)
+
+    p = sub.add_parser("codes", help="rule-based codes of every text (counts, no text)")
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--workers", type=int, default=1, help="batches coded in parallel")
+    p.set_defaults(func=cmd_codes)
 
     p = sub.add_parser("stats", help="aggregates of a built corpus (no text)")
     p.add_argument("--tables", default="data/interim/tables")

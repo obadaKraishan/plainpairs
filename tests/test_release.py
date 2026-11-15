@@ -158,3 +158,24 @@ def test_long_names_from_the_openfda_block_are_allowed_but_not_without_limit(bui
     )
     problems, _ = release.check(out, manifest, "none", verify_hashes=False)
     assert any("2500 characters in medicine_key" in p for p in problems)
+
+
+def test_the_codes_table_is_checked_when_present(built):
+    from plainpairs import codes
+
+    _root, out, manifest = built
+    codes.build(out, log=lambda s: None)
+    problems, info = release.check(out, manifest, "unmarked")
+    assert problems == [] and info["rows:codes"] > 0
+    t = pq.read_table(out / "codes.parquet")
+    doubled = pa.concat_tables([t, t.slice(0, 1)])
+    stray = t.slice(0, 1).set_column(
+        t.schema.get_field_index("set_id"), "set_id", pa.array(["set-zzzz"])
+    )
+    pq.write_table(pa.concat_tables([doubled, stray]), out / "codes.parquet")
+    problems, _ = release.check(out, manifest, "unmarked")
+    assert any("more than once" in p for p in problems)
+    assert any("not in the labels table" in p for p in problems)
+    pq.write_table(t.drop_columns(["doses"]), out / "codes.parquet")
+    problems, _ = release.check(out, manifest, "unmarked")
+    assert any("expected columns" in p for p in problems)
