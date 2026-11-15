@@ -46,9 +46,10 @@ medical care. Always speak to your health provider about the risks and benefits 
 FDA-regulated products."
 
 ## Documents
-[`docs/`](docs/) holds the source check (`sources.md`), the prior art (`prior-art.md`), the counts
-and the sample (`counts.md`, `sample.md`), and drafts of the schema, method, codebook, benchmark,
-backfill and weekly update.
+[`docs/`](docs/) holds the data card (`data-card.md`, a draft), the schema and the method
+(`schema.md`, `method.md`), the source check (`sources.md`), the prior art (`prior-art.md`),
+the counts, the sample and the XML test (`counts.md`, `sample.md`, `xml-test.md`), the hand
+sheet guide, and drafts of the codebook, the benchmark and the weekly update.
 
 ## License
 The software in this repository is licensed under the Apache License, Version 2.0 (see

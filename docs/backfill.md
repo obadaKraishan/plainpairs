@@ -47,3 +47,13 @@ are listed in MiB); speeds from the one part downloaded on 2026-11-15.
 Not recommended for S2: DailyMed's SPL XML (human prescription labels alone are 6 parts, about
 16.8 GB). It keeps the list and heading structure that the JSON flattens, which would help the
 readability measures, so S2 tests it on a handful of labels first and decides from that.
+
+## What the full download took (2026-11-15)
+- The listing still named the export of 2026-11-13 before and after; every part's own `meta`
+  block matched it (export date, record count, offset, total 264,748).
+- 13 parts downloaded in about 90 seconds (75 s of transfer, about 24 MB/s), with no retry;
+  part 14 was already on the drive from the sample and was checked and added to the manifest.
+- 15 requests and 1,836,265,551 bytes; all 14 parts together are 1,874,357,882 bytes, each
+  recorded in `manifest.csv` with its SHA-256.
+- The build of both layers took 6.8 minutes with six workers (about 30 CPU-minutes); the
+  tables are 586 MB of Parquet; rebuilding the text layer from the bulk files took 4 minutes.

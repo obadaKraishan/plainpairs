@@ -32,3 +32,13 @@ All notable changes to this project are recorded here. The format follows
 - A reader for DailyMed's SPL XML, used to compare its structure with the JSON on 20 labels.
 - Runtime dependency: defusedxml, because SPL XML comes from outside and is parsed without
   expanding entities or reading document type declarations.
+- `stats`: aggregates of a built corpus (sizes, duplicates, medicines, grades by both sentence
+  rules, headings, alignment shares, what each switch setting releases), no text.
+- `docs/data-card.md` (DRAFT), `docs/xml-test.md` and `docs/hand-sheet-guide.md`; the schema
+  and method now describe what the build does.
+
+### Changed
+- Only data tables (cells of 8 words or fewer) are cut from prose before it is measured;
+  prose laid out in tables, as patient texts use it, stays.
+- Labels typed over the counter are out of scope even when their sections look like a
+  prescription format; they are listed in `excluded_otc`.
