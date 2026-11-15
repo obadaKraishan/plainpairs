@@ -311,3 +311,14 @@ def test_codes_command_codes_the_built_tables(tmp_path, monkeypatch, capsys):
     assert main(["codes", "--tables", "t"]) == 0
     assert "(codebook version 1)" in capsys.readouterr().out
     assert (tmp_path / "t" / "codes.parquet").exists()
+
+
+def test_build_refuses_a_partly_answered_sheet(tmp_path, monkeypatch):
+    import json
+
+    import pytest
+
+    _built(tmp_path, monkeypatch)
+    (tmp_path / "r.json").write_text(json.dumps({"avoid": {"rule": "x", "blank": 3}}))
+    with pytest.raises(SystemExit, match="unanswered rows for avoid"):
+        main(["build", "--export-date", "2026-11-13", "--out", "t", "--sheet-result", "r.json"])

@@ -294,8 +294,11 @@ class Builder:
         workers: int = 1,
         listings: listed.Listings | None = None,
         structure_dir: Path | None = None,
+        rule_status: dict[str, str] | None = None,
     ) -> None:
         self.workers = workers
+        #: heading key -> rule status, from the scored hand sheet (see :func:`rule_statuses`).
+        self.rule_status = dict(rule_status or {})
         self.listings = listings or listed.Listings()
         self.structure_dir = Path(structure_dir) if structure_dir else None
         self.configuration: dict[str, str | None] = {}
@@ -769,8 +772,10 @@ class Builder:
         default_idf = max(idf.values(), default=1.0)
         ids = frozenset(self.in_scope_ids)
         conf = dict(self.configuration)
+        rules = dict(self.rule_status)
         jobs = [
-            (n, p, self.out, self.export_date, ids, idf, default_idf, conf) for n, p in self.parts
+            (n, p, self.out, self.export_date, ids, idf, default_idf, conf, rules)
+            for n, p in self.parts
         ]
         n = 0
         for res in self._map(_pairs_job, jobs):
@@ -813,7 +818,7 @@ class Builder:
                         "seg_end": end,
                         "measures": measures(t[head_end:end], [], 0),
                         **pair,
-                        "rule_status": "pending_hand_check",
+                        "rule_status": self.rule_status.get(key, "pending_hand_check"),
                         "configuration": self.configuration.get(ident.set_id),
                     }
                 )
@@ -830,6 +835,24 @@ class Builder:
             json.dumps(self.stats, indent=1, sort_keys=True, default=str), encoding="utf-8"
         )
         return self.stats
+
+
+#: The rule status of a heading key once the hand sheet is scored (docs/method.md, section 7):
+#: the mapping rule is released at 80% "yes" or "partly", otherwise only the similarity scores.
+RULE_RELEASED = "rule_released"
+SIMILARITY_ONLY = "similarity_only"
+
+
+def rule_statuses(sheet_result: dict[str, Any]) -> dict[str, str]:
+    """Heading key -> rule status, from ``plainpairs sheet-check --json`` output. A key that
+    was not answered in full stays pending."""
+    out = {}
+    for key, r in sheet_result.items():
+        if r.get("rule") == "regulation rule released":
+            out[key] = RULE_RELEASED
+        elif r.get("rule") == "similarity only, flagged":
+            out[key] = SIMILARITY_ONLY
+    return out
 
 
 def _int32(v: int | None) -> int | None:
@@ -853,8 +876,8 @@ def _scan_job(job: tuple[Any, ...]) -> dict[str, Any]:
 
 
 def _pairs_job(job: tuple[Any, ...]) -> dict[str, Any]:
-    number, path, out_dir, export_date, ids, idf, default_idf, conf = job
-    b = Builder([(number, path)], out_dir, export_date, log=lambda s: None)
+    number, path, out_dir, export_date, ids, idf, default_idf, conf, rules = job
+    b = Builder([(number, path)], out_dir, export_date, log=lambda s: None, rule_status=rules)
     b.in_scope_ids = set(ids)
     b.configuration = conf
     return b.pairs_part(number, path, idf, default_idf)

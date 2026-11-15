@@ -271,3 +271,26 @@ def test_a_version_too_large_for_the_export_ids_is_null_and_counted(tmp_path):
     ids = pq.read_table(out / "export_ids.parquet").to_pylist()
     assert next(r for r in ids if r["set_id"] == "set-big")["version"] is None
     assert stats["counts"]["export_ids_version_out_of_range"] == 1
+
+
+def test_rule_status_comes_from_the_scored_sheet(tmp_path):
+    result = {
+        "how_to_take": {"rule": "regulation rule released", "blank": 0},
+        "avoid": {"rule": "similarity only, flagged", "blank": 0},
+        "general": {"rule": "not answered", "blank": 10},
+    }
+    rules = tables.rule_statuses(result)
+    assert rules == {"how_to_take": "rule_released", "avoid": "similarity_only"}
+    root = write_export(tmp_path / "bulk")
+    out = tmp_path / "t"
+    tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"),
+        out,
+        "2026-11-13",
+        log=lambda s: None,
+        rule_status=rules,
+    ).run()
+    pairs = pq.read_table(out / "section_pairs.parquet").to_pylist()
+    got = {(p["heading_key"], p["rule_status"]) for p in pairs}
+    assert ("how_to_take", "rule_released") in got
+    assert all(s == "pending_hand_check" for k, s in got if k not in rules)

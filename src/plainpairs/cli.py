@@ -349,6 +349,21 @@ def cmd_listed_download(args: argparse.Namespace) -> int:
     return 0
 
 
+def _sheet_rules(path: str | None) -> dict[str, str]:
+    if not path:
+        return {}
+    result = json.loads(Path(path).read_text(encoding="utf-8"))
+    blank = [k for k, r in result.items() if r.get("blank") or r.get("other")]
+    if blank:
+        raise SystemExit(
+            f"The sheet result {path} has unanswered rows for {', '.join(sorted(blank))}; "
+            "score it only when every row is answered."
+        )
+    rules = tables.rule_statuses(result)
+    print("rule status from the hand sheet: " + json.dumps(rules, sort_keys=True), flush=True)
+    return rules
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     parts = tables.parts_from_manifest(BULK_ROOT, args.export_date)
     print(f"{len(parts)} parts of {args.export_date} match their manifest.", flush=True)
@@ -364,6 +379,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         workers=args.workers,
         listings=listings,
         structure_dir=Path(args.structure) if args.structure else None,
+        rule_status=_sheet_rules(args.sheet_result),
     )
     stats = builder.run()
     print(json.dumps(stats.get("rows", {}), sort_keys=True), flush=True)
@@ -618,6 +634,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--structure",
         help="the structure folder (plainpairs structure) for the two configurations",
+    )
+    p.add_argument(
+        "--sheet-result",
+        help="the scored hand sheet (sheet-check --json) for rule_status per heading key",
     )
     p.set_defaults(func=cmd_build)
 
