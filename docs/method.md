@@ -117,7 +117,8 @@ structure. The corpus uses it where it can, and says so on every label.
 
   A reading level is never computed over both configurations at once: every aggregate is
   given per configuration, and for `current` the JSON's figure for the same labels is given
-  beside the structure's. `release-check` fails when a row does not say its configuration or
+  beside the structure's. Flesch-Kincaid and SMOG are always reported together, per
+  configuration and per basis; neither alone is a headline. `release-check` fails when a row does not say its configuration or
   when measures from structure sit on an `unlisted` row.
 
 ## 7. Alignment of patient segments to prescriber sections

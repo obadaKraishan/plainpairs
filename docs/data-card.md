@@ -120,9 +120,10 @@ The two are not the same as the lists above: the configuration rests on DailyMed
 the same week as the export, the "served" flag on its list of two days later.
 
 ## Reading levels
-Grades are computed by stated formulas (Flesch-Kincaid grade, SMOG) and are comparable only
-within one configuration and one basis. Over distinct texts (each shared text once), export
-and release of 2026-11-13:
+Grades are computed by stated formulas and are comparable only within one configuration and
+one basis. Flesch-Kincaid and SMOG are always given together: neither alone is this corpus's
+reading level, and they differ most just where readers ask (at grade 8). Over distinct texts
+(each shared text once), export and release of 2026-11-13:
 
 | | `current`, from structure | `current`, same texts, from the JSON | `unlisted`, from the JSON |
 |---|---:|---:|---:|
@@ -134,13 +135,33 @@ and release of 2026-11-13:
 | patient package inserts | 4,576 texts | 4,576 | 3,193 |
 | median Flesch-Kincaid grade | 8.58 | 10.03 | 9.72 |
 | above grade 8 by Flesch-Kincaid | 66.9% | 91.4% | 87.6% |
+| median SMOG grade / above grade 8 | 11.21 / 99.5% | 12.46 / 99.6% | 12.20 / 99.7% |
 
 **What may be said.** On `current` labels, reading levels may be reported as measured on the
-label's structure: by Flesch-Kincaid, most Medication Guides (72%) and patient package inserts
-(67%) are above grade 8, and by SMOG nearly all are (99%). On `unlisted` labels only grades
-from the flattened JSON exist; they are reported apart, flagged, and run about two grades
-higher than the structure's on the same texts (guides 10.86 against 8.67), because lists that
-lost their marks read as long sentences. No figure combines the two configurations.
+label's structure, with both formulas: by Flesch-Kincaid most Medication Guides (72%) and
+patient package inserts (67%) are above grade 8, and by SMOG nearly all are (99%). On
+`unlisted` labels only grades from the flattened JSON exist; they are reported apart, flagged,
+and run higher than the structure's on the same texts (guides: Flesch-Kincaid 10.86 against
+8.67, SMOG 12.94 against 11.10), because lists that lost their marks read as long sentences.
+No figure combines the two configurations.
+
+## Limits
+- **The two configurations hold different labels.** `unlisted` labels are mostly labels that
+  DailyMed's current release no longer carries; they are older on average and have no
+  structure. A difference between the configurations is a difference between two sets of
+  labels as well as between two ways of measuring, so the two are never compared as if they
+  were one corpus measured twice.
+- **Two bases sit side by side in the same tables.** Every label keeps its grades from the
+  JSON (`p_<section>`, `t_<text>`), and `current` labels also have grades from structure
+  (`p_<section>_structured`, `t_<text>_structured`). The column names and `structure_source`
+  keep them apart; a reader who averages a column across configurations, or mixes the two
+  kinds of column, gets a number that means nothing. Use one configuration and one basis at a
+  time.
+- **The source's JSON repeats some text.** When a subsection carries the same section code as
+  the section around it, the JSON holds that subsection's words twice. This happens in 1.6% to
+  3.3% of prescriber sections (and 2 Medication Guides) of labels DailyMed also holds; their
+  JSON word counts are too high, and the section pairs, which are built from the JSON, carry
+  the repeat too. The structure's measures do not.
 ## History
 The source holds only the current version of each label. This corpus's history therefore
 starts with its first release: each weekly release records the export date it was built from,
