@@ -21,6 +21,7 @@ from plainpairs import (
     probe,
     release,
     sheet,
+    spl_release,
     stats,
     tables,
 )
@@ -31,6 +32,7 @@ USAGE_LOG = Path("data/usage_log.csv")
 PAGES_ROOT = Path("data/raw/pages")
 BULK_ROOT = Path("data/raw/bulk")
 LISTED_ROOT = Path("data/raw/listed")
+RELEASE_ROOT = Path("data/raw/dailymed/rx-release")
 
 
 def today_utc() -> str:
@@ -165,6 +167,50 @@ def cmd_download_all(args: argparse.Namespace) -> int:
         )
         return 2
     print(f"The listing still names {export_date}: all parts share one export date.", flush=True)
+    return 0
+
+
+def _release_listing(client: PoliteClient) -> list[spl_release.ReleasePart]:
+    saved = pages.fetch_page(client, spl_release.PAGE_URL, PAGES_ROOT, today_utc())
+    if saved.status != 200:
+        raise SystemExit(f"{spl_release.PAGE_URL} answered HTTP {saved.status}; stop here.")
+    return spl_release.parse_parts(saved.path.read_text(encoding="utf-8", errors="replace"))
+
+
+def cmd_xml_download(args: argparse.Namespace) -> int:
+    import shutil
+
+    _check_drive(Path("data/raw"))
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    parts = _release_listing(client)
+    day = spl_release.release_date(parts)
+    for p in parts:
+        print(
+            f"part {p.number}: {p.filename}, {p.files:,} files, {p.size_text}, "
+            f"MD5 {p.md5}, modified {p.last_modified}",
+            flush=True,
+        )
+    total = spl_release.check_total(parts, int(args.max_gb * 1e9))
+    free = shutil.disk_usage(Path("data/raw").resolve()).free
+    print(f"Release of {day}: {total:,} bytes listed (binary reading); {free:,} free.", flush=True)
+    if free < total * 1.2:
+        print("Not enough free space on the drive (need 1.2 times the listed total). Stop here.")
+        return 2
+    if args.list_only:
+        return 0
+    rows = spl_release.fetch_parts(
+        client, parts, RELEASE_ROOT, clock=client.clock, log=lambda s: print(s, flush=True)
+    )
+    again = _release_listing(client)
+    print(
+        f"{len(rows)} parts on disk, {sum(int(r['bytes']) for r in rows):,} bytes; "
+        f"{client.budget.calls} of {client.budget.max_calls} calls this session.",
+        flush=True,
+    )
+    if [(p.filename, p.md5) for p in again] != [(p.filename, p.md5) for p in parts]:
+        print("The page changed during the download: a part was replaced. Stop and look.")
+        return 2
+    print("The page still lists the same parts and checksums.", flush=True)
     return 0
 
 
@@ -467,6 +513,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-mb", type=float, default=listed.MAX_MB, help="the largest file allowed")
     caps(p)
     p.set_defaults(func=cmd_listed_download)
+
+    p = sub.add_parser(
+        "xml-download", help="DailyMed's full human prescription release (resumable, large)"
+    )
+    p.add_argument("--max-gb", type=float, default=20.0, help="stop if the listed total is over")
+    p.add_argument("--list-only", action="store_true", help="read the page and stop")
+    caps(p)
+    p.set_defaults(func=cmd_xml_download)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
     p.add_argument("--tables", default="data/interim/tables")

@@ -77,6 +77,17 @@ def sha256_file(path: Path | str) -> str:
     return digest.hexdigest()
 
 
+def md5_sha256_file(path: Path | str) -> tuple[str, str]:
+    """MD5 (for checking against a source's own checksum) and SHA-256, in one read."""
+    md5 = hashlib.md5(usedforsecurity=False)
+    sha = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            md5.update(chunk)
+            sha.update(chunk)
+    return md5.hexdigest(), sha.hexdigest()
+
+
 def write_once(dest: Path | str, data: bytes) -> str:
     """Write ``data`` to ``dest`` once, flush it, make it read-only and check it on disk.
 

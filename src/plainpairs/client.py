@@ -349,3 +349,140 @@ class PoliteClient:
             resp.close()
             self._finish(when, "GET", url, status, nbytes, start)
         return digest, size
+
+    def download_resumable(
+        self,
+        url: str,
+        dest: Path | str,
+        max_bytes: int,
+        expected_md5: str = "",
+        progress: Callable[[str], None] | None = None,
+    ) -> tuple[str, str, int, int]:
+        """Stream one large file to ``dest``, picking up a cut-off transfer where it stopped.
+
+        The bytes go to ``.<name>.partial`` in the same folder. After a network error, a 429 or
+        a 5xx the client waits (backing off as for any request) and asks for the rest with
+        ``Range: bytes=<size on disk>-``. A server that answers 200 instead of 206 sends the
+        whole file again, so the partial file is started over. A partial file left by an
+        earlier run is resumed the same way. Every attempt is one logged call against the caps;
+        a 403, or a declared size over ``max_bytes``, stops at once.
+
+        When the stream is whole, the file is flushed and read back once for its MD5 and
+        SHA-256. If ``expected_md5`` (the source's own checksum) is given and differs, the
+        partial file is kept for inspection and :class:`durable.WriteCheckFailed` is raised;
+        nothing appears under the final name. Otherwise the file is renamed to ``dest``, made
+        read-only and its folder flushed: the final file is written once. Returns the MD5, the
+        SHA-256, the size and the number of retries.
+        """
+        dest = Path(dest)
+        if dest.exists():
+            raise FileExistsError(f"{dest} exists. Raw files are written once and never replaced.")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        partial = dest.with_name(f".{dest.name}.partial")
+        say = progress or (lambda _s: None)
+        retries = 0
+        total: int | None = None
+        for attempt in range(self.max_retries + 1):
+            self.budget.check_call()
+            self._pace()
+            offset = partial.stat().st_size if partial.exists() else 0
+            headers = self._headers("HEAD")
+            if offset:
+                headers["Range"] = f"bytes={offset}-"
+            when = self.clock()
+            start = self.monotonic()
+            status, nbytes, failed = 0, 0, False
+            try:
+                resp = self.session.request(
+                    "GET", url, headers=headers, timeout=self.timeout, stream=True
+                )
+            except (requests.ConnectionError, requests.Timeout):
+                resp = None
+            try:
+                if resp is None:
+                    failed = True
+                else:
+                    status = resp.status_code
+                    if status == 403:
+                        raise SourceBlocked(403, f"{url} answered 403 (blocked). Stop here.")
+                    if status == 429 or status >= 500:
+                        failed = True
+                    elif status not in (200, 206):
+                        raise SourceBlocked(
+                            status, f"{url} answered HTTP {status}. The partial file is kept."
+                        )
+                    else:
+                        if status == 200 and offset:
+                            say(f"{url}: the server sent the whole file again; starting over")
+                            partial.unlink()
+                            offset = 0
+                        if status == 206:
+                            got = resp.headers.get("Content-Range", "")
+                            if not got.startswith(f"bytes {offset}-"):
+                                raise SourceBlocked(
+                                    206,
+                                    f"{url} resumed at {got!r}, not at byte {offset}. "
+                                    "The partial file is kept; stop and look.",
+                                )
+                            whole = got.rsplit("/", 1)[-1]
+                            total = int(whole) if whole.isdigit() else total
+                        declared = resp.headers.get("Content-Length")
+                        if declared and declared.isdigit():
+                            if status == 200:
+                                total = int(declared)
+                            if offset + int(declared) > max_bytes:
+                                raise ResponseTooLarge(
+                                    f"{url} is {offset + int(declared):,} bytes, over the "
+                                    f"limit of {max_bytes:,}. Nothing more was downloaded."
+                                )
+                        with partial.open("ab") as fh:
+                            try:
+                                for chunk in resp.iter_content(chunk_size=1 << 20):
+                                    nbytes += len(chunk)
+                                    if offset + nbytes > max_bytes:
+                                        raise ResponseTooLarge(
+                                            f"{url} passed {max_bytes:,} bytes; the download "
+                                            "stopped.",
+                                            nbytes,
+                                        )
+                                    if nbytes > self.budget.bytes_left:
+                                        raise CapReached(
+                                            f"The byte cap ({self.budget.max_bytes:,}) was "
+                                            f"reached during {url}; the partial file is kept."
+                                        )
+                                    fh.write(chunk)
+                            except requests.RequestException:
+                                failed = True
+                            finally:
+                                durable.flush_file(fh)
+                        size = offset + nbytes
+                        if not failed and total is not None and size < total:
+                            failed = True  # the stream ended early without an error
+            finally:
+                if resp is not None:
+                    resp.close()
+                self._finish(when, "GET", url, status, nbytes, start)
+            if not failed:
+                break
+            retries += 1
+            if attempt >= self.max_retries:
+                raise SourceBlocked(
+                    status,
+                    f"{url} kept failing after {self.max_retries + 1} tries; the partial file "
+                    f"({partial.stat().st_size if partial.exists() else 0:,} bytes) is kept, "
+                    "so a later run resumes it.",
+                )
+            wait = self._delay(dict(resp.headers) if resp is not None else {}, attempt)
+            say(f"{url}: attempt {attempt + 1} cut off (HTTP {status}); waiting {wait:.0f} s")
+            self.sleep(wait)
+        md5, sha = durable.md5_sha256_file(partial)
+        if expected_md5 and md5 != expected_md5.lower():
+            raise durable.WriteCheckFailed(
+                f"{url}: the file on disk has MD5 {md5}, not {expected_md5} as the source lists. "
+                f"It is kept as {partial} and nothing was saved under {dest.name}; stop and look."
+            )
+        size = partial.stat().st_size
+        partial.rename(dest)
+        dest.chmod(0o444)
+        durable.flush_folder(dest.parent)
+        return md5, sha, size, retries
