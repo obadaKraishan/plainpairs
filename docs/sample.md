@@ -84,14 +84,10 @@ Words, Flesch-Kincaid grade (FK) and SMOG grade per text: median, with the 25th 
 | prescriber | use_in_specific_populations | 649 | 1,192 (828 to 1,536) | 17.04 (16.13 to 17.52) | 17.86 (17.2 to 18.32) |
 | prescriber | warnings_and_precautions | 779 | 1,755 (970 to 2,736) | 17.24 (16.22 to 18.14) | 17.92 (16.94 to 18.64) |
 
-Patient texts above an 8th-grade level:
-
-| text | FK above 8 | SMOG above 8 |
-|---|---:|---:|
-| medication_guide | 514 (99.4%) | 517 (100.0%) |
-| patient_package_insert | 260 (96.7%) | 266 (98.9%) |
-| instructions_for_use | 41 (54.7%) | 74 (98.7%) |
-| patient_medication_information | 5 (100.0%) | 5 (100.0%) |
+The share of patient texts above an 8th-grade level that this sample first gave is withdrawn:
+the grades it rested on are inflated where lists lost their marks (see below and
+`docs/xml-test.md`), so no share above a grade is stated until the structure question is
+settled.
 
 **Read these grades with care.** The source text has lost its line breaks, so a bulleted list
 without full stops is read as one long sentence, which raises both grades; Medication Guides are

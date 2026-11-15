@@ -86,9 +86,10 @@ source's own bulk files of the same export date, and confirms every row by its h
 ## Reading levels
 Grades are computed by stated formulas (Flesch-Kincaid, Flesch reading ease, SMOG) on prose
 with the inline tables cut, with a sentence rule that breaks at list marks and headings. They
-are comparable within this corpus, not the grade of the printed page. Median Flesch-Kincaid
-grade: Medication Guides 10.94, patient package inserts 10.01; prescriber sections
-from 9.32 to 18.49.
+are comparable within this corpus, not the grade of the printed page. No reading-level figure
+is given here yet: the source's JSON loses the structure of lists and subsections, which raises
+the grades, and a test against the structured SPL XML (`docs/xml-test.md`) shows by how much.
+Figures will be stated once the corpus measures text with its structure.
 
 ## History
 The source holds only the current version of each label. This corpus's history therefore
