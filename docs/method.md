@@ -275,6 +275,29 @@ no number of it is ever pooled with the label configurations.
   is counted as changed. With `--saved` it reads the saved copies instead. Its tests run on
   invented pages only.
 
+## 15. The release pack
+`plainpairs release build --version <v> --out <empty folder>` writes one folder per version
+from the local build; `plainpairs release check --pack <folder>` checks it on its own.
+
+- **Layout.** Every table of every configuration is a file and a Hugging Face config of its
+  own (`current_labels`, `unlisted_text_patient`, `nci_summaries` and so on; 16 in all), each
+  with one split. There is no default config, so a user names the one table wanted
+  (`load_dataset("obadakr/plainpairs", "current_labels")`) and nothing loads two
+  configurations as one table. The tables of one configuration cannot be splits of one config,
+  since their columns differ.
+- **The switch, applied as the files are written:** label text only for labels with no
+  copyright mark (`unmarked`), less any label on the takedown list (`data/takedown.csv`,
+  `docs/removal.md`); the NCI text as kept, with its credit line, less any page on the list;
+  codes: the trusted ones only. The `unlisted` files carry no columns of measures from
+  structure.
+- **The manifest** gives every file's rows, size and SHA-256, each source's date and the switch.
+- **The check fails on** a file outside the manifest (or a manifest line without its file, or
+  a changed file), a marked label's text, an experimental code, a pooled reading-level column
+  (rows of another configuration, or measures from structure in `unlisted`), an NCI row without
+  its credit line or with a left-out block, a `current` label without structure, a text row of
+  an entry on the takedown list, and a card without its license fields, with a default config or
+  without the not-medical-information line on its first screen.
+
 ## 13. What the corpus is not
 A record of wording. No measure says what a medicine does, whether it is safe or what anyone
 should take. Every release repeats the source's disclaimer and states the export date.
