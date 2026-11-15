@@ -194,7 +194,17 @@ def _built(tmp_path, monkeypatch):
 
 
 def test_release_check_command_passes_and_fails_loudly(tmp_path, monkeypatch, capsys):
+    import pyarrow.parquet as pq
+
+    from tests.test_release import write_structure
+
     _built(tmp_path, monkeypatch)
+    labels = pq.read_table(tmp_path / "t" / "labels.parquet").to_pylist()
+    write_structure(tmp_path / "st", labels)
+    assert main(["release-check", "--tables", "t", "--switch", "unmarked"]) == 1
+    assert "No label has a configuration" in capsys.readouterr().out
+    assert main(["build", "--export-date", "2026-11-13", "--out", "t", "--structure", "st"]) == 0
+    capsys.readouterr()
     assert main(["release-check", "--tables", "t", "--switch", "unmarked"]) == 0
     assert "Release check passed" in capsys.readouterr().out
     assert main(["release-check", "--tables", "t", "--switch", "all"]) == 1
@@ -299,5 +309,5 @@ def test_codes_command_codes_the_built_tables(tmp_path, monkeypatch, capsys):
         tables.parts_from_manifest(root, "2026-11-13"), tmp_path / "t", "2026-11-13", log=print
     ).run()
     assert main(["codes", "--tables", "t"]) == 0
-    assert "(codebook version 0)" in capsys.readouterr().out
+    assert "(codebook version 1)" in capsys.readouterr().out
     assert (tmp_path / "t" / "codes.parquet").exists()

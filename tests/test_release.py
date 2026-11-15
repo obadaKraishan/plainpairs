@@ -8,13 +8,63 @@ from plainpairs import bulk, release, tables
 from tests.test_tables import write_export
 
 
+def write_structure(folder, labels, unlisted=()):
+    """An invented structure folder: every label but ``unlisted`` is in the release, in its
+    version, with the same words for each of its patient texts."""
+    import json
+
+    from plainpairs import structure
+
+    folder.mkdir(parents=True, exist_ok=True)
+    index, rows = [], []
+    for r in labels:
+        if r["set_id"] in unlisted:
+            continue
+        sid = r["set_id"].lower()
+        index.append(
+            {"set_id": sid, "version": r["version"], "version_match": True, "in_corpus": True}
+        )
+        for k in tables.PATIENT:
+            if r[f"t_{k}_sha256"]:
+                st = dict.fromkeys(f.name for f in structure.STRUCTURED)
+                st.update(
+                    xml_match="exact",
+                    xml_dice=1.0,
+                    words=50,
+                    sentences=5,
+                    flesch_kincaid=7.5,
+                    smog=9.0,
+                    blocks_heading=3,
+                    blocks_item=4,
+                    subsection_titles=0,
+                )
+                rows.append(
+                    {
+                        "set_id": sid,
+                        "version": r["version"],
+                        "section": k,
+                        "side": "patient",
+                        "structured": st,
+                    }
+                )
+    pq.write_table(pa.Table.from_pylist(index, structure.INDEX_SCHEMA), folder / "index.parquet")
+    pq.write_table(
+        pa.Table.from_pylist(rows, structure.STRUCTURE_SCHEMA), folder / "structure.parquet"
+    )
+    (folder / "structure_summary.json").write_text(json.dumps({"release_date": "2026-11-13"}))
+    return folder
+
+
 @pytest.fixture
 def built(tmp_path):
     root = write_export(tmp_path / "bulk")
+    parts = tables.parts_from_manifest(root, "2026-11-13")
+    bare = tmp_path / "bare"
+    tables.Builder(parts, bare, "2026-11-13", log=lambda s: None).run()
+    labels = pq.read_table(bare / "labels.parquet").to_pylist()
+    folder = write_structure(tmp_path / "structure", labels, unlisted={labels[-1]["set_id"]})
     out = tmp_path / "tables"
-    tables.Builder(
-        tables.parts_from_manifest(root, "2026-11-13"), out, "2026-11-13", log=lambda s: None
-    ).run()
+    tables.Builder(parts, out, "2026-11-13", log=lambda s: None, structure_dir=folder).run()
     manifest = bulk.read_manifest(bulk.manifest_path(root, "2026-11-13"))
     return root, out, manifest
 
@@ -179,3 +229,87 @@ def test_the_codes_table_is_checked_when_present(built):
     pq.write_table(t.drop_columns(["doses"]), out / "codes.parquet")
     problems, _ = release.check(out, manifest, "unmarked")
     assert any("expected columns" in p for p in problems)
+
+
+def _rewrite(out, name, fn):
+    t = pq.read_table(out / f"{name}.parquet")
+    pq.write_table(fn(t), out / f"{name}.parquet")
+
+
+def test_the_two_configurations_are_set_and_kept_apart(built):
+    _root, out, manifest = built
+    labels = pq.read_table(out / "labels.parquet").to_pylist()
+    assert {r["configuration"] for r in labels} == {"current", "unlisted"}
+    un = next(r for r in labels if r["configuration"] == "unlisted")
+    assert un["unlisted_reason"] == "not_in_release" and un["structure_source"] == "json"
+    assert all(un[c] is None for c in release.STRUCTURED_COLUMNS)
+    cur = next(r for r in labels if r["configuration"] == "current")
+    assert cur["t_medication_guide_structured"]["flesch_kincaid"] == 7.5
+    assert cur["t_medication_guide"]["flesch_kincaid"] is not None  # the JSON's stay
+    pairs = pq.read_table(out / "section_pairs.parquet").to_pylist()
+    assert {p["configuration"] for p in pairs} <= {"current", "unlisted"}
+    problems, info = release.check(out, manifest, "unmarked")
+    assert problems == [] and info["configuration:current"] >= 1
+
+
+def test_a_build_without_configurations_fails(tmp_path):
+    root = write_export(tmp_path / "bulk")
+    out = tmp_path / "t"
+    tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"), out, "2026-11-13", log=lambda s: None
+    ).run()
+    manifest = bulk.read_manifest(bulk.manifest_path(root, "2026-11-13"))
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("No label has a configuration" in p for p in problems)
+
+
+def test_a_current_label_without_structure_fails(built):
+    _root, out, manifest = built
+
+    def drop(t):
+        rows = t.to_pylist()
+        for r in rows:
+            if r["configuration"] == "current" and r["t_medication_guide_sha256"]:
+                r["t_medication_guide_structured"] = None
+                break
+        return pa.Table.from_pylist(rows, t.schema)
+
+    _rewrite(out, "labels", drop)
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("current label without structure" in p for p in problems)
+
+
+def test_a_pooled_reading_level_column_fails(built):
+    _root, out, manifest = built
+
+    def mix(t):
+        rows = t.to_pylist()
+        cur = next(r for r in rows if r["configuration"] == "current")
+        un = next(r for r in rows if r["configuration"] == "unlisted")
+        un["t_medication_guide_structured"] = cur["t_medication_guide_structured"]
+        return pa.Table.from_pylist(rows, t.schema)
+
+    _rewrite(out, "labels", mix)
+    _rewrite(
+        out,
+        "section_pairs",
+        lambda t: t.set_column(
+            t.schema.get_field_index("configuration"),
+            "configuration",
+            pa.array([None] * t.num_rows, pa.string()),
+        ),
+    )
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("would be pooled in one column" in p for p in problems)
+    assert any("section_pairs" in p and "pooled" in p for p in problems)
+
+
+def test_an_experimental_code_in_a_release_table_fails(built):
+    from plainpairs import codes
+
+    _root, out, manifest = built
+    codes.build(out, log=lambda s: None)
+    x = pq.read_table(out / "codes_experimental.parquet")
+    _rewrite(out, "codes", lambda t: t.append_column("vague_core", x["vague_core"]))
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("experimental code columns vague_core" in p for p in problems)

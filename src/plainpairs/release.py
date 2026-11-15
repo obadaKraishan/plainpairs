@@ -10,7 +10,10 @@
 only with none: counts that differ from the manifest; a record-layer table with a text column or
 a long string; a text row without its mark flag; a switch setting that would release a marked
 text; a duplicated id; a label out of scope; a row without its source, export date or set id;
-a text whose hash does not match.
+a text whose hash does not match; a label without a configuration, or a ``current`` label
+without structure for its patient texts; a reading-level column pooled across the two
+configurations (a row that does not say its configuration, or measures from structure on an
+``unlisted`` row); a code marked experimental in a release table.
 
 **The rebuild** (:func:`rebuild_text`) makes the text layer again from the record layer and the
 source's own bulk files of the same export date, and confirms every row by its SHA-256.
@@ -28,7 +31,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from plainpairs import bulk, label, tables
+from plainpairs import bulk, label, structure, tables
 
 SWITCH = ("all", "unmarked", "none")
 #: The longest string a record-layer cell may hold (heading templates are the longest kind).
@@ -150,6 +153,13 @@ def check(
                 problems.append(
                     f"The record table {name} holds strings of {n} characters in {col}."
                 )
+    problems += _check_configurations(loaded)
+    info.update(
+        {
+            f"configuration:{k}": v
+            for k, v in Counter(loaded["labels"]["configuration"].to_pylist()).items()
+        }
+    )
     codes_path = Path(out_dir) / "codes.parquet"
     if codes_path.exists():
         problems += _check_codes(pq.read_table(codes_path), loaded["labels"])
@@ -199,6 +209,12 @@ def _check_codes(t: pa.Table, labels: pa.Table) -> list[str]:
     from plainpairs import codes
 
     problems = []
+    experimental = [c for c in t.column_names if codes.STATUS.get(c) == "experimental"]
+    if experimental:
+        problems.append(
+            f"codes: the experimental code columns {', '.join(experimental)} are in a release "
+            "table; they belong in codes_experimental.parquet."
+        )
     if t.schema.names != codes.SCHEMA.names:
         problems.append("codes does not have the expected columns; run `plainpairs codes` again.")
         return problems
@@ -214,6 +230,82 @@ def _check_codes(t: pa.Table, labels: pa.Table) -> list[str]:
         out = t.num_rows - (pc.sum(known).as_py() or 0)
         if out:
             problems.append(f"codes: {out} rows are for labels not in the labels table.")
+    return problems
+
+
+STRUCTURED_COLUMNS = (
+    *[f"p_{s}_structured" for s in tables.PRESCRIBER],
+    *[f"t_{k}_structured" for k in tables.PATIENT],
+)
+
+
+def _check_configurations(loaded: dict[str, pa.Table]) -> list[str]:
+    """The two configurations: every row says its configuration; a ``current`` label has
+    structure for its patient texts; no reading level from structure on an ``unlisted`` row."""
+    problems: list[str] = []
+    labels = loaded["labels"]
+    if not labels.num_rows:
+        return problems
+    conf = labels["configuration"]
+    if conf.null_count == labels.num_rows:
+        return [
+            "No label has a configuration: build with --structure, so that current and "
+            "unlisted labels are kept apart."
+        ]
+    if conf.null_count:
+        problems.append(f"{conf.null_count} labels have no configuration.")
+    odd = set(pc.unique(conf).to_pylist()) - {None, *structure.CONFIGURATIONS}
+    if odd:
+        problems.append(f"labels: unknown configurations {sorted(odd)}.")
+    cols = [
+        "set_id",
+        "configuration",
+        "structure_source",
+        *STRUCTURED_COLUMNS,
+        *[f"t_{k}_sha256" for k in tables.PATIENT],
+    ]
+    without, pooled = 0, 0
+    by_id: dict[str, str | None] = {}
+    for r in labels.select(cols).to_pylist():
+        by_id[r["set_id"]] = r["configuration"]
+        if r["configuration"] == "current":
+            ok = r["structure_source"] == "dailymed_xml" and all(
+                (r[f"t_{k}_structured"] or {}).get("sentences") is not None
+                for k in tables.PATIENT
+                if r[f"t_{k}_sha256"]
+            )
+            without += not ok
+        elif r["configuration"] == "unlisted":
+            pooled += r["structure_source"] != "json" or any(
+                r[c] is not None for c in STRUCTURED_COLUMNS
+            )
+    if without:
+        problems.append(
+            f"{without} current labels have no structure for a patient text (a current label "
+            "without structure)."
+        )
+    if pooled:
+        problems.append(
+            f"{pooled} unlisted labels carry reading levels from structure: the two bases "
+            "would be pooled in one column."
+        )
+    for name in ("patient_texts", "section_pairs"):
+        t = loaded[name]
+        if t.num_rows and t["configuration"].null_count:
+            problems.append(
+                f"{name}: {t['configuration'].null_count} rows with reading levels do not say "
+                "their configuration, so the two would be pooled."
+            )
+    pairs = loaded["section_pairs"].select(["set_id", "configuration"]).to_pylist()
+    wrong = sum(1 for r in pairs if r["configuration"] != by_id.get(r["set_id"]))
+    if wrong:
+        problems.append(f"section_pairs: {wrong} rows disagree with their label's configuration.")
+    pt = loaded["patient_texts"].select(["configuration", "measures_structured"]).to_pylist()
+    mixed = sum(1 for r in pt if r["configuration"] != "current" and r["measures_structured"])
+    if mixed:
+        problems.append(
+            f"patient_texts: {mixed} texts that are not current carry measures from structure."
+        )
     return problems
 
 
