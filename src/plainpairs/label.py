@@ -133,8 +133,9 @@ def record_has_copyright_mark(record: dict[str, Any]) -> bool:
     return False
 
 
-def parse_label(record: dict[str, Any]) -> LabelRow:
-    """Read one source record into a :class:`LabelRow`."""
+def parse_label(record: dict[str, Any], with_tables: bool = True) -> LabelRow:
+    """Read one source record into a :class:`LabelRow` (``with_tables=False`` skips the
+    tables, for labels whose text is only counted)."""
     if not record.get("id") or not record.get("set_id"):
         raise LabelError("A label record has no id or no set_id; it cannot be identified.")
     openfda = record.get("openfda") or {}
@@ -163,7 +164,7 @@ def parse_label(record: dict[str, Any]) -> LabelRow:
     section_of.update({s: sec for sec, s in PATIENT_SOURCES.items()})
     section_of.update({s: "warnings_and_precautions" for s in OLDER_WARNINGS})
     tables = []
-    for source, section in section_of.items():
+    for source, section in section_of.items() if with_tables else ():
         for markup in _strings(record, f"{source}_table"):
             text = table_to_text(markup)
             if text:

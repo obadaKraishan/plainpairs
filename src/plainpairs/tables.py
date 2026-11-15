@@ -101,6 +101,8 @@ LABELS_SCHEMA = pa.schema(
         ("has_other_patient_text", pa.bool_()),
         ("has_copyright_mark", pa.bool_()),
         ("n_tables", pa.int16()),
+        #: SHA-256 of each table row of the text layer, in the order the rows are written.
+        ("tables_sha256", STR_LIST),
         *[(f"p_{s}_sha256", pa.string()) for s in PRESCRIBER],
         *[(f"p_{s}", MEASURES) for s in PRESCRIBER],
         *[(f"t_{k}_sha256", pa.string()) for k in PATIENT],
@@ -293,7 +295,7 @@ class Builder:
                     if record.get("spl_medguide") or record.get("spl_patient_package_insert"):
                         c["field:either"] += 1
                     try:
-                        row = label.parse_label(record)
+                        row = label.parse_label(record, with_tables=self._candidate(record))
                     except label.LabelError as exc:
                         errors[str(exc).split(" of label")[0][:60]] += 1
                         continue
@@ -342,6 +344,14 @@ class Builder:
         self.stats["parse_errors"] = dict(errors)
         self.stats["identity"] = dict(identity)
         self._write("excluded_otc", excluded)
+
+    @staticmethod
+    def _candidate(record: dict[str, Any]) -> bool:
+        """Whether a record could be in scope (only then are its tables read)."""
+        types = (record.get("openfda") or {}).get("product_type") or [None]
+        fmt = label.label_format(record, types[0])
+        has_text = record.get("spl_medguide") or record.get("spl_patient_package_insert")
+        return fmt in IN_SCOPE_FORMATS and bool(has_text)
 
     def _identity(self, record: dict[str, Any], row: LabelRow, out: Counter[str]) -> None:
         """How the medicine and maker can be told without the openfda block (counts only)."""
@@ -404,6 +414,7 @@ class Builder:
             "has_other_patient_text": bool(row.patient.patient_medication_information),
             "has_copyright_mark": marked,
             "n_tables": len(row.tables),
+            "tables_sha256": [],
         }
         sections: dict[str, str] = {}
         for s in PRESCRIBER:
@@ -415,6 +426,7 @@ class Builder:
             if t:
                 sections[s] = t
                 self._text_rows(buf["text_prescriber"], base, s, t, plain_tables.get(s, []), marked)
+                out["tables_sha256"] += [sha256_text(x) for x in plain_tables.get(s, [])]
         segments: list[tuple[str, str]] = []
         for k in PATIENT:
             t = getattr(row.patient, k)
@@ -427,6 +439,7 @@ class Builder:
             out[f"_{k}_loose"] = text.loose_hash(t) if t else None
             if t:
                 self._text_rows(buf["text_patient"], base, k, t, plain_tables.get(k, []), marked)
+                out["tables_sha256"] += [sha256_text(x) for x in plain_tables.get(k, [])]
                 if k in PAIRING:
                     segments += [
                         (key, t[head_end:end])

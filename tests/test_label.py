@@ -128,3 +128,8 @@ def test_copyright_marks_anywhere_in_the_label_but_not_in_openfda():
     assert label.record_has_copyright_mark({"spl_medguide": ["All Rights Reserved."]})
     assert not label.record_has_copyright_mark({"openfda": {"brand_name": ["Copyright"]}})
     assert not label.record_has_copyright_mark({"id": "x", "version": "2"})
+
+
+def test_tables_can_be_skipped_for_labels_that_are_only_counted():
+    assert label.parse_label(PLR_WITH_GUIDE, with_tables=False).tables == ()
+    assert label.parse_label(PLR_WITH_GUIDE).tables
