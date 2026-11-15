@@ -56,6 +56,9 @@ BODY = (
     "<table><caption>Table 1. Invented stages</caption><tr><th>Stage</th><th>Size</th></tr>"
     "<tr><td>I</td><td>2 cm</td></tr><tr><td>II</td><td>4 cm</td></tr></table>"
     "<h6>References</h6><ol><li>One invented reference.</li><li>Two.</li></ol>"
+    "<table><caption>Table 2. Borrowed</caption><tr><td>Row</td><td>1</td></tr><tfoot><tr>"
+    "<td>Adapted from an invented source.</td></tr></tfoot></table>"
+    "<p>The data was used from an invented study, adapted from an invented plan.</p>"
     "<p>Call your doctor if you have a fever.<br/>Take the test once a day.</p>"
 )
 
@@ -89,6 +92,11 @@ def test_parse_page_keeps_body_and_leaves_out_the_rest():
         ("data_cell", "2 cm", 0),
         ("data_cell", "II", 0),
         ("data_cell", "4 cm", 0),
+        (
+            "paragraph",
+            "The data was used from an invented study, adapted from an invented plan.",
+            0,
+        ),
         ("paragraph", "Call your doctor if you have a fever.", 0),
         ("paragraph", "Take the test once a day.", 0),
     ]
@@ -96,7 +104,7 @@ def test_parse_page_keeps_body_and_leaves_out_the_rest():
     lo = p.left_out
     assert lo["citation_mark"] == 2 and lo["figure"] == 1 and lo["credit_line"] == 1
     assert lo["key_points"] >= 1 and lo["about_this"] >= 1 and lo["navigation"] >= 1
-    assert lo["reference"] == 2
+    assert lo["reference"] == 2 and lo["credited_table"] == 1
     joined = " ".join(b.text for b in p.blocks)
     for gone in (
         "drawing",

@@ -16,8 +16,10 @@ Each summary page saved by :mod:`plainpairs.nci_pages` is read here into:
 own tables of contents and the version box); the "Key Points" boxes of patient summaries (a
 list of the headings that follow); the reference lists (only counted) and the citation marks
 in the text ("[12]"); the closing "About This Summary" sections (purpose, reviewers, levels of
-evidence, permission to use, how to cite, disclaimer, contact); and any block that carries a
-credit or permission line. Each left-out kind is counted.
+evidence, permission to use, how to cite, disclaimer, contact); any block that carries a
+credit or permission line; and any table whose caption or cells credit someone else for it
+("reprinted with permission", "adapted from", "source:"), left out whole. Each left-out kind is
+counted.
 
 The summaries, the pairs and the text are three tables of the ``nci`` configuration. None of
 their numbers is ever pooled with the label configurations.
@@ -52,6 +54,7 @@ LEFT_OUT = (
     "citation_mark",
     "about_this",
     "credit_line",
+    "credited_table",
 )
 _VOID = {
     "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
@@ -63,10 +66,18 @@ _SKIP_TAGS = {"script", "style", "noscript", "svg", "button", "form", "iframe", 
 _REFERENCE_HEADINGS = frozenset({"references", "bibliograf\u00eda", "bibliografia"})
 #: A block that credits or grants permission for something is left out.
 CREDIT_LINE = re.compile(
-    r"\u00a9|\bcopyright\b|\b(?:reprinted|adapted|reproduced|used)\s+(?:with\s+permission|from)"
+    r"\u00a9|\bcopyright\b|\b(?:reprinted|reproduced)\s+(?:with\s+permission|from)\b"
     r"|\bwith\s+permission\b|\bcourtesy\s+of\b|\ball\s+rights\s+reserved\b"
-    r"|\bderechos\s+reservados\b|\bcon\s+(?:autorizaci\u00f3n|permiso)\b|\badaptad[oa]\s+de\b"
-    r"|\breproducid[oa]\s+(?:con|de)\b|\bcortes\u00eda\s+de\b",
+    r"|\bderechos\s+reservados\b|\breproducci\u00f3n\s+autorizada\b"
+    r"|\bcon\s+(?:autorizaci\u00f3n|permiso)\b|\breproducid[oa]\s+(?:con|de)\b"
+    r"|\bcortes\u00eda\s+de\b",
+    re.I,
+)
+#: In a table, a footnote that names where the table comes from is a credit too: the whole
+#: table is left out ("adapted from", "modified from", "source:" and their Spanish forms).
+TABLE_CREDIT = re.compile(
+    CREDIT_LINE.pattern + r"|\b(?:adapted|modified)\s+from\b|\b(?:adaptad|modificad)[oa]s?\s+de\b"
+    r"|\bsource\s*:|\bfuente\s*:",
     re.I,
 )
 _CITATION_REMNANT = re.compile(r"\[\s*(?:[,;\u2013\-]\s*)*\]")
@@ -125,7 +136,9 @@ def _iter(node: _Node) -> Iterator[_Node]:
             yield from _iter(ch)
 
 
-def _text_of(node: _Node) -> str:
+def _text_of(node: _Node, sep: str = "") -> str:
+    """The text of a node as it reads (``sep`` joins its text pieces: a space for a table,
+    whose cells would otherwise run together)."""
     parts: list[str] = []
 
     def walk(n: _Node) -> None:
@@ -136,7 +149,7 @@ def _text_of(node: _Node) -> str:
                 walk(ch)
 
     walk(node)
-    return text.clean("".join(parts))
+    return text.clean(sep.join(parts))
 
 
 @dataclass(frozen=True)
@@ -266,10 +279,14 @@ class _Body:
         return False
 
     def _table(self, node: _Node) -> None:
+        if TABLE_CREDIT.search(_text_of(node, " ")):
+            # a table reproduced or adapted from someone else's work: left out whole
+            self.left_out["credited_table"] += 1
+            return
         self.tables += 1
         n = self.tables
         cells = [d for d in _iter(node) if d.tag in ("td", "th")]
-        flat = [_text_of(c) for c in cells]
+        flat = [_text_of(c, " ") for c in cells]
         kind = "data_cell" if text.is_data_table([c for c in flat if c]) else "cell"
         for d in _iter(node):
             if d.tag == "caption":
