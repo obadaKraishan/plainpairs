@@ -8,9 +8,11 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from plainpairs import release, tables
+from plainpairs import codes, release, sheet, tables
 
 
 def q(values: list[float | None]) -> dict[str, Any]:
@@ -45,6 +47,7 @@ def corpus_stats(out_dir: Path) -> dict[str, Any]:
             "best_similarity",
             "mapped_best_similarity",
             "patient_text_id",
+            "measures",
         ],
     ).to_pylist()
     s: dict[str, Any] = {"export_date": summary["export_date"], "build": summary}
@@ -201,12 +204,22 @@ def corpus_stats(out_dir: Path) -> dict[str, Any]:
             )
             if with_mapped
             else None,
+            "empty_segments": sum(1 for p in ps if not (p["measures"] or {}).get("words")),
+            "one_line_segments": sum(1 for p in ps if not sheet._long_enough(p)),
             "best_section_top": Counter(p["best_section"] for p in ps).most_common(4),
             "best_similarity": q([p["best_similarity"] for p in ps]),
             "mapped_best_similarity": q([p["mapped_best_similarity"] for p in with_mapped]),
         }
     s["alignment"] = al
     s["section_pairs"] = len(pairs)
+    s["section_pairs_empty"] = sum(a["empty_segments"] for a in al.values())
+    s["restated_headings_merged"] = {
+        k.split(":", 1)[1]: v
+        for k, v in summary.get("counts", {}).items()
+        if k.startswith("restated_headings:")
+    }
+    s["product_names"] = product_name_stats(labels)
+    s["listed"] = listed_stats(labels, summary.get("listed_sources", {}))
 
     # What each switch setting would release.
     sw: dict[str, Any] = {}
@@ -226,4 +239,190 @@ def corpus_stats(out_dir: Path) -> dict[str, Any]:
             sw[name][f"released:{setting}"] = chosen.num_rows
     sw["labels_released_unmarked"] = sum(not r["has_copyright_mark"] for r in labels)
     s["switch"] = sw
+    s["codes"] = codes_stats(out_dir)
     return s
+
+
+def _norm(name: str) -> str:
+    return " ".join(name.split()).casefold()
+
+
+def product_name_stats(labels: list[dict[str, Any]]) -> dict[str, Any]:
+    """Labels named from their product data, distinct names, agreement with openfda names."""
+    if not labels or "product_name" not in labels[0]:
+        return {}
+    named = [r for r in labels if r["product_name"]]
+    both = [r for r in named if r["brand_names"]]
+    agree = [r for r in both if _norm(r["product_name"]) in {_norm(b) for b in r["brand_names"]}]
+    by_rule = Counter(r["product_name_rule"] for r in named)
+    rule_agree = Counter(r["product_name_rule"] for r in agree)
+    rule_both = Counter(r["product_name_rule"] for r in both)
+    halves = {}
+    for half, rows in (
+        ("with_openfda", [r for r in labels if r["harmonized"]]),
+        ("without_openfda", [r for r in labels if not r["harmonized"]]),
+    ):
+        got = [r for r in rows if r["product_name"]]
+        halves[half] = {
+            "labels": len(rows),
+            "named": len(got),
+            "distinct_names": len({_norm(r["product_name"]) for r in got}),
+        }
+    return {
+        "labels_named": len(named),
+        "labels_not_named": len(labels) - len(named),
+        "by_rule": dict(by_rule),
+        "distinct_product_names": len({_norm(r["product_name"]) for r in named}),
+        "distinct_openfda_brand_names": len({_norm(b) for r in labels for b in r["brand_names"]}),
+        "both_present": len(both),
+        "agrees_with_an_openfda_brand_name": len(agree),
+        "agreement_share": round(len(agree) / len(both), 4) if both else None,
+        "agreement_by_rule": {
+            k: round(rule_agree[k] / n, 4) for k, n in sorted(rule_both.items(), key=str) if n
+        },
+        "halves": halves,
+    }
+
+
+def listed_stats(labels: list[dict[str, Any]], sources: dict[str, Any]) -> dict[str, Any]:
+    """Shares listed in the NDC directory and served by DailyMed: corpus and both halves."""
+    if not labels or labels[0].get("listed_in_ndc_directory") is None:
+        return {"sources": sources}
+
+    def part(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        n = len(rows)
+        ndc = sum(bool(r["listed_in_ndc_directory"]) for r in rows)
+        dm = sum(bool(r["served_by_dailymed"]) for r in rows)
+        same = sum(
+            bool(r["served_by_dailymed"]) and r["dailymed_version"] == r["version"] for r in rows
+        )
+        both = sum(bool(r["listed_in_ndc_directory"] and r["served_by_dailymed"]) for r in rows)
+        neither = sum(
+            not r["listed_in_ndc_directory"] and not r["served_by_dailymed"] for r in rows
+        )
+        return {
+            "labels": n,
+            "in_ndc_directory": ndc,
+            "in_ndc_directory_share": round(ndc / n, 4) if n else None,
+            "ndc_match": dict(Counter(r["ndc_match"] for r in rows)),
+            "served_by_dailymed": dm,
+            "served_by_dailymed_share": round(dm / n, 4) if n else None,
+            "dailymed_same_version": same,
+            "both": both,
+            "neither": neither,
+            "neither_share": round(neither / n, 4) if n else None,
+        }
+
+    return {
+        "sources": sources,
+        "corpus": part(labels),
+        "with_openfda": part([r for r in labels if r["harmonized"]]),
+        "without_openfda": part([r for r in labels if not r["harmonized"]]),
+        "distinct_patient_texts": _texts_listed(labels),
+    }
+
+
+def _texts_listed(labels: list[dict[str, Any]]) -> dict[str, int]:
+    """Distinct guides and inserts carried by at least one listed (or served) label."""
+    out: dict[str, int] = {}
+    for kind in tables.PAIRING:
+        col = f"t_{kind}_id"
+        all_ = {r[col] for r in labels if r[col]}
+        ndc = {r[col] for r in labels if r[col] and r["listed_in_ndc_directory"]}
+        dm = {r[col] for r in labels if r[col] and r["served_by_dailymed"]}
+        out[kind] = len(all_)
+        out[f"{kind}:on_a_label_in_ndc_directory"] = len(ndc)
+        out[f"{kind}:on_a_label_served_by_dailymed"] = len(dm)
+        out[f"{kind}:on_a_label_in_either"] = len(ndc | dm)
+    return out
+
+
+def _per_1000(num: int, words: int) -> float | None:
+    return round(1000 * num / words, 2) if words else None
+
+
+def _share(num: int, den: int) -> float | None:
+    return round(num / den, 4) if den else None
+
+
+def code_summary(t: pa.Table, kind: str) -> dict[str, Any]:
+    """Shares and rates of the codes over the rows of ``t`` (one text each)."""
+    n = t.num_rows
+    if not n:
+        return {"texts": 0}
+    tot = {f: pc.sum(t[f]).as_py() or 0 for f in codes.FIELDS}
+
+    def any_(f: str) -> float | None:
+        return _share(pc.sum(pc.greater(t[f], 0)).as_py() or 0, n)
+
+    def med(f: str) -> float | None:
+        v = pc.quantile(t[f], q=0.5, interpolation="midpoint").to_pylist()
+        return v[0] if v else None
+
+    w = tot["words"]
+    out = {
+        "texts": n,
+        "words": w,
+        "you_per_1000_words": _per_1000(tot["you_words"], w),
+        "texts_with_you": any_("you_words"),
+        "sentences_with_you_share": _share(tot["sentences_with_you"], tot["sentences"]),
+        "command_sentence_share": _share(tot["command_sentences"], tot["sentences"]),
+        "conditional_command_share": _share(tot["conditional_commands"], tot["sentences"]),
+        "distinct_actions_median": med("distinct_actions"),
+        "texts_with_a_command": any_("command_sentences"),
+        "percentages_per_1000_words": _per_1000(tot["percentages"], w),
+        "one_in_n_per_1000_words": _per_1000(tot["one_in_n"], w),
+        "texts_with_one_in_n": any_("one_in_n"),
+        "frequencies_per_1000_words": _per_1000(tot["frequencies"], w),
+        "doses_per_1000_words": _per_1000(tot["doses"], w),
+        "risk_sentences": tot["risk_sentences"],
+        "risk_sentences_with_number_share": _share(
+            tot["risk_sentences_with_number"], tot["risk_sentences"]
+        ),
+        "vague_core_per_1000_words": _per_1000(tot["vague_core"], w),
+        "vague_extended_per_1000_words": _per_1000(tot["vague_extended"], w),
+        "explained_in_brackets_per_1000_words": _per_1000(tot["explained_in_brackets"], w),
+        "explained_called_per_1000_words": _per_1000(tot["explained_called"], w),
+        "texts_with_an_explained_term": _share(
+            pc.sum(pc.greater(pc.add(t["explained_in_brackets"], t["explained_called"]), 0)).as_py()
+            or 0,
+            n,
+        ),
+        "abbreviations_in_brackets_per_1000_words": _per_1000(tot["abbreviations_in_brackets"], w),
+        "sentences_over_20_share": _share(tot["sentences_over_20"], tot["sentences"]),
+        "sentences_over_40_share": _share(tot["sentences_over_40"], tot["sentences"]),
+        "longest_sentence_words_median": med("longest_sentence_words"),
+        "texts_with_contact": any_("contact_sentences"),
+        "contact_sentences_with_when_share": _share(
+            tot["contact_sentences_with_when"], tot["contact_sentences"]
+        ),
+    }
+    if kind == "patient":
+        out["longest_section_words_median"] = med("longest_section_words")
+        out["texts_with_a_section_over_250_words"] = any_("sections_over_250")
+    return out
+
+
+def codes_stats(out_dir: Path) -> dict[str, Any]:
+    """The codes summarized: patient texts over distinct texts, prescriber sections over labels."""
+    path = Path(out_dir) / "codes.parquet"
+    if not path.exists():
+        return {}
+    t = pq.read_table(path)
+    out: dict[str, Any] = {"code_version": codes.CODE_VERSION, "rows": t.num_rows}
+    pt = t.filter(pc.equal(t["side"], "patient"))
+    # one row per distinct text: the first label that carries it
+    ids = pt["patient_text_id"].to_pylist()
+    first: dict[str, int] = {}
+    for i, tid in enumerate(ids):
+        first.setdefault(tid, i)
+    distinct = pt.take(pa.array(sorted(first.values())))
+    for kind in codes.PATIENT_KINDS:
+        sub = distinct.filter(pc.equal(distinct["section"], kind))
+        out[f"patient.{kind}"] = code_summary(sub, "patient")
+    pr = t.filter(pc.equal(t["side"], "prescriber"))
+    for section in sorted(set(pr["section"].to_pylist())):
+        out[f"prescriber.{section}"] = code_summary(
+            pr.filter(pc.equal(pr["section"], section)), "prescriber"
+        )
+    return out
