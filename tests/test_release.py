@@ -313,3 +313,48 @@ def test_an_experimental_code_in_a_release_table_fails(built):
     _rewrite(out, "codes", lambda t: t.append_column("vague_core", x["vague_core"]))
     problems, _ = release.check(out, manifest, "none", verify_hashes=False)
     assert any("experimental code columns vague_core" in p for p in problems)
+
+
+def _nci_tables(out, tmp_path):
+    from plainpairs import nci
+    from tests.test_nci import BASE, BODY, _write, page
+
+    root = tmp_path / "ncipages"
+    hp, pt = "/types/zorvan/hp/zorvan-pdq", "/types/zorvan/patient/zorvan-pdq"
+    _write(root, BASE + hp, page(hp, other_version=pt, body=BODY))
+    _write(root, BASE + pt, page(pt, audience="Patients", other_version=hp, body=BODY))
+    nci.build(root, out, date_read=lambda u: "2026-11-15", log=lambda s: None)
+
+
+def test_the_nci_configuration_is_checked(built, tmp_path):
+    _root, out, manifest = built
+    _nci_tables(out, tmp_path)
+    problems, info = release.check(out, manifest, "none", verify_hashes=False)
+    assert problems == [] and info["rows:nci_summaries"] == 2 and info["rows:nci_pairs"] == 1
+
+    def no_credit(t):
+        i = t.schema.get_field_index("credit_line")
+        return t.set_column(i, "credit_line", pa.array(["Thanks."] * t.num_rows))
+
+    _rewrite(out, "nci_text", no_credit)
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("credit line does not name NCI" in p for p in problems)
+
+
+def test_nci_text_with_a_left_out_block_or_another_configuration_fails(built, tmp_path):
+    _root, out, manifest = built
+    _nci_tables(out, tmp_path)
+
+    def leak(t):
+        rows = t.to_pylist()
+        rows[0]["text"] = "Image reprinted with permission of an invented artist."
+        rows[1]["kind"] = "figure"
+        rows[2]["configuration"] = "current"
+        return pa.Table.from_pylist(rows, t.schema)
+
+    _rewrite(out, "nci_text", leak)
+    problems, _ = release.check(out, manifest, "none", verify_hashes=False)
+    assert any("credit or permission line" in p for p in problems)
+    assert any("left-out or unknown kinds" in p for p in problems)
+    assert any("other configurations" in p for p in problems)
+    assert any("text hashes do not match" in p for p in problems)

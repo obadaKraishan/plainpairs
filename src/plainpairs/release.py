@@ -13,7 +13,9 @@ text; a duplicated id; a label out of scope; a row without its source, export da
 a text whose hash does not match; a label without a configuration, or a ``current`` label
 without structure for its patient texts; a reading-level column pooled across the two
 configurations (a row that does not say its configuration, or measures from structure on an
-``unlisted`` row); a code marked experimental in a release table.
+``unlisted`` row); a code marked experimental in a release table; and, for the NCI cancer
+information summaries (:func:`check_nci`), a row without its address, dates or credit line,
+the text of a left-out block, or a row of another configuration.
 
 **The rebuild** (:func:`rebuild_text`) makes the text layer again from the record layer and the
 source's own bulk files of the same export date, and confirms every row by its SHA-256.
@@ -160,6 +162,10 @@ def check(
             for k, v in Counter(loaded["labels"]["configuration"].to_pylist()).items()
         }
     )
+    if (Path(out_dir) / "nci_summaries.parquet").exists():
+        nci_problems, nci_info = check_nci(Path(out_dir))
+        problems += nci_problems
+        info.update(nci_info)
     codes_path = Path(out_dir) / "codes.parquet"
     if codes_path.exists():
         problems += _check_codes(pq.read_table(codes_path), loaded["labels"])
@@ -417,3 +423,67 @@ def rebuild_text(labels_path: Path, bulk_root: Path, out_dir: Path, log=print) -
         "missing": len(by_id) - len(seen),
         "hash_mismatches": mismatches,
     }
+
+
+def check_nci(out_dir: Path) -> tuple[list[str], dict[str, Any]]:
+    """The ``nci`` configuration: every row says ``nci`` and carries NCI's address for the
+    page, the date read, NCI's update date and the credit line; no text block is of a kind the
+    reader leaves out, carries a credit or permission line, or keeps a citation mark; every
+    summary's text hash matches its blocks; no reading level of it sits in a label table."""
+    import re
+
+    from plainpairs import nci
+
+    problems: list[str] = []
+    info: dict[str, Any] = {}
+    loaded = {name: pq.read_table(Path(out_dir) / f"{name}.parquet") for name in nci.TABLES}
+    for name, t in loaded.items():
+        info[f"rows:{name}"] = t.num_rows
+        if t.schema.names != nci.TABLES[name].names:
+            problems.append(f"{name} does not have the expected columns.")
+            continue
+        conf = set(pc.unique(t["configuration"]).to_pylist()) if t.num_rows else set()
+        if conf - {nci.CONFIGURATION}:
+            problems.append(f"{name} holds rows of other configurations: {sorted(conf)}.")
+        cols = (
+            ("url", "date_read", "nci_updated", "credit_line")
+            if name != "nci_pairs"
+            else ("url_a", "url_b", "date_read_a", "date_read_b", "credit_line_a", "credit_line_b")
+        )
+        for col in cols:
+            if t[col].null_count or (pc.sum(pc.equal(t[col], "")).as_py() or 0):
+                problems.append(f"{name}: rows without {col}.")
+        credit_col = "credit_line" if name != "nci_pairs" else "credit_line_a"
+        url_col = "url" if name != "nci_pairs" else "url_a"
+        bad = sum(
+            1
+            for c, u in zip(t[credit_col].to_pylist(), t[url_col].to_pylist(), strict=True)
+            if not c or "National Cancer Institute" not in c or not c.endswith(u or "")
+        )
+        if bad:
+            problems.append(f"{name}: {bad} rows whose credit line does not name NCI and the page.")
+    s, tx = loaded["nci_summaries"], loaded["nci_text"]
+    if "text" in s.column_names:
+        problems.append("The record table nci_summaries has a text column.")
+    rows = tx.select(["url", "kind", "level", "table", "text"]).to_pylist()
+    kinds = {r["kind"] for r in rows} - {"heading", *nci.PROSE_KINDS, "data_cell"}
+    if kinds:
+        problems.append(f"nci_text holds blocks of left-out or unknown kinds: {sorted(kinds)}.")
+    credit = sum(1 for r in rows if nci.CREDIT_LINE.search(r["text"]))
+    if credit:
+        problems.append(f"nci_text: {credit} blocks carry a credit or permission line.")
+    marks = sum(1 for r in rows if re.search(r"\[\s*\d+(?:\s*[,\u2013-]\s*\d+)*\s*\]", r["text"]))
+    info["nci_text_blocks_with_bracketed_numbers"] = marks
+    by_url: dict[str, list[nci.NciBlock]] = {}
+    for r in rows:
+        by_url.setdefault(r["url"], []).append(
+            nci.NciBlock(r["kind"], r["text"], r["level"], r["table"])
+        )
+    wrong = sum(
+        1
+        for r in s.select(["url", "text_sha256"]).to_pylist()
+        if nci.text_hash(by_url.get(r["url"], [])) != r["text_sha256"]
+    )
+    if wrong:
+        problems.append(f"nci_summaries: {wrong} text hashes do not match nci_text.")
+    return problems, info
