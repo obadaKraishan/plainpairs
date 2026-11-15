@@ -1,0 +1,25 @@
+# DRAFT: nothing has been released yet. The version, date and DOI are filled in at release.
+cff-version: 1.2.0
+message: "If you use PlainPairs, please cite it as below."
+type: software
+title: "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
+abstract: >-
+  PlainPairs is a research corpus of how United States medicine labels are worded for two
+  readers: for every medicine whose label carries a version written for patients (a Medication
+  Guide or a patient package insert), the text written for prescribers next to the text written
+  for patients, matched by section, with reading-level and plain-language measures on both
+  sides. It is a record of wording, not medical information.
+authors:
+  - family-names: Kraishan
+    given-names: Obada
+    affiliation: "College of Media and Communication, Texas Tech University"
+license: Apache-2.0
+repository-code: "https://github.com/obadaKraishan/plainpairs"
+keywords:
+  - health literacy
+  - health communication
+  - risk communication
+  - readability
+  - plain language
+  - medication guides
+  - dataset
