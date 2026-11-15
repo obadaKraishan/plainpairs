@@ -2,7 +2,7 @@
 
 How the corpus is built, as the code does it. The numbers for the export of 2026-11-13 are in
 [`data-card.md`](data-card.md); the rule-based codes of wording are in
-[`codebook.md`](codebook.md) (version 0, a draft), and the wider plan in
+[`codebook.md`](codebook.md) (version 1, a draft), and the wider plan in
 [`codebook-draft.md`](codebook-draft.md).
 
 ## 1. Source and download
@@ -73,6 +73,53 @@ grade (by both rules), and the headings found. Grades are comparable within the 
 texts measured the same way; they are not the grade a reader meets on the printed page, which
 keeps a layout the source has lost.
 
+## 6b. Structure from DailyMed's XML, and the two configurations
+The JSON flattens each section into one string, so a list reads as one long sentence and a
+heading runs into its body. DailyMed publishes the same labels as SPL XML, which keeps the
+structure. The corpus uses it where it can, and says so on every label.
+
+- **The release.** `plainpairs xml-download` reads DailyMed's "Download All Drug Labels" page
+  and downloads the full release of human prescription labels part by part (6 parts of
+  2026-11-13, 18,063,809,249 bytes), resuming a cut-off part, checking each against the page's
+  MD5 and writing it once with its SHA-256 in a manifest. The parts are read where they lie:
+  each holds one zip per label with one XML document and its images; only the XML is opened
+  (in memory), and the images are counted by type, never read.
+- **The join.** `plainpairs structure` reads every document's set id and version (55,148
+  documents, 52,840 set ids; 2,302 set ids appear in two or three versions). A corpus label
+  matches when the release holds its set id in the same version as the export.
+- **The same words?** For each matched label and section, the XML's words, read flat (every
+  text node of the section, a space between each, as the JSON flattens it), are compared with
+  the JSON text after the same cleaning: lower-case letters and digits as tokens; `exact` is
+  the same tokens in the same order, `near` a Dice overlap of the token bags of 0.98 or more.
+  A third class, `json_repeats`, holds the XML's words with the subsections that carry their
+  parent's section code read a second time: the JSON repeats such subsections, so its text is
+  longer than the label's (1.6% to 3.3% of prescriber sections, 2 Medication Guides).
+- **Blocks.** For the matched sections, `plainpairs.spl` reads the structure into blocks:
+  titles; headings (a line wholly in bold or underline, of 30 words or fewer, that does not end
+  as a sentence ends; a bold question opening a paragraph is split off; bold list items and
+  bold "See ..." lines are not headings); paragraphs; list items (and pieces of a line after a
+  typed list mark); cells of tables that hold prose; captions; and cells of data tables (short
+  cells, the same rule as the JSON's table cut). A line break ends a line. A newer-format
+  section's Highlights excerpt is read too, as the JSON keeps it in the same field.
+- **Sentences from structure.** Every paragraph, item, prose cell and caption is cut into
+  sentences by rule `s1`, and every block ends a sentence; titles, headings and data cells are
+  not sentences and are not measured. The same formulas as section 6 are then applied.
+- **The two configurations** (`labels.configuration`):
+  - `current`: the release holds the label in the same version, and each of its patient texts
+    has a section in the XML whose words are the JSON's (`exact`, `near` or `json_repeats`).
+    Its measures from structure are in their own columns (`p_<section>_structured`,
+    `t_<text>_structured`); its JSON measures stay in `p_<section>` and `t_<text>`. 19,778
+    labels.
+  - `unlisted`: every other label, measured from the JSON only (`structure_source = json`),
+    with the reason in `unlisted_reason`: not in the release (15,122), in it only in another
+    version (268), a patient text the XML lacks (8), a patient text whose words differ (1).
+    15,399 labels.
+
+  A reading level is never computed over both configurations at once: every aggregate is
+  given per configuration, and for `current` the JSON's figure for the same labels is given
+  beside the structure's. `release-check` fails when a row does not say its configuration or
+  when measures from structure sit on an `unlisted` row.
+
 ## 7. Alignment of patient segments to prescriber sections
 - **Cut:** each guide or insert is cut at its standard headings (the questions of 21 CFR 208.20
   and the common additions), found by their wording; a heading cited in running text ("See
@@ -115,13 +162,22 @@ its file was made (`plainpairs listed-download`, then `plainpairs build --listed
   id and the version are read.
 
 The flags describe the lists, not the medicines. A label on neither list may be for a product
-no longer marketed, or one these lists do not cover.
+no longer marketed, or one these lists do not cover. The NDC flag equals the `openfda` block
+this week (all 15,022 labels with the block are in the directory, none without it), because
+openFDA fills that block from the NDC directory; the two could part when they are refreshed on
+different days, so the flag is kept. "Served by DailyMed" says that DailyMed lists the label,
+nothing more: it is never read as "marketed". The configuration (section 6b) rests on
+DailyMed's full release of the same week, not on the list, and the two disagree for a few
+hundred labels (`docs/data-card.md`).
 
 ## 9. Rule-based codes of wording
-`plainpairs codes` reads the text layer and writes the `codes` table: counts per text for each
-code of [`codebook.md`](codebook.md) (direct address, instructions, numbers, risk statements,
-vague frequency words, explained terms, long sentences and sections, whom to call and when).
-The codes have their own version, so they can change without a new build.
+`plainpairs codes` reads the text layer and writes counts per text for each code of
+[`codebook.md`](codebook.md) (version 1): the trusted codes to the `codes` table, the
+experimental ones to `codes_experimental`, which no release carries. With `--structure` it adds,
+for `current` labels, the length codes read from structure. Each code's status comes from a
+development check by hand (20 hits and 20 misses for the codes first doubted, 10 and 10 for the
+others), which the codebook reports with its error counts; it is not a validation. The codes
+have their own version, so they can change without a new build.
 
 ## 10. What changed since the last export
 `plainpairs changes --old <older build> --new <newer build>` compares two builds' record layers
@@ -140,7 +196,8 @@ any release.
 
 ## 12. Checks before release
 `plainpairs release-check` (rules in [`schema.md`](schema.md); it also checks the `codes` table
-when there is one) and `plainpairs text`, which
+when there is one, the two configurations, pooled reading-level columns and experimental codes)
+and `plainpairs text`, which
 rebuilds the text layer from the record layer and the bulk files of the same export date and
 confirms every row by its hash.
 
