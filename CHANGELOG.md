@@ -23,3 +23,7 @@ All notable changes to this project are recorded here. The format follows
   capitals; measures now also give the share of long sentences and counts of numbers and
   percentages.
 - Runtime dependency: pyarrow, to write the tables as Parquet.
+- `build`: the record layer (`labels`, `patient_texts`, `section_pairs`, `excluded_otc`) and
+  the text layer (`text_prescriber`, `text_patient`) as Parquet, from the parts of one export.
+- `sheet` and `sheet-check`: the blind topic-check hand sheet (.xlsx with a dropdown, its key
+  kept apart) and its scores per heading, with `docs/hand-sheet-guide.md`.

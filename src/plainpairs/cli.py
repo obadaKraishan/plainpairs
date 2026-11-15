@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from plainpairs import __version__, bulk, label, pages, probe, tables
+from plainpairs import __version__, bulk, label, pages, probe, sheet, tables
 from plainpairs import profile as prof
 from plainpairs.client import Budget, PoliteClient, UsageLog
 
@@ -164,6 +164,67 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_sheet(args: argparse.Namespace) -> int:
+    src = Path(args.tables)
+    pairs = (
+        tables.read_table(src, "section_pairs")
+        .select(
+            [
+                "set_id",
+                "version",
+                "kind",
+                "segment_index",
+                "heading_key",
+                "patient_text_id",
+                "mapped_present",
+                "seg_start",
+                "seg_end",
+            ]
+        )
+        .to_pylist()
+    )
+    labels = tables.read_table(src, "labels").select(["set_id", "medicine_key"]).to_pylist()
+    picks = sheet.draw(
+        pairs, {r["set_id"]: r["medicine_key"] for r in labels}, args.per_key, args.seed
+    )
+    ids = sorted({p["set_id"] for p in picks})
+    tp = _texts(src / "text_patient.parquet", ids)
+    tr = _texts(src / "text_prescriber.parquet", ids)
+    out = Path(args.out)
+    x = sheet.write(
+        picks,
+        tp,
+        tr,
+        out / f"hand-sheet-seed{args.seed}.xlsx",
+        out / f"hand-sheet-seed{args.seed}-key.csv",
+    )
+    print(f"Wrote {len(picks)} rows to {x} and its key next to it (seed {args.seed}).")
+    return 0
+
+
+def _texts(path: Path, ids: list[str]) -> dict[tuple[str, str], str]:
+    import pyarrow.dataset as ds
+
+    table = ds.dataset(path).to_table(
+        columns=["set_id", "section", "part", "text"],
+        filter=(ds.field("set_id").isin(ids)) & (ds.field("part") == "text"),
+    )
+    return {(r["set_id"], r["section"]): r["text"] for r in table.to_pylist()}
+
+
+def cmd_sheet_check(args: argparse.Namespace) -> int:
+    out = sheet.check(Path(args.sheet), Path(args.key))
+    for heading, r in sorted(out.items()):
+        share = "-" if r["share_yes_or_partly"] is None else f"{r['share_yes_or_partly']:.0%}"
+        print(
+            f"{heading:15} answered {r['answered']:>3}  yes {r['yes']:>3}  partly {r['partly']:>3}"
+            f"  no {r['no']:>3}  blank {r['blank']:>3}  yes or partly {share:>5}  -> {r['rule']}"
+        )
+    if args.json:
+        Path(args.json).write_text(json.dumps(out, indent=1, sort_keys=True), encoding="utf-8")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plainpairs",
@@ -218,6 +279,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--export-date", required=True)
     p.add_argument("--out", default="data/interim/tables")
     p.set_defaults(func=cmd_build)
+
+    p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--out", default="data/interim/sheet")
+    p.add_argument("--per-key", type=int, default=10)
+    p.add_argument("--seed", type=int, default=20261115)
+    p.set_defaults(func=cmd_sheet)
+
+    p = sub.add_parser(
+        "sheet-check", help="share of yes or partly per heading, from a filled sheet"
+    )
+    p.add_argument("sheet")
+    p.add_argument("--key", required=True)
+    p.add_argument("--json", default="")
+    p.set_defaults(func=cmd_sheet_check)
 
     p = sub.add_parser("quotes-check", help="confirm every quote in docs/quotes.csv on its page")
     p.add_argument("--quotes", default="docs/quotes.csv")

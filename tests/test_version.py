@@ -128,3 +128,26 @@ def test_build_runs_from_the_manifest(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "2 parts of 2026-11-13 match their manifest" in out
     assert (tmp_path / "t" / "build_summary.json").exists()
+
+
+def test_sheet_and_sheet_check_from_built_tables(tmp_path, monkeypatch, capsys):
+    import json
+
+    from plainpairs import cli, tables
+    from tests.test_tables import write_export
+
+    monkeypatch.chdir(tmp_path)
+    root = write_export(tmp_path / "bulk")
+    tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"),
+        tmp_path / "t",
+        "2026-11-13",
+        log=lambda s: None,
+    ).run()
+    assert main(["sheet", "--tables", "t", "--out", "s", "--per-key", "1", "--seed", "3"]) == 0
+    assert "rows to" in capsys.readouterr().out
+    x, k = tmp_path / "s" / "hand-sheet-seed3.xlsx", tmp_path / "s" / "hand-sheet-seed3-key.csv"
+    assert main(["sheet-check", str(x), "--key", str(k), "--json", "c.json"]) == 0
+    assert "not answered" in capsys.readouterr().out
+    assert json.loads((tmp_path / "c.json").read_text())
+    assert cli is not None
