@@ -440,13 +440,18 @@ class Builder:
             self.log(f"pass 1: part {res['number']} read; {c['in_scope']:,} labels in scope so far")
         self._merge_parts(TEXT_TABLES)
         # every set id of the export, in scope or not: lets `changes` tell a label that left
-        # the scope from one withdrawn (ids and versions only, outside the record tables)
+        # the scope from one withdrawn (ids and versions only, outside the record tables). A
+        # version that does not fit a 32-bit integer is written as null and counted.
+        versions = [_int32(v) for _, v in export_ids]
+        c["export_ids_version_out_of_range"] = sum(
+            1 for (_, v), w in zip(export_ids, versions, strict=True) if v is not None and w is None
+        )
         pq.write_table(
             pa.table(
                 {
                     "export_date": [self.export_date] * len(export_ids),
                     "set_id": [i for i, _ in export_ids],
-                    "version": pa.array([v for _, v in export_ids], pa.int32()),
+                    "version": pa.array(versions, pa.int32()),
                 }
             ),
             self.out / "export_ids.parquet",
@@ -825,6 +830,11 @@ class Builder:
             json.dumps(self.stats, indent=1, sort_keys=True, default=str), encoding="utf-8"
         )
         return self.stats
+
+
+def _int32(v: int | None) -> int | None:
+    """``v`` when it fits a 32-bit integer, else None."""
+    return v if v is not None and -(2**31) <= v < 2**31 else None
 
 
 def _text_configuration(have_structure: bool, any_current: bool) -> str | None:

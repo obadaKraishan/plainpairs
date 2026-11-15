@@ -254,3 +254,20 @@ def test_the_build_counts_restated_headings_and_pairs_them_once(tmp_path):
     pairs = pq.read_table(out / "section_pairs.parquet").to_pylist()
     assert [r["heading_key"] for r in pairs] == ["before", "how_to_take"]
     assert pairs[0]["measures"]["words"] > 5
+
+
+def test_a_version_too_large_for_the_export_ids_is_null_and_counted(tmp_path):
+    parts = records()
+    odd = copy.deepcopy(parts[0][0])
+    odd.update(id="doc-big", set_id="set-big", version="99999999999999999999")
+    for f in ("spl_medguide", "spl_patient_package_insert"):  # out of scope, as in the data
+        odd.pop(f, None)
+    parts[0].append(odd)
+    root = write_export(tmp_path / "bulk", parts=parts)
+    out = tmp_path / "t"
+    stats = tables.Builder(
+        tables.parts_from_manifest(root, "2026-11-13"), out, "2026-11-13", log=lambda s: None
+    ).run()
+    ids = pq.read_table(out / "export_ids.parquet").to_pylist()
+    assert next(r for r in ids if r["set_id"] == "set-big")["version"] is None
+    assert stats["counts"]["export_ids_version_out_of_range"] == 1
