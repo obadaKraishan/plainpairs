@@ -104,8 +104,9 @@ and 6,173 of the 7,769 distinct patient package inserts have at least one unmark
 Whatever the setting, `plainpairs text` rebuilds the text layer from the record layer and the
 source's own bulk files of the same export date, and confirms every row by its hash.
 
-## Two configurations
-The release has two configurations, and no reading level is ever computed across both:
+## Configurations
+The release has three configurations. Two hold the labels, and no reading level is ever
+computed across both; the third, `nci`, holds the NCI cancer information summaries (below):
 
 - **`current`** (19,778 labels): DailyMed's full release of human prescription labels of the
   same week (2026-11-13) holds the label in the same version, and each of its patient texts
@@ -145,6 +146,54 @@ patient package inserts (67%) are above grade 8, and by SMOG nearly all are (99%
 and run higher than the structure's on the same texts (guides: Flesch-Kincaid 10.86 against
 8.67, SMOG 12.94 against 11.10), because lists that lost their marks read as long sentences.
 No figure combines the two configurations.
+
+## The NCI cancer information summaries (configuration `nci`)
+A third configuration, apart from the labels and never pooled with them in any number: text
+taken from the National Cancer Institute's cancer information summaries, which NCI writes in a
+version for health professionals and a version for patients, in English and Spanish. Read from
+NCI's pages on 2026-11-15 (every summary in its sitemap, each page once). It is not the
+summaries themselves: images, figures, tables credited to other publishers, references and the
+closing sections are left out, so a record here must never be presented as an NCI summary
+(NCI allows that name only for a whole, regularly updated summary).
+
+| | English | Spanish |
+|---|---:|---:|
+| health-professional summaries | 242 | 220 |
+| patient summaries | 147 | 147 |
+| version pairs (professional and patient, by NCI's links) | 131 | 136 |
+| language pairs (English and Spanish, by NCI's links) | 220 professional, 147 patient | |
+| summaries without the other version | 111 professional, 16 patient | 84 professional, 11 patient |
+
+Every pair comes from a link on NCI's own pages, and in every pair both pages link each other;
+no other rule was needed. NCI's update dates run from 2013 to 2026-10-15; 645 of the 756 fall
+in 2024 or 2025.
+
+**Left out, and counted:** 1,562 images and figures, 763 tables credited to other publishers,
+68,229 references (counted; their text is not kept), 88,795 citation marks, the key-point boxes
+of patient summaries, the navigation, and the closing sections (purpose, reviewers, levels of
+evidence, permission, citation, disclaimer).
+
+**The release switch for this configuration:** the kept text may be released with its credit
+line on every row ('"<title>" was originally published by the National Cancer Institute.' and
+the page's address); nothing that is left out is ever kept. NCI also suggests linking to its
+pages rather than copying them, so `plainpairs nci-text` rebuilds the text from NCI's pages
+with the addresses and hashes of `nci_summaries`.
+
+**Reading levels** (each summary once; English with both formulas, always together):
+
+| | English Flesch-Kincaid | English SMOG | Spanish Szigriszt-Pazos (higher is easier) |
+|---|---:|---:|---:|
+| health-professional summaries (median) | 13.49 | 15.08 | 47.29 ("somewhat difficult") |
+| patient summaries (median) | 8.65 | 11.11 | 57.82 ("normal") |
+| above grade 8, patient summaries | 83% | 100% | |
+
+In each of the 131 English version pairs the patient version reads lower on both formulas
+(median differences: Flesch-Kincaid 4.84 grades, SMOG 3.90 grades), and it is less than half as
+long (median 0.47 of the professional version's words). The Spanish index is a Spanish measure
+of ease on the INFLESZ scale, validated on texts written for patients; it is not a school
+grade and is never set beside an English grade. These figures describe NCI's summaries only:
+they are a different kind of text from the labels and are never compared with the labels'
+figures as if they were one corpus.
 
 ## Limits
 - **The two configurations hold different labels.** `unlisted` labels are mostly labels that
