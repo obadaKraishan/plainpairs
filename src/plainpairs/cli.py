@@ -14,6 +14,7 @@ from plainpairs import (
     bulk,
     dailymed,
     label,
+    listed,
     pages,
     probe,
     release,
@@ -27,6 +28,7 @@ from plainpairs.client import Budget, PoliteClient, UsageLog
 USAGE_LOG = Path("data/usage_log.csv")
 PAGES_ROOT = Path("data/raw/pages")
 BULK_ROOT = Path("data/raw/bulk")
+LISTED_ROOT = Path("data/raw/listed")
 
 
 def today_utc() -> str:
@@ -164,15 +166,52 @@ def cmd_download_all(args: argparse.Namespace) -> int:
     return 0
 
 
+def _listing_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None]:
+    ndc = Path(args.ndc) if args.ndc else None
+    dm = Path(args.dailymed) if args.dailymed else None
+    if args.listed:
+        ndc = ndc or listed.latest(LISTED_ROOT, "ndc")
+        dm = dm or listed.latest(LISTED_ROOT, "dailymed")
+        if ndc is None or dm is None:
+            raise SystemExit(
+                f"--listed needs both listing files under {LISTED_ROOT}; "
+                "fetch them with `plainpairs listed-download` first."
+            )
+    return ndc, dm
+
+
+def cmd_listed_download(args: argparse.Namespace) -> int:
+    _check_drive(Path("data/raw"))
+    client = make_client(args.since, args.max_calls, args.max_bytes)
+    day = today_utc()
+    saved = pages.latest_pages(PAGES_ROOT).get(bulk.DOWNLOAD_JSON)
+    if saved is None or saved.parent.parent.name != day:
+        saved = pages.fetch_page(client, bulk.DOWNLOAD_JSON, PAGES_ROOT, day).path
+    listing = json.loads(saved.read_text(encoding="utf-8"))
+    for f in listed.ndc_files(listing):
+        print(f"NDC directory: {f.filename}, export {f.export_date}, {f.size_mb} MiB listed.")
+    for path in listed.fetch_ndc(client, listing, LISTED_ROOT, args.max_mb):
+        print(f"  on disk: {path} ({path.stat().st_size:,} bytes)")
+    path = listed.fetch_dailymed(client, LISTED_ROOT, day, args.max_mb)
+    print(f"DailyMed zip file metadata on disk: {path} ({path.stat().st_size:,} bytes)")
+    print(f"Calls this session: {client.budget.calls} of {client.budget.max_calls}.")
+    return 0
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     parts = tables.parts_from_manifest(BULK_ROOT, args.export_date)
     print(f"{len(parts)} parts of {args.export_date} match their manifest.", flush=True)
+    ndc, dm = _listing_paths(args)
+    listings = listed.load(ndc, dm)
+    for name, src in listings.sources.items():
+        print(f"listing {name}: {src['file']} of {src['date']}", flush=True)
     builder = tables.Builder(
         parts,
         Path(args.out),
         args.export_date,
         log=lambda s: print(s, flush=True),
         workers=args.workers,
+        listings=listings,
     )
     stats = builder.run()
     print(json.dumps(stats.get("rows", {}), sort_keys=True), flush=True)
@@ -390,7 +429,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--export-date", required=True)
     p.add_argument("--out", default="data/interim/tables")
     p.add_argument("--workers", type=int, default=1, help="parts read in parallel")
+    p.add_argument("--ndc", help="the NDC directory file for the listed-now flags")
+    p.add_argument("--dailymed", help="DailyMed's zip file metadata for the listed-now flags")
+    p.add_argument(
+        "--listed", action="store_true", help="use the newest listing files under data/raw/listed"
+    )
     p.set_defaults(func=cmd_build)
+
+    p = sub.add_parser(
+        "listed-download", help="the NDC directory and DailyMed's label list (small files)"
+    )
+    p.add_argument("--max-mb", type=float, default=listed.MAX_MB, help="the largest file allowed")
+    caps(p)
+    p.set_defaults(func=cmd_listed_download)
 
     p = sub.add_parser("sheet", help="write the blind hand sheet (and its key)")
     p.add_argument("--tables", default="data/interim/tables")

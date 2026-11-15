@@ -241,3 +241,45 @@ def test_dailymed_test_command_reads_robots_then_labels(tmp_path, monkeypatch, c
     monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake2)
     assert main(["dailymed-test", "--tables", "t", "--robots-only"]) == 0
     assert len(session2.calls) == 1
+
+
+def test_build_with_listed_reads_the_newest_listing_files(tmp_path, monkeypatch, capsys):
+    from plainpairs import cli
+    from tests.test_listed import HEADER, NDC_RECORDS, dailymed_zip, ndc_zip
+    from tests.test_tables import write_export
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "BULK_ROOT", write_export(tmp_path / "bulk"))
+    monkeypatch.setattr(cli, "LISTED_ROOT", tmp_path / "listed")
+    with pytest.raises(SystemExit, match="listed-download"):
+        main(["build", "--export-date", "2026-11-13", "--out", "t", "--listed"])
+    ndc_zip(tmp_path / "listed" / "ndc" / "2026-11-13" / "n.json.zip", NDC_RECORDS)
+    dailymed_zip(tmp_path / "listed" / "dailymed" / "2026-11-15" / "d.zip", [HEADER])
+    assert main(["build", "--export-date", "2026-11-13", "--out", "t", "--listed"]) == 0
+    assert "listing ndc: n.json.zip of 2026-11-13" in capsys.readouterr().out
+
+
+def test_listed_download_reuses_the_listing_saved_today(tmp_path, monkeypatch, capsys):
+    import json
+
+    from plainpairs import cli, pages
+    from tests.test_client import FakeResponse
+    from tests.test_client import make as make_fake
+    from tests.test_listed import DOWNLOAD
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "raw").mkdir(parents=True)
+    monkeypatch.setattr(cli, "PAGES_ROOT", tmp_path / "data" / "raw" / "pages")
+    monkeypatch.setattr(cli, "LISTED_ROOT", tmp_path / "data" / "raw" / "listed")
+    answers = [
+        FakeResponse(body=json.dumps(DOWNLOAD).encode()),
+        FakeResponse(body=b"PK-ndc"),
+        FakeResponse(body=b"PK-dm"),
+    ]
+    fake, session, _ = make_fake(tmp_path, answers)
+    monkeypatch.setattr(cli, "make_client", lambda since, calls, nbytes: fake)
+    assert main(["listed-download"]) == 0
+    out = capsys.readouterr().out
+    assert "export 2026-11-13, 1.5 MiB listed" in out and "DailyMed zip file metadata" in out
+    assert len(session.calls) == 3
+    assert pages.latest_pages(cli.PAGES_ROOT)

@@ -34,7 +34,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from plainpairs import align, bulk, durable, label, readability, text
+from plainpairs import align, bulk, durable, label, listed, readability, text
 from plainpairs.schema import PATIENT_SOURCES, PRESCRIBER_SOURCES, LabelRow
 
 SOURCE = "openFDA drug label bulk files (https://open.fda.gov/data/spl/)"
@@ -99,6 +99,11 @@ LABELS_SCHEMA = pa.schema(
         ("product_name", pa.string()),
         ("product_name_source", pa.string()),
         ("product_name_rule", pa.string()),
+        #: Listed now (null when the build was given no listing file; see plainpairs.listed).
+        ("listed_in_ndc_directory", pa.bool_()),
+        ("ndc_match", pa.string()),
+        ("served_by_dailymed", pa.bool_()),
+        ("dailymed_version", pa.int32()),
         ("has_boxed_warning", pa.bool_()),
         ("has_medication_guide", pa.bool_()),
         ("has_patient_package_insert", pa.bool_()),
@@ -272,8 +277,10 @@ class Builder:
         export_date: str,
         log: Callable[[str], None] = print,
         workers: int = 1,
+        listings: listed.Listings | None = None,
     ) -> None:
         self.workers = workers
+        self.listings = listings or listed.Listings()
         self.parts = parts
         self.out = Path(out_dir)
         self.export_date = export_date
@@ -590,6 +597,9 @@ class Builder:
                     break
             else:
                 r["medicine_key_source"] = "none"
+        for r in self.labels:
+            r.update(listed.flags(self.listings, r["set_id"], r["id"], r["version"]))
+        self.stats["listed_sources"] = self.listings.sources
         self._patient_texts()
         self._write(
             "labels", [{k: v for k, v in r.items() if not k.startswith("_")} for r in self.labels]
