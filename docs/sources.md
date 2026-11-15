@@ -243,36 +243,58 @@ ruling covers only copying the law requires; a research corpus is not that. No r
 Medication Guides, patient package inserts or a non-generic reuse of label text was found. This
 is the maintainer's decision; it is not settled here by assumption.
 
-## 5. National Cancer Institute (a possible second source; nothing crawled)
-- **Text** (<https://www.cancer.gov/policies/copyright-reuse>):
+## 5. National Cancer Institute (the configuration `nci`)
+- **Text** (<https://www.cancer.gov/policies/copyright-reuse>, read again on 2026-11-15 and
+  unchanged byte for byte since the first reading):
   > Unless otherwise indicated, all text within National Cancer Institute (NCI) products is free
   > of copyright and may be reused without our permission. Credit the National Cancer Institute
   > as the source.
+
+  For a digital reproduction it asks for a link under the original title:
+  > In the case of digital reproduction, please link to the original NCI product using the
+  > original product's title
+
+  and it adds: "Consider linking directly to our content rather than reproducing it, as our
+  content may be updated over time." Every row of the `nci` tables therefore carries the page's
+  address and a credit line in that form ('"<title>" was originally published by the National
+  Cancer Institute.' and the address), and the text layer can be rebuilt from NCI's own pages
+  (`plainpairs nci-text`).
 - **The PDQ name:**
   > The NCI logo and the PDQ trademark may only be used in reproductions of original, wholly
   > unchanged NCI products.
 
-  A corpus that cleans, splits or measures the summaries is changed, so it may not carry the PDQ
-  name or logo; translations "may not use the NCI logo or PDQ trademark".
+  This corpus cleans, splits, measures and leaves out parts of the summaries, so it is changed:
+  it carries neither the PDQ name nor the logo, and nothing it makes is named PDQ.
+- **What is "otherwise indicated."** Each summary's closing section "Permission to Use This
+  Summary" (left out of the corpus) says, for example on
+  <https://www.cancer.gov/types/lymphoma/hp/adult-hodgkin-treatment-pdq>:
+  > Although the content of PDQ documents can be used freely as text, it cannot be identified as
+  > an NCI PDQ cancer information summary unless it is presented in its entirety and is
+  > regularly updated.
+
+  > Images in this summary are used with permission of the author(s), artist, and/or publisher
+  > for use within the PDQ summaries only.
+
+  So the corpus leaves out every image and figure, and never presents a record as an NCI
+  summary: it is text taken from the summaries, with the parts listed in `docs/method.md`
+  (section 14) left out. The summaries also hold **tables reproduced or adapted with
+  permission** from other publishers, credited in a footnote of the table ("Reprinted with
+  permission from ...", "Adapted from ..."); such a table is left out whole. No text block of
+  the corpus carries a credit or permission line (`release-check` fails on one).
 - **Graphics:**
   > Graphics (photos, illustrations) used in National Cancer Institute (NCI) information products
   > are a mix of copyrighted and copyright-free materials.
+- **Translations:** the Spanish summaries are NCI's own; the corpus translates nothing.
 - **Syndication** (<https://www.cancer.gov/syndication>): RSS feeds, a dictionary widget and the
   clinical trials API. "Some of the information on this website is available for use on your own
   site or in other information products." No summary feed or summary API is offered there.
-- **robots.txt:** `User-agent: *` with no `Disallow` line, and a sitemap.
+- **robots.txt:** `User-agent: *` with no `Disallow` line, and a sitemap (read again on
+  2026-11-15, unchanged).
 - **What the summaries are** (<https://www.cancer.gov/publications/pdq/information-summaries>):
   > Most of the health professional summaries are also available in a patient-focused format.
 
   > They are not clinical practice guidelines or treatment recommendations and are not intended
   > to be used as a basis for insurance reimbursement.
-- **How many**, from the sitemap (`sitemaps/pageinstructions.xml`, 6,457 URLs, one request), as
-  page URLs ending in `-pdq` (pages, not a checked list of summaries):
-
-  | language | health professional | patient |
-  |---|---:|---:|
-  | English | 237 | 152 |
-  | Spanish | 215 | 152 |
 
 ### Are the summaries distributed as files? (checked 2026-11-15)
 Not on NCI's own pages. The PDQ content partners page
@@ -288,11 +310,10 @@ Its link to that program (`/node/13430`) answered 404 on 2026-11-15, and NCI's s
 (<https://www.cancer.gov/syndication>) offers RSS feeds, a dictionary widget and the clinical
 trials API, with no summary files or summary feed. The same page lists NCBI Bookshelf (National
 Library of Medicine) among the partners, and says "Almost all PDQ health professional and
-patient summaries, as well as other NCI content, are available in Spanish from NCI." So a public
-file download of the summaries was not found; S3 has three routes: the web pages themselves
-(about 760 pages in the sitemap, which is a crawl and needs the maintainer's approval), the
-partner copy on NCBI Bookshelf (terms not yet read), or asking NCI about the syndication program
-(contact is the maintainer's to make). Nothing was crawled.
+patient summaries, as well as other NCI content, are available in Spanish from NCI." No public
+file download of the summaries was found, so the corpus reads NCI's own summary pages, once
+each, politely (`docs/method.md`, section 14); it does not use the partner copies, and nobody
+at NCI was contacted.
 
 ## 6. Codebook instruments
 - **PEMAT (AHRQ).** The PEMAT page and AHRQ's copyright policy answered 403 to automated reads.
