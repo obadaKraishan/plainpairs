@@ -43,6 +43,34 @@ def test_draw_is_reproducible_and_takes_one_segment_per_text():
     assert len([p for p in many if p["heading_key"] == "what_is"]) == 4  # only 4 distinct texts
 
 
+def test_draw_skips_one_line_segments_and_never_repeats_a_text_across_keys():
+    rows = []
+    for key in ("what_is", "storage"):
+        for i in range(4):
+            rows.append(
+                {
+                    "set_id": f"set-{key}-{i}",
+                    "version": 1,
+                    "kind": "medication_guide",
+                    "segment_index": 1,
+                    "heading_key": key,
+                    "patient_text_id": f"medication_guide:shared{i}",  # same texts in both keys
+                    "mapped_present": ["indications_and_usage"],
+                    "seg_start": 0,
+                    "seg_end": 20,
+                    "measures": {"words": 40, "sentences": 3},
+                }
+            )
+    rows[0]["measures"] = {"words": 0, "sentences": 0}  # an empty body
+    rows[1]["measures"] = {"words": 30, "sentences": 1}  # one line
+    rows[2]["measures"] = {"words": 12, "sentences": 2}  # under the word floor
+    picks = sheet.draw(rows, {}, per_key=4, seed=3)
+    ids = [p["patient_text_id"] for p in picks]
+    assert len(ids) == len(set(ids)) == 4
+    assert all(p["measures"]["words"] >= sheet.MIN_WORDS for p in picks)
+    assert {p["set_id"] for p in picks}.isdisjoint({"set-what_is-0", "set-what_is-1"})
+
+
 def test_first_words_cuts_long_sections():
     assert sheet.first_words("a b c", 5) == "a b c"
     assert sheet.first_words("a b c d", 2) == "a b [... first 2 of 4 words]"

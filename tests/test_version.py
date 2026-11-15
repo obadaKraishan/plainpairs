@@ -133,7 +133,7 @@ def test_build_runs_from_the_manifest(tmp_path, monkeypatch, capsys):
 def test_sheet_and_sheet_check_from_built_tables(tmp_path, monkeypatch, capsys):
     import json
 
-    from plainpairs import cli, tables
+    from plainpairs import cli, sheet, tables
     from tests.test_tables import write_export
 
     monkeypatch.chdir(tmp_path)
@@ -144,6 +144,10 @@ def test_sheet_and_sheet_check_from_built_tables(tmp_path, monkeypatch, capsys):
         "2026-11-13",
         log=lambda s: None,
     ).run()
+    assert main(["sheet", "--tables", "t", "--out", "s0", "--per-key", "1", "--seed", "3"]) == 0
+    assert "Wrote 0 rows" in capsys.readouterr().out  # the invented guides are one line each
+    monkeypatch.setattr(sheet, "MIN_WORDS", 1)
+    monkeypatch.setattr(sheet, "MIN_SENTENCES", 1)
     assert main(["sheet", "--tables", "t", "--out", "s", "--per-key", "1", "--seed", "3"]) == 0
     assert "rows to" in capsys.readouterr().out
     x, k = tmp_path / "s" / "hand-sheet-seed3.xlsx", tmp_path / "s" / "hand-sheet-seed3-key.csv"

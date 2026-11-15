@@ -235,6 +235,7 @@ def cmd_sheet(args: argparse.Namespace) -> int:
                 "mapped_present",
                 "seg_start",
                 "seg_end",
+                "measures",
             ]
         )
         .to_pylist()
@@ -260,6 +261,9 @@ def cmd_sheet(args: argparse.Namespace) -> int:
 
 def _texts(path: Path, ids: list[str]) -> dict[tuple[str, str], str]:
     import pyarrow.dataset as ds
+
+    if not ids:
+        return {}
 
     table = ds.dataset(path).to_table(
         columns=["set_id", "section", "part", "text"],

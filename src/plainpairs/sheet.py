@@ -1,8 +1,10 @@
 """The hand sheet: does this prescriber section cover the same topic as this patient segment?
 
 ``draw`` picks segments from table C, a fixed number per heading key, with a seed: only
-segments whose label has at least one of the sections the heading is mapped to, one segment per
-distinct patient text, and, where the pool allows, one per medicine within a key. ``write``
+segments whose label has at least one of the sections the heading is mapped to and whose body
+is more than one line (at least two sentences and :data:`MIN_WORDS` words), never two rows from
+the same distinct patient text anywhere on the sheet, and, where the pool allows, one per
+medicine within a key. ``write``
 puts them in one .xlsx sheet with the patient segment, the mapped prescriber section (its
 first 300 words) and an answer cell with a list (yes, partly, no). The sheet is blind: it
 shows no similarity score and no rule name. The key that links each row to its label and
@@ -27,6 +29,9 @@ from plainpairs import align, text, xlsx
 
 ANSWERS = ("yes", "partly", "no")
 RELEASE_LINE = 0.8
+#: A segment body shorter than this (or of one sentence) is "one line" and never drawn.
+MIN_WORDS = 20
+MIN_SENTENCES = 2
 PRESCRIBER_WORDS = 300
 MAX_CELL = 32_000
 KEY_FIELDS = [
@@ -68,17 +73,19 @@ def draw(
     """Pick ``per_key`` segments for every heading key, reproducibly."""
     pool: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for p in pairs:
-        if p["heading_key"] in align.MAPPING and p["mapped_present"]:
+        if p["heading_key"] in align.MAPPING and p["mapped_present"] and _long_enough(p):
             pool[p["heading_key"]].append(p)
     rng = random.Random(seed)
     picks: list[dict[str, Any]] = []
+    used_texts: set[str] = set()
     for key in text.HEADING_KEYS:
         cands = sorted(
             pool.get(key, []), key=lambda p: (p["patient_text_id"], p["set_id"], p["segment_index"])
         )
         one_per_text: dict[str, dict[str, Any]] = {}
         for p in cands:
-            one_per_text.setdefault(p["patient_text_id"], p)
+            if p["patient_text_id"] not in used_texts:
+                one_per_text.setdefault(p["patient_text_id"], p)
         cands = list(one_per_text.values())
         rng.shuffle(cands)
         chosen: list[dict[str, Any]] = []
@@ -97,10 +104,19 @@ def draw(
                 break
             if p not in chosen:
                 chosen.append(p)
+        used_texts.update(p["patient_text_id"] for p in chosen)
         picks += [{**p, "section": p["mapped_present"][0], "seed": seed} for p in chosen]
     for i, p in enumerate(picks, start=1):
         p["row"] = i
     return picks
+
+
+def _long_enough(p: dict[str, Any]) -> bool:
+    """More than one line: at least two sentences and :data:`MIN_WORDS` words in the body."""
+    m = p.get("measures")
+    if m is None:  # an older caller without measures: keep the segment
+        return True
+    return (m.get("words") or 0) >= MIN_WORDS and (m.get("sentences") or 0) >= MIN_SENTENCES
 
 
 def first_words(s: str, n: int = PRESCRIBER_WORDS) -> str:

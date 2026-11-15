@@ -1,10 +1,14 @@
+**Judge only whether the two passages are about the same topic: yes, partly or no. Nothing
+medical.**
+
 # Hand sheet guide: does the prescriber section cover the same topic?
 
 One page, for the person filling in the topic-check sheet.
 
 ## What each row shows
 - **Patient text:** one segment of a Medication Guide or patient package insert, starting with
-  its heading (for example "How should I take [the medicine]?").
+  its heading (for example "How should I take [the medicine]?"). Every segment has at least
+  two sentences; no two rows come from the same patient text.
 - **Prescriber section:** the name of one section of the same label's prescribing information,
   and its first 300 words.
 - **Same topic?** Your answer, from the list: **yes**, **partly** or **no**.
