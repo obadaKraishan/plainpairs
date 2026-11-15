@@ -7,6 +7,21 @@ All notable changes to this project are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- The NCI cancer information summaries as a third configuration, `nci`: `nci-build` reads the
+  summary pages (listed from NCI's sitemap and read once each, 5 seconds apart, by
+  `plainpairs.nci_pages`) into three tables, `nci_summaries`, `nci_pairs` and `nci_text`. Pairs
+  come from NCI's own links between versions and languages. Figures, navigation, key-point
+  boxes, references, citation marks, the closing sections, credit lines and tables credited to
+  other publishers are left out and counted. Every row carries the page's address, the date
+  read, NCI's update date and a credit line.
+- `nci-text`: rebuilds the NCI text layer by reading NCI's pages again (or, with `--saved`, the
+  saved copies), and counts the pages NCI has changed since.
+- Spanish readability: a syllable rule from Spanish spelling and the Szigriszt-Pazos
+  perspicuity index with its INFLESZ band (`plainpairs.readability_es`).
+- `release-check` and `stats` cover the `nci` configuration on its own.
+- `build --sheet-result`: `rule_status` per heading key from the scored hand sheet.
+- `fetch-page --min-interval`, for sources that ask for slower requests; `quotes-check` also
+  reads the saved NCI pages.
 - The repository: Apache-2.0 license, README, NOTICE and a draft citation file.
 - CI: ruff and pytest on Python 3.10 to 3.13, with every action pinned to a commit.
 - Runtime dependencies: pydantic (frozen record models) and requests (HTTP).
@@ -67,6 +82,12 @@ All notable changes to this project are recorded here. The format follows
   for the same `current` labels.
 
 ### Changed
+- The hand topic check is scored: seven heading keys release their mapping rule
+  (`rule_status = rule_released`), three are released with similarity scores only
+  (`similarity_only`): before taking, avoid and general information.
+- Flesch-Kincaid and SMOG are always reported together; the data card states three limits:
+  the configurations hold different labels, two measurement bases sit side by side in the same
+  tables, and the source's JSON repeats some subsections.
 - Codebook version 1 (DRAFT): a development check by hand of every code, each code marked
   trusted or experimental with its error counts, and rule fixes where a clear cause showed
   (risk sizes only, cross-references and doses left out; the month "May" and "may report";
