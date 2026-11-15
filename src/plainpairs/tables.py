@@ -34,7 +34,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from plainpairs import align, bulk, durable, label, listed, readability, text
+from plainpairs import align, bulk, durable, label, listed, readability, structure, text
 from plainpairs.schema import PATIENT_SOURCES, PRESCRIBER_SOURCES, LabelRow
 
 SOURCE = "openFDA drug label bulk files (https://open.fda.gov/data/spl/)"
@@ -104,6 +104,12 @@ LABELS_SCHEMA = pa.schema(
         ("ndc_match", pa.string()),
         ("served_by_dailymed", pa.bool_()),
         ("dailymed_version", pa.int32()),
+        #: The release configuration (null when the build was given no structure table):
+        #: ``current`` (DailyMed's release holds the label in this version, with the same
+        #: words; structure from its XML) or ``unlisted`` (measured from the JSON only).
+        ("configuration", pa.string()),
+        ("structure_source", pa.string()),
+        ("unlisted_reason", pa.string()),
         ("has_boxed_warning", pa.bool_()),
         ("has_medication_guide", pa.bool_()),
         ("has_patient_package_insert", pa.bool_()),
@@ -118,6 +124,9 @@ LABELS_SCHEMA = pa.schema(
         *[(f"t_{k}_sha256", pa.string()) for k in PATIENT],
         *[(f"t_{k}_id", pa.string()) for k in PATIENT],
         *[(f"t_{k}", MEASURES) for k in PATIENT],
+        #: Measures from structure (``current`` labels only; null for ``unlisted``).
+        *[(f"p_{s}_structured", structure.STRUCTURED) for s in PRESCRIBER],
+        *[(f"t_{k}_structured", structure.STRUCTURED) for k in PATIENT],
     ]
 )
 PATIENT_TEXTS_SCHEMA = pa.schema(
@@ -137,6 +146,10 @@ PATIENT_TEXTS_SCHEMA = pa.schema(
         ("has_copyright_mark_any", pa.bool_()),
         ("headings_found", STR_LIST),
         ("measures", MEASURES),
+        #: ``current`` when at least one label carrying the text is ``current``.
+        ("configuration", pa.string()),
+        ("n_labels_current", pa.int32()),
+        ("measures_structured", structure.STRUCTURED),
     ]
 )
 SECTION_PAIRS_SCHEMA = pa.schema(
@@ -159,6 +172,8 @@ SECTION_PAIRS_SCHEMA = pa.schema(
         ("best_is_mapped", pa.bool_()),
         ("section17_similarity", pa.float32()),
         ("rule_status", pa.string()),
+        #: The label's configuration; every column before it is built from the JSON text.
+        ("configuration", pa.string()),
     ]
 )
 EXCLUDED_SCHEMA = pa.schema(
@@ -278,9 +293,12 @@ class Builder:
         log: Callable[[str], None] = print,
         workers: int = 1,
         listings: listed.Listings | None = None,
+        structure_dir: Path | None = None,
     ) -> None:
         self.workers = workers
         self.listings = listings or listed.Listings()
+        self.structure_dir = Path(structure_dir) if structure_dir else None
+        self.configuration: dict[str, str | None] = {}
         self.parts = parts
         self.out = Path(out_dir)
         self.export_date = export_date
@@ -618,10 +636,43 @@ class Builder:
         for r in self.labels:
             r.update(listed.flags(self.listings, r["set_id"], r["id"], r["version"]))
         self.stats["listed_sources"] = self.listings.sources
+        self._configurations()
         self._patient_texts()
         self._write(
             "labels", [{k: v for k, v in r.items() if not k.startswith("_")} for r in self.labels]
         )
+
+    def _configurations(self) -> None:
+        """Each label's configuration and its measures from structure (see
+        :mod:`plainpairs.structure`); without a structure table every one stays null."""
+        if self.structure_dir is None:
+            for r in self.labels:
+                r.update(configuration=None, structure_source=None, unlisted_reason=None)
+                self.configuration[r["set_id"]] = None
+            return
+        index, rows = structure.read_structure(self.structure_dir)
+        decided = structure.decide(self.labels, index, rows)
+        by_section = {(x["set_id"], x["section"]): x["structured"] for x in rows}
+        counts: Counter[str] = Counter()
+        for r in self.labels:
+            d = decided[r["set_id"]]
+            r.update(d)
+            self.configuration[r["set_id"]] = d["configuration"]
+            counts[f"configuration:{d['configuration']}"] += 1
+            counts[f"unlisted_reason:{d['unlisted_reason']}"] += bool(d["unlisted_reason"])
+            current = d["configuration"] == "current"
+            sid = r["set_id"].lower()
+            for s in PRESCRIBER:
+                r[f"p_{s}_structured"] = by_section.get((sid, s)) if current else None
+            for k in PATIENT:
+                r[f"t_{k}_structured"] = by_section.get((sid, k)) if current else None
+        summary = json.loads(
+            (self.structure_dir / "structure_summary.json").read_text(encoding="utf-8")
+        )
+        self.stats["structure"] = {
+            "release_date": summary.get("release_date"),
+            "counts": dict(counts),
+        }
 
     def _patient_texts(self) -> None:
         groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -637,6 +688,13 @@ class Builder:
             top = exact.most_common(1)[0][0]
             rep = next(m for m in members if m[f"_{kind}_exact"] == top)
             makers = [m["manufacturers"] for m in members if m["manufacturers"]]
+            current = [m for m in members if m.get("configuration") == "current"]
+            # measures from structure: a current label with the representative's exact text,
+            # else any current label
+            source = next((m for m in current if m[f"_{kind}_exact"] == top), None) or (
+                current[0] if current else None
+            )
+            conf = _text_configuration(self.structure_dir is not None, bool(current))
             rows.append(
                 {
                     "source": SOURCE,
@@ -659,6 +717,9 @@ class Builder:
                     "has_copyright_mark_any": any(m["has_copyright_mark"] for m in members),
                     "headings_found": rep.get(f"_{kind}_headings", []),
                     "measures": rep[f"t_{kind}"],
+                    "configuration": conf,
+                    "n_labels_current": len(current),
+                    "measures_structured": source[f"t_{kind}_structured"] if source else None,
                 }
             )
         self._write("patient_texts", rows)
@@ -702,7 +763,10 @@ class Builder:
         idf = align.idf_table(self.df, self.n_docs)
         default_idf = max(idf.values(), default=1.0)
         ids = frozenset(self.in_scope_ids)
-        jobs = [(n, p, self.out, self.export_date, ids, idf, default_idf) for n, p in self.parts]
+        conf = dict(self.configuration)
+        jobs = [
+            (n, p, self.out, self.export_date, ids, idf, default_idf, conf) for n, p in self.parts
+        ]
         n = 0
         for res in self._map(_pairs_job, jobs):
             n += res["rows"]
@@ -745,6 +809,7 @@ class Builder:
                         "measures": measures(t[head_end:end], [], 0),
                         **pair,
                         "rule_status": "pending_hand_check",
+                        "configuration": self.configuration.get(ident.set_id),
                     }
                 )
         return out
@@ -762,6 +827,14 @@ class Builder:
         return self.stats
 
 
+def _text_configuration(have_structure: bool, any_current: bool) -> str | None:
+    """A distinct patient text is ``current`` when one of its labels is (null without a
+    structure table)."""
+    if not have_structure:
+        return None
+    return "current" if any_current else "unlisted"
+
+
 def _scan_job(job: tuple[Any, ...]) -> dict[str, Any]:
     number, path, out_dir, export_date = job
     return Builder([(number, path)], out_dir, export_date, log=lambda s: None).scan_part(
@@ -770,9 +843,10 @@ def _scan_job(job: tuple[Any, ...]) -> dict[str, Any]:
 
 
 def _pairs_job(job: tuple[Any, ...]) -> dict[str, Any]:
-    number, path, out_dir, export_date, ids, idf, default_idf = job
+    number, path, out_dir, export_date, ids, idf, default_idf, conf = job
     b = Builder([(number, path)], out_dir, export_date, log=lambda s: None)
     b.in_scope_ids = set(ids)
+    b.configuration = conf
     return b.pairs_part(number, path, idf, default_idf)
 
 
