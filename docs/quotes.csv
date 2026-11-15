@@ -1,0 +1,65 @@
+url,quote
+https://open.fda.gov/terms/,"Unless otherwise noted, the content, data, documentation, code, and related materials on openFDA is public domain and made available with a Creative Commons CC0 1.0 Universal dedication."
+https://open.fda.gov/terms/,"Some data on openFDA may not be public domain, such as copies of copyrightable works made available to the FDA by private entities. FDA may make these works available under the fair use provision of the Copyright Act or as a result of regulatory directives. Therefore, your rights to use those works may be similarly limited."
+https://open.fda.gov/terms/,Works where CC0 do not apply will be clearly marked by a warning in the relevant documentation (for example: “This data is not in the public domain. Third party copy rights may apply.”).
+https://open.fda.gov/terms/,"While not required, when using content, data, documentation, code, and related materials from openFDA in your own work, we ask that proper credit be given. An example citation is provided below:"
+https://open.fda.gov/terms/,Data provided by the U.S. Food and Drug Administration (https://open.fda.gov)
+https://open.fda.gov/terms/,"If FDA reasonably believes that you have attempted to exceed or circumvent these limits, your ability to use openFDA may be temporarily or permanently restricted."
+https://open.fda.gov/terms/,FDA makes no warranty that openFDA data will be error free or that access thereto will be continuous or uninterrupted.
+https://open.fda.gov/license/,"When using or citing the work, you should not imply endorsement by the author or the affirmer."
+https://open.fda.gov/license/,"In the future, if we post data that may not be covered under the terms listed above, we will specify the data (or specifc fields inside a dataset) that is not covered and the copyright status of that work here."
+https://open.fda.gov/license/,"Last modified: May 27, 2014"
+https://open.fda.gov/data/spl/,Drug manufacturers and distributors submit documentation about their products to FDA.
+https://open.fda.gov/data/spl/,Public Domain and CC0
+https://open.fda.gov/data/spl/,Frequency Weekly
+https://open.fda.gov/apis/drug/label/,"The bulk of the data is from June 2009 (when labeling was first posted publicly in the SPL format) to the present. However, there are a small number of records from earlier than mid-2009."
+https://open.fda.gov/apis/drug/label/,Do not rely on openFDA to make decisions regarding medical care. Always speak to your health provider about the risks and benefits of FDA-regulated products.
+https://open.fda.gov/apis/drug/label/,The drug labels and other drug-specific information provided in this API represent the most recent drug listing information companies have submitted to the Food and Drug Administration (FDA). (See 21 CFR part 207.) The drug labeling and other information has been reformatted to make it easier to read but its content has neither been altered nor verified by FDA. The drug labeling provided in this API may not be the labeling on currently distributed products or identical to the labeling that is approved.
+https://open.fda.gov/apis/drug/label/,"openFDA annotates the original records with special fields and converts the data into JSON, which is a widely used machine readable format."
+https://open.fda.gov/apis/authentication/,An API key is required to make calls to the openFDA API.
+https://open.fda.gov/apis/authentication/,"With no API key: 240 requests per minute, per IP address. 1,000 requests per day, per IP address."
+https://open.fda.gov/apis/authentication/,"With an API key: 240 requests per minute, per key. 120,000 requests per day, per key."
+https://open.fda.gov/apis/downloads/,"Every time an endpoint is updated (which happens on a regular basis), it is possible that every record has changed, due to corrections or enhancements. That means that you cannot simply download “new” files to keep your downloaded version up to date. You need to download all available data files for the endpoint of interest."
+https://open.fda.gov/apis/drug/label/how-to-use-the-endpoint/,The maximum limit allowed is 1000 for any single API call.
+https://api.fda.gov/download.json,"Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated."
+https://open.fda.gov/fields/druglabel.yaml,Information about the patient medication guide that accompanies the drug product. Certain drugs must be dispensed with an accompanying medication guide.
+https://open.fda.gov/fields/druglabel.yaml,"Information necessary for patients to use the drug safely and effectively, such as precautions concerning driving or the concomitant use of other substances that may have harmful additive effects."
+https://open.fda.gov/fields/druglabel.yaml,"Information or instructions to patients about safe use of the drug product, sometimes including a reference to a patient medication guide or counseling materials."
+https://open.fda.gov/fields/druglabel.yaml,"The Set ID, A globally unique identifier (GUID) for the labeling, stable across all versions or revisions."
+https://dailymed.nlm.nih.gov/dailymed/about-dailymed.cfm,"The DailyMed database contains labeling, submitted to the Food and Drug Administration (FDA) by companies, for the following products:"
+https://dailymed.nlm.nih.gov/dailymed/about-dailymed.cfm,"The labeling on DailyMed is the most recent submitted labeling to the FDA by companies and currently in use (i.e., ""in use"" labeling)."
+https://dailymed.nlm.nih.gov/dailymed/about-dailymed.cfm,"The contents of the ""in use"" labeling on DailyMed may not have been verified by FDA. Note: NLM does not review any SPL content prior to publication."
+https://dailymed.nlm.nih.gov/dailymed/spl-resources-all-drug-labels.cfm,"Warning: The full human prescription and OTC archive files, dm_spl_release_human_rx.zip and dm_spl_release_human_otc.zip, are no longer available due to size considerations."
+https://dailymed.nlm.nih.gov/dailymed/archives/index.cfm,This archive allows the user to retrieve the label current for a given date.
+https://dailymed.nlm.nih.gov/dailymed/webservices-help/v2/spls_setid_history_api.cfm,Returns version history for the specified SET ID.
+https://www.nlm.nih.gov/web_policies.html,Works produced by the U.S. government are not subject to copyright protection in the United States.
+https://www.nlm.nih.gov/web_policies.html,"When using NLM Web sites, you may encounter documents, illustrations, photographs, or other content contributed by or licensed from private individuals, companies, or organizations that may be protected by U.S. and international copyright laws."
+https://www.nlm.nih.gov/web_policies.html,"However, a copyright notice is not required by law and therefore not all copyrighted content is necessarily marked in this way."
+https://www.nlm.nih.gov/web_policies.html,It is your responsibility to determine and satisfy copyright or other use restrictions when using materials that are not in the public domain. NLM cannot guarantee the copyright status for any item.
+https://www.nlm.nih.gov/web_policies.html,Please acknowledge NLM as the source of the information by including the phrase “Courtesy of the National Library of Medicine” or “Source: National Library of Medicine.”
+https://www.fda.gov/about-fda/about-website/website-policies,"Unless otherwise noted, the contents of the FDA website (www.fda.gov) — both text and graphics — are not copyrighted. They are in the public domain and may be republished, reprinted and otherwise used freely by anyone without the need to obtain permission from FDA."
+https://www.fda.gov/about-fda/about-website/website-policies,"If a person, nonetheless, decides to copy content or images, FDA strongly recommends that the copied item lists the date that the material was copied and provides a link back to its source on the FDA website."
+https://biotech.law.lsu.edu/cases/devices/smithkline_v_watson.htm,"We hold that the Hatch-Waxman Amendments to the Federal Food, Drug, and Cosmetic Act require generic drug sellers to use labeling that may infringe a copyright in the label of the pioneer drug. We further hold that, as a result, copyright liability cannot attach to Watson's use of SmithKline's label."
+https://biotech.law.lsu.edu/cases/devices/smithkline_v_watson.htm,"it still retains a copyright, if otherwise valid, in the label and might well pursue copyright claims against potential infringers in other circumstances, e.g., use of the copyrighted material in non-labeling advertisements."
+https://biotech.law.lsu.edu/cases/devices/smithkline_v_watson.htm,"SmithKline's copyright claim is therefore meritless, and we need not address either the fair use or implied license defenses."
+https://biotech.law.lsu.edu/cases/devices/smithkline_v_watson.htm,never been directed by Congress to consider potential copyright rights in approving generic drug labeling.
+https://www.fda.gov/drugs/fdas-labeling-resources-human-prescription-drugs/patient-medication-information-pmi,"The comment period on the proposed rule closed on November 27, 2023. FDA is in the process of reviewing the comments for consideration in issuing a final rule."
+https://www.fda.gov/drugs/fdas-labeling-resources-human-prescription-drugs/patient-medication-information-pmi,PMI would replace current Medication Guides and Patient Package Inserts.
+https://www.reginfo.gov/public/do/eAgendaViewRule?pubId=202510&RIN=0910-AH68,Final Rule Stage
+https://www.reginfo.gov/public/do/eAgendaViewRule?pubId=202510&RIN=0910-AH68,12/00/2026
+https://www.fda.gov/industry/structured-product-labeling-resources/section-headings-loinc,68498-5
+https://www.fda.gov/industry/structured-product-labeling-resources/section-headings-loinc,PATIENT MEDICATION INFORMATION SECTION
+https://www.fda.gov/industry/structured-product-labeling-resources/section-headings-loinc,INFORMATION FOR PATIENTS SECTION
+https://www.cancer.gov/policies/copyright-reuse,"Unless otherwise indicated, all text within National Cancer Institute (NCI) products is free of copyright and may be reused without our permission. Credit the National Cancer Institute as the source."
+https://www.cancer.gov/policies/copyright-reuse,"The NCI logo and the PDQ trademark may only be used in reproductions of original, wholly unchanged NCI products."
+https://www.cancer.gov/policies/copyright-reuse,"Graphics (photos, illustrations) used in National Cancer Institute (NCI) information products are a mix of copyrighted and copyright-free materials."
+https://www.cancer.gov/policies/copyright-reuse,The translated product may not use the NCI logo or PDQ trademark.
+https://www.cancer.gov/publications/pdq/information-summaries,Most of the health professional summaries are also available in a patient-focused format.
+https://www.cancer.gov/publications/pdq/information-summaries,They are not clinical practice guidelines or treatment recommendations and are not intended to be used as a basis for insurance reimbursement.
+https://www.cancer.gov/syndication,Some of the information on this website is available for use on your own site or in other information products.
+https://www.cdc.gov/other/agencymaterials.html,"Most of the information on the CDC and ATSDR websites is not subject to copyright, is in the public domain, and may be freely used or reproduced without obtaining copyright permission."
+https://www.cdc.gov/other/agencymaterials.html,1) Attribution to the agency that developed the material must be provided in your use of the materials.
+https://www.cdc.gov/other/agencymaterials.html,"2) You must utilize a disclaimer which clearly indicates that your use of the material, including any links to the materials on the CDC, ATSDR or HHS websites, does not imply endorsement by CDC, ATSDR, HHS or the United States Government of you, your company, product, facility, service or enterprise."
+https://www.cdc.gov/other/agencymaterials.html,3) You may not change the substantive content of the materials; and
+https://www.cdc.gov/other/agencymaterials.html,4) You must state that the material is otherwise available on the agency website for no charge.
+https://www.cdc.gov/ccindex/index.html,The Index has 4 introductory questions and 20 scored items drawn from scientific literature in communication and related disciplines.
