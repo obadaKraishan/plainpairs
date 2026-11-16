@@ -69,7 +69,8 @@ summaries "are not clinical practice guidelines or treatment recommendations".
 (`schema.md`, `method.md`), the source check (`sources.md`), the prior art (`prior-art.md`),
 the counts, the sample and the XML test (`counts.md`, `sample.md`, `xml-test.md`), the hand
 sheet guide, the codebook of rule-based codes (`codebook.md`, a draft), the benchmark design
-(`benchmark-design.md`, a draft) and a draft of the weekly update.
+(`benchmark-design.md`, a draft), a draft of the weekly update, the removal route
+(`removal.md`) and the figures of each release for a data paper (`paper-facts.md`).
 
 ## How to cite
 Cite the version of the corpus you used, as the dataset's card gives it; for version 0.1.0:

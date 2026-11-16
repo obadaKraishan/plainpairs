@@ -7,6 +7,13 @@ All notable changes to this project are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- `docs/paper-facts.md`: every figure the card and the method give for version 0.1.0 (sizes per
+  configuration, the switch, reading levels per configuration and basis, the trusted codes and
+  their check, the alignment sheet per heading key, the NCI pairs, the limits), each with the
+  file it comes from and its date. Figures only.
+- `sheet-recheck`: the same pairs as a hand sheet's key, in a new order drawn with a new seed,
+  with blank answers and a separate key, for the same coder's second pass. It reads only the
+  key, never the answers.
 - The Zenodo DOI of the software and documents (10.5281/zenodo.24267450, all versions; version
   0.1.0 is 10.5281/zenodo.24267451): a badge and a "How to cite" section in the README,
   `doi`, `identifiers` and the release date in `CITATION.cff`, and the dataset card's "How to
