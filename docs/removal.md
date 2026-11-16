@@ -8,8 +8,13 @@ out. Open a **Removal request** on the repository's issue page
 - **who is asking** (a name or an organization, and its role);
 - **why** (for example, a copyright claim, an error, or a withdrawn label).
 
+Opening a request there needs a free GitHub account. The dataset's Community tab on Hugging
+Face (<https://huggingface.co/datasets/obadakr/plainpairs/discussions>) is a second route, with
+a free Hugging Face account; a request there is handled in the same way.
+
 ## What happens
-1. **Within 14 days** the request is answered on the issue.
+1. **Within 14 days** the request is answered where it was made, on the issue or the
+   discussion.
 2. If the text is to be taken out, a line is added to the takedown list, `data/takedown.csv`
    (`kind` is `set_id` or `url`, then `id`, the day it was `received` and a short `reason`).
    The list is public; it names no person.

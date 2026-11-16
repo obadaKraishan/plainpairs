@@ -350,6 +350,12 @@ def cmd_release_pack_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_release_card(args: argparse.Namespace) -> int:
+    for path in pack.write_card(Path(args.pack), Path(args.kaggle) if args.kaggle else None):
+        print(f"Wrote {path}", flush=True)
+    return cmd_release_pack_check(args)
+
+
 def cmd_update(args: argparse.Namespace) -> int:
     _check_drive(Path("data/raw"))
     work = Path(args.work)
@@ -753,6 +759,14 @@ def build_parser() -> argparse.ArgumentParser:
     rc.add_argument("--kaggle")
     rc.add_argument("--takedown", default="data/takedown.csv", help="the takedown list")
     rc.set_defaults(func=cmd_release_pack_check)
+    rk = rsub.add_parser(
+        "card",
+        help="write the card and LICENSES.md again from the pack's manifest (data untouched)",
+    )
+    rk.add_argument("--pack", required=True)
+    rk.add_argument("--kaggle", help="also its LICENSES.md and dataset-metadata.json")
+    rk.add_argument("--takedown", default="data/takedown.csv", help="the takedown list")
+    rk.set_defaults(func=cmd_release_card)
 
     p = sub.add_parser("update", help="from the last build to the newest export (counts only)")
     p.add_argument("--from-tables", default="data/interim/tables", help="the last build")

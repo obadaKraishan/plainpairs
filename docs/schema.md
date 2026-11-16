@@ -170,7 +170,8 @@ names), and the flags `block_changed`, `format_changed`, `mark_changed`,
 ## Text from the National Cancer Institute's cancer information summaries, with parts left out (configuration `nci`; `plainpairs nci-build`)
 Every row of the three tables carries `configuration` (`nci`), `source`, `url` (NCI's address
 for the page), `date_read`, `nci_updated` (the date NCI gives for the page's last update) and
-`credit_line` ('"<title>" was originally published by the National Cancer Institute. <url>');
+`credit_line` (the summary's title in quotation marks, then "was originally published by the
+National Cancer Institute.", then the page's address);
 the pairs carry each of these for both pages (`_a`, `_b`).
 
 - `nci_summaries` (record layer), one row per summary page: `language` (`en`, `es`),

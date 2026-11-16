@@ -181,8 +181,8 @@ of patient summaries, the navigation, and the closing sections (purpose, reviewe
 evidence, permission, citation, disclaimer).
 
 **The release switch for this configuration:** the kept text may be released with its credit
-line on every row ('"<title>" was originally published by the National Cancer Institute.' and
-the page's address); nothing that is left out is ever kept. NCI also suggests linking to its
+line on every row (the summary's title in quotation marks, then "was originally published by
+the National Cancer Institute.", and the page's address); nothing that is left out is ever kept. NCI also suggests linking to its
 pages rather than copying them, so `plainpairs nci-text` rebuilds the text from NCI's pages
 with the addresses and hashes of `nci_summaries`.
 
@@ -240,5 +240,9 @@ generation in regulatory medical writing, *Frontiers in Pharmacology*
 
 ## Takedown
 A company or anyone else who believes a text should not be in a release can ask for its
-removal through the repository's issue tracker (a takedown form will be added before the
-first release); the record layer keeps the label's identifiers and measures.
+removal with the repository's removal request form
+(<https://github.com/obadaKraishan/plainpairs/issues/new/choose>; opening one needs a free
+GitHub account) or in the dataset's Community tab on Hugging Face
+(<https://huggingface.co/datasets/obadakr/plainpairs/discussions>, with a free Hugging Face
+account). The record layer keeps the label's identifiers and measures; the steps are in
+`docs/removal.md`.
