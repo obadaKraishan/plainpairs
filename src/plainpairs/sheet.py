@@ -111,6 +111,31 @@ def draw(
     return picks
 
 
+def recheck(
+    key_rows: Iterable[dict[str, str]],
+    pairs: dict[tuple[str, str, str, int], dict[str, Any]],
+    seed: int,
+) -> list[dict[str, Any]]:
+    """The same pairs as a sheet's key, in a new order drawn with ``seed``, rows renumbered.
+
+    For a second pass by the same coder: only the key (which pairs, never the answers) is read,
+    each pair is found again in the build by set id, version, kind and segment index, and its
+    heading key and section must be the key's."""
+    picks = []
+    for k in key_rows:
+        ident = (k["set_id"], str(k["version"]), k["kind"], int(k["segment_index"]))
+        p = pairs.get(ident)
+        if p is None or p["heading_key"] != k["heading_key"]:
+            raise SheetError(f"Row {k['row']} of the key is not in the build: {ident}.")
+        if k["section"] not in (p.get("mapped_present") or []):
+            raise SheetError(f"Row {k['row']}: section {k['section']} is not mapped in the build.")
+        picks.append({**p, "section": k["section"], "seed": seed})
+    random.Random(seed).shuffle(picks)
+    for i, p in enumerate(picks, start=1):
+        p["row"] = i
+    return picks
+
+
 def _long_enough(p: dict[str, Any]) -> bool:
     """More than one line: at least two sentences and :data:`MIN_WORDS` words in the body."""
     m = p.get("measures")

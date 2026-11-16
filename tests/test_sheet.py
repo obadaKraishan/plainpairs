@@ -130,3 +130,33 @@ def test_check_refuses_a_sheet_that_is_not_the_hand_sheet(tmp_path):
     xlsx.write_workbook(x, xlsx.Sheet(name="S", rows=[[("Something", xlsx.Style())]]))
     with pytest.raises(sheet.SheetError, match="header row"):
         sheet.check(x, tmp_path / "key.csv")
+
+
+def test_recheck_keeps_the_pairs_in_a_new_order():
+    pairs = {}
+    key = []
+    for i in range(12):
+        p = {
+            "set_id": f"s{i}",
+            "version": "1",
+            "kind": "medication_guide",
+            "segment_index": i,
+            "heading_key": "storage",
+            "patient_text_id": f"t{i}",
+            "mapped_present": ["storage_and_handling"],
+            "seg_start": 0,
+            "seg_end": 5,
+        }
+        pairs[("s" + str(i), "1", "medication_guide", i)] = p
+        key.append({**{k: str(v) for k, v in p.items() if k in sheet.KEY_FIELDS},
+                    "row": str(i + 1), "section": "storage_and_handling", "seed": "1"})  # fmt: skip
+    picks = sheet.recheck(key, pairs, seed=20261130)
+    assert sorted(p["set_id"] for p in picks) == sorted(k["set_id"] for k in key)
+    assert [p["row"] for p in picks] == list(range(1, 13))
+    assert [p["set_id"] for p in picks] != [k["set_id"] for k in key]
+    assert picks == sheet.recheck(key, pairs, seed=20261130)
+    assert {p["seed"] for p in picks} == {20261130}
+    with pytest.raises(sheet.SheetError, match="not in the build"):
+        sheet.recheck([{**key[0], "segment_index": "99"}], pairs, seed=1)
+    with pytest.raises(sheet.SheetError, match="not mapped"):
+        sheet.recheck([{**key[0], "section": "boxed_warning"}], pairs, seed=1)
