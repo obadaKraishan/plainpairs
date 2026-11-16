@@ -6,6 +6,13 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-16
+
+The first release. The corpus is on Hugging Face (`obadakr/plainpairs`, tag `v0.1.0`: 16
+configs in three configurations that are never pooled, 1,409,294 rows, 563.0 MB) with a mirror
+on Kaggle (`obadakraishan/plainpairs`); this repository's release, archived on Zenodo, holds
+the software and its documents, no data table.
+
 ### Added
 - `release card`: writes the card and LICENSES.md again from a pack's own manifest (and the
   Kaggle folder's LICENSES.md and metadata), leaving the data files and the manifest as they
