@@ -363,3 +363,16 @@ def test_the_kaggle_title_and_subtitle_fit_kaggles_limits(made, tmp_path):
     meta["title"] = "PlainPairs: prescriber and patient texts of US medicine labels"
     (k / "dataset-metadata.json").write_text(json.dumps(meta), encoding="utf-8")
     assert pack.check_kaggle(k, p) == ["the Kaggle title has 62 characters; Kaggle takes 6 to 50."]
+
+
+def test_the_card_and_citation_file_give_the_same_zenodo_doi(made):
+    import re
+    from pathlib import Path
+
+    _out, p, _m = made
+    cff = Path("CITATION.cff").read_text(encoding="utf-8")
+    assert re.search(r"^doi: (\S+)$", cff, re.M).group(1) == pack.SOFTWARE_DOI
+    assert re.search(r'^  date-released: "(\d{4}-\d{2}-\d{2})"$', cff, re.M)
+    flat = " ".join((p / "README.md").read_text(encoding="utf-8").split())
+    assert f"https://doi.org/{pack.SOFTWARE_DOI} (all versions" in flat
+    assert f"https://doi.org/{pack.SOFTWARE_DOI}" in Path("README.md").read_text(encoding="utf-8")

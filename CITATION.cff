@@ -1,5 +1,6 @@
-# The preferred citation is the dataset's version 0.1.0 on Hugging Face. The DOI of the
-# software and documents and the release date are added once the Zenodo record exists.
+# The preferred citation is the dataset's version on Hugging Face. Zenodo archives each GitHub
+# release of this repository from .zenodo.json (which it reads in place of this file); the DOI
+# below stands for all versions of the software and documents and resolves to the latest.
 cff-version: 1.2.0
 message: "If you use PlainPairs, please cite it as below."
 type: software
@@ -15,6 +16,14 @@ authors:
     given-names: Obada
     affiliation: "College of Media and Communication, Texas Tech University"
 license: Apache-2.0
+doi: 10.5281/zenodo.24267450
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24267450
+    description: "The software and documents on Zenodo, all versions"
+  - type: doi
+    value: 10.5281/zenodo.24267451
+    description: "The software and documents on Zenodo, version 0.1.0"
 repository-code: "https://github.com/obadaKraishan/plainpairs"
 keywords:
   - health literacy
@@ -33,6 +42,7 @@ preferred-citation:
       affiliation: "College of Media and Communication, Texas Tech University"
   year: 2026
   version: "0.1.0"
+  date-released: "2026-11-16"
   publisher:
     name: "Hugging Face"
   url: "https://huggingface.co/datasets/obadakr/plainpairs"
