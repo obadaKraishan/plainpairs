@@ -1,5 +1,5 @@
-# DRAFT: nothing has been released yet. The preferred citation is the dataset's version
-# 0.1.0; the release date and the DOI are filled in at release.
+# The preferred citation is the dataset's version 0.1.0 on Hugging Face. The DOI of the
+# software and documents and the release date are added once the Zenodo record exists.
 cff-version: 1.2.0
 message: "If you use PlainPairs, please cite it as below."
 type: software

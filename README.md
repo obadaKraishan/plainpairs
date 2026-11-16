@@ -10,10 +10,14 @@ It is built for health literacy, health communication and risk communication res
 studies how official patient information is written: how long it is, how hard it is to read,
 how it words numbers and risks, and how it differs from the professional text it comes from.
 
-**Status: in development. Nothing has been released yet.** The plan, the source terms and the
-drafts are in [`docs/`](docs/).
+**Status: version 0.1.0, released on 2026-11-16.** The corpus is on Hugging Face,
+[`obadakr/plainpairs`](https://huggingface.co/datasets/obadakr/plainpairs) (tag `v0.1.0`; its
+card says how to load each table), with a mirror on Kaggle,
+[`obadakraishan/plainpairs`](https://www.kaggle.com/datasets/obadakraishan/plainpairs). The
+weekly update is built and not yet switched on. The method, the source terms and the drafts are
+in [`docs/`](docs/).
 
-## What it holds (planned)
+## What it holds
 - One row per label, with its identity (set id, version, effective date, product type, route,
   application number, manufacturer, names) and its prescriber sections and patient texts as
   plain text with their headings kept.
@@ -22,7 +26,8 @@ drafts are in [`docs/`](docs/).
 - Patient sections matched to the prescriber sections they draw on, with the method and its
   checks described in [`docs/method.md`](docs/method.md).
 - Reading-level and plain-language measures for every text, computed by stated rules.
-- New and changed labels added every week, with versioned, citable releases.
+- New and changed labels added every week, with versioned, citable releases (the weekly
+  update is not yet switched on).
 - Apart from the labels, in its own configuration: text taken from the National Cancer
   Institute's cancer information summaries, in their health-professional and patient versions,
   in English and Spanish, paired by NCI's own links, with images, credited tables, references
@@ -69,7 +74,7 @@ The software in this repository is licensed under the Apache License, Version 2.
 [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)). The corpus is distributed separately, as a
 Hugging Face dataset; what applies to each of its configurations (the sources' terms, the
 credit lines, and the CC0 dedication of the project's own measures) is in that dataset's
-`LICENSES.md`, from the first release on.
+`LICENSES.md`.
 
 ## Development
 ```bash
