@@ -140,8 +140,9 @@ labels (its full release of human prescription labels of $dailymed_release) and 
 **The National Cancer Institute** (the `nci` configuration; pages read on $nci_read). Its terms:
 "Unless otherwise indicated, all text within National Cancer Institute (NCI) products is free
 of copyright and may be reused without our permission. Credit the National Cancer Institute as
-the source." Every row carries the credit line '"<title>" was originally published by the
-National Cancer Institute.' with the page's address. Images, figures, tables that NCI credits
+the source." Every row carries a credit line: the summary's title in quotation marks, then
+"was originally published by the National Cancer Institute.", and the page's address. Images,
+figures, tables that NCI credits
 to other publishers, references and the closing sections are left out, so a row here is not
 an NCI summary and must never be presented as one.
 
@@ -160,8 +161,11 @@ each configuration is in [LICENSES.md](LICENSES.md).
 ## Removal
 A company, or anyone else, may ask that a text be taken out: open a removal request on the
 project's repository (https://github.com/obadaKraishan/plainpairs/issues/new/choose) with the
-set id or the page address, who is asking, and why. The text row is removed in the next
-version, the record row stays, and the request is answered within 14 days.
+set id or the page address, who is asking, and why. Opening a request there needs a free
+GitHub account; the dataset's Community tab on Hugging Face
+(https://huggingface.co/datasets/obadakr/plainpairs/discussions) is a second route, with a free
+Hugging Face account. The text row is removed in the next version, the record row stays, and
+the request is answered within 14 days.
 
 ## Limits
 - The two label configurations hold different labels: `unlisted` labels are mostly ones

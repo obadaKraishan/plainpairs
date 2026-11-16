@@ -31,12 +31,16 @@ License 2.0 (https://www.apache.org/licenses/LICENSE-2.0) in the project's repos
 - **Terms:** "Unless otherwise indicated, all text within National Cancer Institute (NCI)
   products is free of copyright and may be reused without our permission. Credit the National
   Cancer Institute as the source." (https://www.cancer.gov/policies/copyright-reuse).
-- **Credit:** every row carries '"<title>" was originally published by the National Cancer
-  Institute.' and the page's address.
+- **Credit:** every row carries a credit line: the summary's title in quotation marks, then
+  "was originally published by the National Cancer Institute.", and the page's address.
 - **Left out:** images and figures (NCI uses them with permission for its own summaries only),
   tables that NCI credits to other publishers, references, citation marks and the closing
   sections. A row is therefore not an NCI summary and must not be presented as one; the NCI
   logo and NCI's trademarks are not used.
 
 ## Removal
-https://github.com/obadaKraishan/plainpairs/issues/new/choose
+A removal request on the project's repository,
+https://github.com/obadaKraishan/plainpairs/issues/new/choose (opening one needs a free GitHub
+account), or in the dataset's Community tab on Hugging Face,
+https://huggingface.co/datasets/obadakr/plainpairs/discussions (with a free Hugging Face
+account).

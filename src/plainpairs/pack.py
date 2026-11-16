@@ -335,6 +335,48 @@ def _files_table(files: list[dict[str, Any]]) -> str:
 # --- the check, on the pack alone ------------------------------------------------------------
 
 _FRONT = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+_CODE_SPAN = re.compile(r"(`+)(?:(?!\n[ \t]*\n).)+?\1", re.S)
+_RAW_TAG = re.compile(
+    r"<(?![A-Za-z][A-Za-z0-9+.-]*:)/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?/?>|<!--|<\?|<![A-Za-z]"
+)
+
+
+def raw_tags(text: str) -> list[tuple[int, str]]:
+    """What a Markdown renderer would read as raw HTML, outside code: (line, tag) pairs.
+
+    The Hub renders a card's raw HTML, so a placeholder written as ``<title>`` opens an element
+    that hides the rest of the card. Code spans, fenced code and autolinks
+    (``<https://...>``) are fine; the front matter is not Markdown and is skipped."""
+    m = _FRONT.match(text)
+    start = m.end() if m else 0
+    kept, fence = [], ""
+    for line in text[start:].split("\n"):
+        f = _FENCE.match(line)
+        if fence:
+            if f and f.group(1)[0] == fence[0] and len(f.group(1)) >= len(fence):
+                fence = ""
+            kept.append("")
+        elif f:
+            fence = f.group(1)
+            kept.append("")
+        else:
+            kept.append(line)
+    body = _CODE_SPAN.sub(lambda s: re.sub(r"[^\n]", " ", s.group(0)), "\n".join(kept))
+    before = text[:start].count("\n")
+    return [
+        (before + body.count("\n", 0, tag.start()) + 1, tag.group(0))
+        for tag in _RAW_TAG.finditer(body)
+    ]
+
+
+def tag_problems(name: str, text: str) -> list[str]:
+    """One problem per raw tag in ``text`` (see ``raw_tags``)."""
+    return [
+        f"{name} line {line}: {tag!r} is read as an HTML tag on Hugging Face and hides the text "
+        "after it; write it in words or in backticks."
+        for line, tag in raw_tags(text)
+    ]
 
 
 def card_problems(text: str, files: list[dict[str, Any]]) -> list[str]:
@@ -365,6 +407,7 @@ def card_problems(text: str, files: list[dict[str, Any]]) -> list[str]:
         problems.append("the first screen of the card does not say it is not medical information")
     if any(f["configuration"] == "nci" for f in files) and "https://www.cancer.gov" not in first:
         problems.append("the first screen of the card does not cover the NCI text")
+    problems += tag_problems("README.md", text)
     return problems
 
 
@@ -414,6 +457,8 @@ def check_pack(pack_dir: Path, takedown_path: Path | None = None) -> list[str]:
         cite = citation(manifest.get("version", ""), manifest.get("created", ""))
         if cite not in text:
             problems.append("the card does not cite this version as the manifest gives it")
+    if (root / "LICENSES.md").exists():
+        problems += tag_problems("LICENSES.md", (root / "LICENSES.md").read_text(encoding="utf-8"))
     return problems
 
 
@@ -481,19 +526,9 @@ def _check_file(f: dict[str, Any], t: pa.Table) -> list[str]:
 KAGGLE_ID = "obadakraishan/plainpairs"
 
 
-def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
-    """The Kaggle mirror: the same files as the pack (flat names), the card and the licenses."""
-    pack_dir, out_dir = Path(pack_dir), Path(out_dir)
-    manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
-    out_dir.mkdir(parents=True, exist_ok=True)
-    resources = []
-    for f in manifest["files"]:
-        flat = f"{f['config']}.parquet"
-        shutil.copyfile(pack_dir / f["path"], out_dir / flat)
-        resources.append({"path": flat, "description": f"{f['config']} ({f['layer']} layer)"})
-    for name in ("LICENSES.md", "manifest.json"):
-        shutil.copyfile(pack_dir / name, out_dir / name)
-    meta = {
+def kaggle_metadata(manifest: dict[str, Any], resources: list[dict[str, str]]) -> dict[str, Any]:
+    """The Kaggle mirror's dataset-metadata.json, from the pack's manifest."""
+    return {
         "title": "PlainPairs: prescriber and patient texts of US medicine labels",
         "subtitle": "A research record of wording, not medical information",
         "id": KAGGLE_ID,
@@ -511,6 +546,21 @@ def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
         ),
         "resources": resources,
     }
+
+
+def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
+    """The Kaggle mirror: the same files as the pack (flat names), the card and the licenses."""
+    pack_dir, out_dir = Path(pack_dir), Path(out_dir)
+    manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    resources = []
+    for f in manifest["files"]:
+        flat = f"{f['config']}.parquet"
+        shutil.copyfile(pack_dir / f["path"], out_dir / flat)
+        resources.append({"path": flat, "description": f"{f['config']} ({f['layer']} layer)"})
+    for name in ("LICENSES.md", "manifest.json"):
+        shutil.copyfile(pack_dir / name, out_dir / name)
+    meta = kaggle_metadata(manifest, resources)
     (out_dir / "dataset-metadata.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     return meta
 
@@ -540,4 +590,29 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
         problems.append("the Kaggle metadata lacks its id or the not-medical-information line.")
     if citation(manifest["version"], manifest["created"]) not in meta.get("description", ""):
         problems.append("the Kaggle description does not cite this version as the card does.")
+    problems += tag_problems("the Kaggle description", meta.get("description", ""))
+    lic = out_dir / "LICENSES.md"
+    if not lic.exists() or _sha(lic) != _sha(pack_dir / "LICENSES.md"):
+        problems.append("the Kaggle folder's LICENSES.md differs from the pack's.")
     return problems
+
+
+def write_card(pack_dir: Path, kaggle_dir: Path | None = None) -> list[Path]:
+    """Write the card (README.md) and LICENSES.md again from the pack's own manifest, and the
+    Kaggle folder's LICENSES.md and metadata. The data files and the manifest are not touched,
+    so a fix to the card's wording needs no rebuild of the tables."""
+    pack_dir = Path(pack_dir)
+    manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
+    written = [pack_dir / "README.md", pack_dir / "LICENSES.md"]
+    written[0].write_text(card(manifest), encoding="utf-8")
+    written[1].write_text(_template(LICENSES_TEMPLATE, manifest), encoding="utf-8")
+    if kaggle_dir is not None:
+        kaggle_dir = Path(kaggle_dir)
+        meta_path = kaggle_dir / "dataset-metadata.json"
+        old = json.loads(meta_path.read_text(encoding="utf-8"))
+        shutil.copyfile(pack_dir / "LICENSES.md", kaggle_dir / "LICENSES.md")
+        meta_path.write_text(
+            json.dumps(kaggle_metadata(manifest, old["resources"]), indent=1), encoding="utf-8"
+        )
+        written += [kaggle_dir / "LICENSES.md", meta_path]
+    return written

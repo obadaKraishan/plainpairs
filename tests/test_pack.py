@@ -271,3 +271,83 @@ def test_card_kaggle_and_citation_file_cite_the_same_version(made, tmp_path):
     meta["description"] = meta["description"].replace("(2026)", "")
     (tmp_path / "k" / "dataset-metadata.json").write_text(json.dumps(meta), encoding="utf-8")
     assert any("does not cite" in x for x in pack.check_kaggle(tmp_path / "k", p))
+
+
+def test_raw_tags_are_found_outside_code_only():
+    assert pack.raw_tags("the credit line '\"<title>\" was originally'") == [(1, "<title>")]
+    assert pack.raw_tags("a\n</div> and <br/> and <!-- note -->") == [
+        (2, "</div>"),
+        (2, "<br/>"),
+        (2, "<!--"),
+    ]
+    assert pack.raw_tags("---\nsize_categories:\n- 1M<n<10M>\n---\ntext\n<b>x</b>") == [
+        (6, "<b>"),
+        (6, "</b>"),
+    ]
+    fine = [
+        "in code: `<title>` and ``a <b> c``",
+        "```\n<title>\n```",
+        "~~~~\n<url>\n~~~~",
+        "an autolink <https://github.com/obadaKraishan/plainpairs> and <mailto:x>",
+        "a span over two lines: `--old\n<last build> --new <this build>`",
+        "1 < 2 and 3 > 2, n<10",
+    ]
+    for text in fine:
+        assert pack.raw_tags(text) == [], text
+
+
+def test_a_raw_tag_in_the_card_or_licenses_fails_the_check(made, tmp_path):
+    _out, p, _m = made
+    card = (p / "README.md").read_text(encoding="utf-8")
+    (p / "README.md").write_text(card + "\nEvery row: '\"<title>\" was published'\n")
+    problems = pack.check_pack(p)
+    assert len(problems) == 1 and "README.md line" in problems[0] and "HTML tag" in problems[0]
+    (p / "README.md").write_text(card, encoding="utf-8")
+    lic = (p / "LICENSES.md").read_text(encoding="utf-8")
+    (p / "LICENSES.md").write_text(lic + "\n<url>\n", encoding="utf-8")
+    assert any(x.startswith("LICENSES.md line") for x in pack.check_pack(p))
+
+
+def test_published_markdown_has_no_raw_tags(made):
+    from pathlib import Path
+
+    _out, p, _m = made
+    names = ["README.md", "CHANGELOG.md", *sorted(str(x) for x in Path("docs").glob("*.md"))]
+    names += ["src/plainpairs/dataset_card.md", "src/plainpairs/licenses_pack.md"]
+    found = {n: pack.raw_tags(Path(n).read_text(encoding="utf-8")) for n in names}
+    for name in ("README.md", "LICENSES.md"):
+        found[f"pack {name}"] = pack.raw_tags((p / name).read_text(encoding="utf-8"))
+    assert {n: v for n, v in found.items() if v} == {}
+
+
+def test_the_card_is_written_again_without_touching_the_data(made, tmp_path):
+    from plainpairs.cli import main
+
+    _out, p, m = made
+    k = tmp_path / "kaggle"
+    pack.build_kaggle(p, k)
+    before = {f["path"]: pack._sha(p / f["path"]) for f in m["files"]}
+    manifest = (p / "manifest.json").read_bytes()
+    (p / "README.md").write_text("old card", encoding="utf-8")
+    (k / "LICENSES.md").write_text("old licenses", encoding="utf-8")
+    assert any("LICENSES.md differs" in x for x in pack.check_kaggle(k, p))
+    assert main(["release", "card", "--pack", str(p), "--kaggle", str(k)]) == 0
+    assert (p / "README.md").read_text(encoding="utf-8") == pack.card(m)
+    assert {f["path"]: pack._sha(p / f["path"]) for f in m["files"]} == before
+    assert (p / "manifest.json").read_bytes() == manifest
+    assert pack.check_pack(p) == [] and pack.check_kaggle(k, p) == []
+
+
+def test_the_removal_routes_are_given_with_the_accounts_they_need(made):
+    from pathlib import Path
+
+    _out, p, _m = made
+    discussions = "https://huggingface.co/datasets/obadakr/plainpairs/discussions"
+    for name, text in (
+        ("card", (p / "README.md").read_text(encoding="utf-8")),
+        ("LICENSES.md", (p / "LICENSES.md").read_text(encoding="utf-8")),
+        ("docs/removal.md", Path("docs/removal.md").read_text(encoding="utf-8")),
+    ):
+        flat = " ".join(text.split())
+        assert "free GitHub account" in flat and discussions in flat, name
+        assert "issues/new/choose" in flat, name

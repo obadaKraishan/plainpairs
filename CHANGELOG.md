@@ -7,6 +7,9 @@ All notable changes to this project are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- `release card`: writes the card and LICENSES.md again from a pack's own manifest (and the
+  Kaggle folder's LICENSES.md and metadata), leaving the data files and the manifest as they
+  are, for a fix to the card's wording.
 - `release build` and `release check`: the release pack, one Hugging Face config per table of
   each configuration (16, no default), the switch and the takedown list applied as it is
   written, a manifest, the dataset card and LICENSES.md, and the Kaggle mirror's folder; the
@@ -93,6 +96,13 @@ All notable changes to this project are recorded here. The format follows
   for the same `current` labels.
 
 ### Changed
+- The card and LICENSES.md give the NCI credit line in words. Its placeholder was written as an
+  HTML-like tag, which Hugging Face read as a tag, hiding the rest of the card. `release check`
+  now fails on a raw HTML tag outside code in the card, LICENSES.md and the Kaggle description,
+  and the documents that carried the same placeholder say it in words too.
+- The removal route says that opening a request needs a free GitHub account and gives the
+  dataset's Community tab on Hugging Face as a second route (card, LICENSES.md,
+  `docs/removal.md`, the data card).
 - The repository is public for the first release, and `main` takes changes only through pull
   requests that pass the four checks (Python 3.10 to 3.13).
 - CI runs the full matrix (Python 3.10 to 3.13) on pull requests again, so that the four

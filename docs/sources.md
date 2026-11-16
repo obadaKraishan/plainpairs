@@ -256,8 +256,9 @@ is the maintainer's decision; it is not settled here by assumption.
 
   and it adds: "Consider linking directly to our content rather than reproducing it, as our
   content may be updated over time." Every row of the `nci` tables therefore carries the page's
-  address and a credit line in that form ('"<title>" was originally published by the National
-  Cancer Institute.' and the address), and the text layer can be rebuilt from NCI's own pages
+  address and a credit line in that form (the summary's title in quotation marks, then "was
+  originally published by the National Cancer Institute.", and the address), and the text
+  layer can be rebuilt from NCI's own pages
   (`plainpairs nci-text`).
 - **The PDQ name:**
   > The NCI logo and the PDQ trademark may only be used in reproductions of original, wholly
