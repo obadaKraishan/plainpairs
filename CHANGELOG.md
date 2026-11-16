@@ -96,6 +96,9 @@ All notable changes to this project are recorded here. The format follows
   for the same `current` labels.
 
 ### Changed
+- The Kaggle mirror's title is "PlainPairs: prescriber and patient label texts": Kaggle takes
+  6 to 50 characters, and `release check` now checks the title and the subtitle (20 to 80)
+  against those limits.
 - The card and LICENSES.md give the NCI credit line in words. Its placeholder was written as an
   HTML-like tag, which Hugging Face read as a tag, hiding the rest of the card. `release check`
   now fails on a raw HTML tag outside code in the card, LICENSES.md and the Kaggle description,

@@ -524,13 +524,17 @@ def _check_file(f: dict[str, Any], t: pa.Table) -> list[str]:
 # --- the Kaggle mirror -----------------------------------------------------------------------
 
 KAGGLE_ID = "obadakraishan/plainpairs"
+#: Kaggle takes a title of 6 to 50 characters and a subtitle of 20 to 80.
+KAGGLE_TITLE = "PlainPairs: prescriber and patient label texts"
+KAGGLE_SUBTITLE = "A research record of wording, not medical information"
+KAGGLE_LIMITS = {"title": (6, 50), "subtitle": (20, 80)}
 
 
 def kaggle_metadata(manifest: dict[str, Any], resources: list[dict[str, str]]) -> dict[str, Any]:
     """The Kaggle mirror's dataset-metadata.json, from the pack's manifest."""
     return {
-        "title": "PlainPairs: prescriber and patient texts of US medicine labels",
-        "subtitle": "A research record of wording, not medical information",
+        "title": KAGGLE_TITLE,
+        "subtitle": KAGGLE_SUBTITLE,
         "id": KAGGLE_ID,
         "licenses": [{"name": "other"}],
         "keywords": ["health", "nlp", "text"],
@@ -591,6 +595,10 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
     if citation(manifest["version"], manifest["created"]) not in meta.get("description", ""):
         problems.append("the Kaggle description does not cite this version as the card does.")
     problems += tag_problems("the Kaggle description", meta.get("description", ""))
+    for field, (low, high) in KAGGLE_LIMITS.items():
+        n = len(meta.get(field, ""))
+        if not low <= n <= high:
+            problems.append(f"the Kaggle {field} has {n} characters; Kaggle takes {low} to {high}.")
     lic = out_dir / "LICENSES.md"
     if not lic.exists() or _sha(lic) != _sha(pack_dir / "LICENSES.md"):
         problems.append("the Kaggle folder's LICENSES.md differs from the pack's.")
