@@ -223,8 +223,9 @@ figures as if they were one corpus.
   the repeat too. The structure's measures do not.
 ## History
 The source holds only the current version of each label. This corpus's history therefore
-starts with its first release: each weekly release records the export date it was built from,
-and labels that change or leave the source can be followed from then on. Older versions exist
+starts with its first release, version 0.1.0 (built from the export of 2026-11-13, released on
+2026-11-16): each weekly release records the export date it was built from, and labels that
+change or leave the source can be followed from then on. Older versions exist
 on DailyMed's labeling archives but are not part of this corpus.
 
 The record matters now because a proposed rule (88 FR 35694, 2023) would replace Medication

@@ -487,6 +487,46 @@ def cmd_sheet(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_sheet_recheck(args: argparse.Namespace) -> int:
+    import csv
+
+    src = Path(args.tables)
+    with Path(args.key).open(encoding="utf-8", newline="") as fh:
+        key = list(csv.DictReader(fh))
+    rows = (
+        tables.read_table(src, "section_pairs")
+        .select(
+            [
+                "set_id",
+                "version",
+                "kind",
+                "segment_index",
+                "heading_key",
+                "patient_text_id",
+                "mapped_present",
+                "seg_start",
+                "seg_end",
+            ]
+        )
+        .to_pylist()
+    )
+    pairs = {(r["set_id"], str(r["version"]), r["kind"], int(r["segment_index"])): r for r in rows}
+    picks = sheet.recheck(key, pairs, args.seed)
+    ids = sorted({p["set_id"] for p in picks})
+    out = Path(args.out)
+    x = sheet.write(
+        picks,
+        _texts(src / "text_patient.parquet", ids),
+        _texts(src / "text_prescriber.parquet", ids),
+        out / f"hand-sheet-recheck-seed{args.seed}.xlsx",
+        out / f"hand-sheet-recheck-seed{args.seed}-key.csv",
+    )
+    print(
+        f"Wrote the same {len(picks)} pairs in a new order to {x} and its key (seed {args.seed})."
+    )
+    return 0
+
+
 def _texts(path: Path, ids: list[str]) -> dict[tuple[str, str], str]:
     import pyarrow.dataset as ds
 
@@ -783,6 +823,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--per-key", type=int, default=10)
     p.add_argument("--seed", type=int, default=20261115)
     p.set_defaults(func=cmd_sheet)
+
+    p = sub.add_parser(
+        "sheet-recheck", help="the same pairs as a sheet's key, in a new order, answers blank"
+    )
+    p.add_argument("--key", required=True, help="the first sheet's key (never its answers)")
+    p.add_argument("--tables", default="data/interim/tables")
+    p.add_argument("--out", required=True)
+    p.add_argument("--seed", type=int, required=True)
+    p.set_defaults(func=cmd_sheet_recheck)
 
     p = sub.add_parser(
         "sheet-check", help="share of yes or partly per heading, from a filled sheet"
