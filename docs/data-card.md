@@ -233,8 +233,9 @@ over five years once final (a final rule is planned for December 2026 and not ye
 A weekly record would show the old texts giving way to the new ones.
 
 ## How to cite
-A draft citation is in `CITATION.cff`; the DOI is added at the first release. Please also cite
-the source with its credit line above. The nearest earlier work: Meyer et al. (2023), Neural text
+The citation of the dataset and the Zenodo DOI of the software and documents
+(<https://doi.org/10.5281/zenodo.24267450>, all versions) are in `CITATION.cff`. Please also
+cite the source with its credit line above. The nearest earlier work: Meyer et al. (2023), Neural text
 generation in regulatory medical writing, *Frontiers in Pharmacology*
 (doi:10.3389/fphar.2023.1086913), and the CLARA-MeD corpus (Campillos-Llanos et al., 2022).
 

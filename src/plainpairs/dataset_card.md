@@ -179,8 +179,9 @@ the request is answered within 14 days.
 ## How to cite
 $citation
 
-Please also give the sources' credit lines above. The project's repository holds the same
-citation in `CITATION.cff`.
+Please also give the sources' credit lines above. The software and documents that build the
+corpus (no data table) are archived on Zenodo: https://doi.org/$software_doi (all versions;
+it resolves to the latest). The project's repository holds both in `CITATION.cff`.
 
 ## Files
 $files_table

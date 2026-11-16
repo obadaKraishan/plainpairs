@@ -1,5 +1,7 @@
 # PlainPairs
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24267450.svg)](https://doi.org/10.5281/zenodo.24267450)
+
 PlainPairs is a research corpus of how United States medicine labels are worded for two
 readers. For every medicine whose label carries a version written for patients (a Medication
 Guide or a patient package insert), it holds the text written for prescribers next to the text
@@ -68,6 +70,19 @@ summaries "are not clinical practice guidelines or treatment recommendations".
 the counts, the sample and the XML test (`counts.md`, `sample.md`, `xml-test.md`), the hand
 sheet guide, the codebook of rule-based codes (`codebook.md`, a draft), the benchmark design
 (`benchmark-design.md`, a draft) and a draft of the weekly update.
+
+## How to cite
+Cite the version of the corpus you used, as the dataset's card gives it; for version 0.1.0:
+
+> Kraishan, O. (2026). PlainPairs: a research corpus pairing the prescriber and patient texts of
+> US medicine labels (Version 0.1.0) [Data set]. Hugging Face.
+> <https://huggingface.co/datasets/obadakr/plainpairs>
+
+Please also give the sources' credit lines (in the card and in `LICENSES.md`). The software and
+documents are archived on Zenodo, with no data table:
+<https://doi.org/10.5281/zenodo.24267450>. This DOI stands for all versions and resolves to the
+latest; version 0.1.0 is <https://doi.org/10.5281/zenodo.24267451>. GitHub's "Cite this
+repository" reads `CITATION.cff`.
 
 ## License
 The software in this repository is licensed under the Apache License, Version 2.0 (see

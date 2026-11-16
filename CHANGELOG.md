@@ -6,6 +6,12 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The Zenodo DOI of the software and documents (10.5281/zenodo.24267450, all versions; version
+  0.1.0 is 10.5281/zenodo.24267451): a badge and a "How to cite" section in the README,
+  `doi`, `identifiers` and the release date in `CITATION.cff`, and the dataset card's "How to
+  cite".
+
 ## [0.1.0] - 2026-11-16
 
 The first release. The corpus is on Hugging Face (`obadakr/plainpairs`, tag `v0.1.0`: 16

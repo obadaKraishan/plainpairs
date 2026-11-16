@@ -74,6 +74,8 @@ TITLE = (
     "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
 )
 HF_URL = "https://huggingface.co/datasets/obadakr/plainpairs"
+#: The Zenodo DOI of the software and documents, all versions (it resolves to the latest).
+SOFTWARE_DOI = "10.5281/zenodo.24267450"
 #: Hugging Face's size categories by number of rows: (exclusive upper bound, category).
 SIZE_CATEGORIES = (
     (1_000, "n<1K"),
@@ -298,6 +300,7 @@ def _template(name: str, manifest: dict[str, Any]) -> str:
         "configs": _configs_yaml(manifest["files"]),
         "size_category": size_category(manifest["rows"]),
         "citation": citation(manifest["version"], manifest["created"]),
+        "software_doi": SOFTWARE_DOI,
         "nci_name": NCI_NAME,
         "held_marked": f"{manifest['held_back']['label_text_rows_marked']:,}",
         "megabytes": f"{manifest['bytes'] / 1e6:,.1f}",
