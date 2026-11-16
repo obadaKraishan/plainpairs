@@ -351,3 +351,15 @@ def test_the_removal_routes_are_given_with_the_accounts_they_need(made):
         flat = " ".join(text.split())
         assert "free GitHub account" in flat and discussions in flat, name
         assert "issues/new/choose" in flat, name
+
+
+def test_the_kaggle_title_and_subtitle_fit_kaggles_limits(made, tmp_path):
+    _out, p, _m = made
+    k = tmp_path / "kaggle"
+    meta = pack.build_kaggle(p, k)
+    assert meta["title"] == "PlainPairs: prescriber and patient label texts"
+    assert 6 <= len(meta["title"]) <= 50 and 20 <= len(meta["subtitle"]) <= 80
+    assert pack.check_kaggle(k, p) == []
+    meta["title"] = "PlainPairs: prescriber and patient texts of US medicine labels"
+    (k / "dataset-metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    assert pack.check_kaggle(k, p) == ["the Kaggle title has 62 characters; Kaggle takes 6 to 50."]
