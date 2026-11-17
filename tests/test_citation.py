@@ -17,6 +17,8 @@ PAPER = (
     "U.S. Prescription Medicine Labels. arXiv:2611.21160. https://arxiv.org/abs/2611.21160 "
     "(doi:10.48550/arXiv.2611.21160)"
 )
+#: The author's ORCID iD, as printed on the paper.
+ORCID = "https://orcid.org/0009-0007-7180-8620"
 FIRST = "If you use PlainPairs, please cite the paper:"
 SECOND = "To name the exact data you used, also give the dataset and its version:"
 
@@ -180,11 +182,13 @@ def test_citation_cff_parses_and_prefers_the_paper():
     assert pref["identifiers"][0]["value"] == f"arXiv:{pack.PAPER_ARXIV_ID}"
     assert [a["family-names"] for a in pref["authors"]] == ["Kraishan"]
     assert pref["authors"] == c["authors"]
+    assert [a["orcid"] for a in c["authors"]] == [ORCID]
     # The software's own DOI and identifiers stay; the dataset's version is a reference.
     assert c["doi"] == pack.SOFTWARE_DOI
     assert [i["value"] for i in c["identifiers"]] == [pack.SOFTWARE_DOI, "10.5281/zenodo.24267451"]
     (data,) = [r for r in c["references"] if r["type"] == "data"]
     assert data["title"] == pack.TITLE and data["url"] == pack.HF_URL
+    assert data["authors"] == c["authors"]
 
 
 def test_the_readme_and_the_data_card_cite_the_paper_first():
@@ -212,6 +216,7 @@ def test_zenodo_and_the_package_links_name_the_paper():
             "resource_type": "publication-preprint",
         }
     ]
+    assert [c.get("orcid") for c in z["creators"]] == [ORCID.removeprefix("https://orcid.org/")]
     project = Path("pyproject.toml").read_text(encoding="utf-8").split("[project.urls]\n", 1)[1]
     links = dict(re.findall(r'^(\w+) = "(\S+)"$', project.split("\n\n", 1)[0], re.M))
     assert links["Paper"] == pack.PAPER_URL
