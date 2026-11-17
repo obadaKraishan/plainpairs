@@ -29,7 +29,8 @@ All notable changes to this project are recorded here. The format follows
   description with headings (what PlainPairs is; a bold "Not medical information" line; what is
   inside, with the 18 files and their rows; how to load one table; sources, terms and credit;
   limits; how to cite, with the paper first and its BibTeX entry; links), a description for
-  every file and every column (from `docs/schema.md`), the sources, Kaggle tags, and a cover
+  every file and every column (from `docs/schema.md`), the sources, Kaggle tags (only tags
+  Kaggle accepts: it refuses the whole update over an unknown one), and a cover
   image drawn by code (`plainpairs.cover`, 560 by 280, no word from any label). `release check
   --kaggle` checks all of it; `release card` rewrites it with no data file touched; the new
   `release kaggle-settings` writes the settings for `kaggle datasets metadata --update` from the
