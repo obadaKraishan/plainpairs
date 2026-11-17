@@ -149,15 +149,23 @@ def test_the_kaggle_description_cites_the_paper_within_kaggles_limits(made, tmp_
     meta = pack.build_kaggle(p, k)
     d = meta["description"]
     dataset = pack.citation(m["version"], m["created"])
-    assert f"{FIRST} {PAPER}. To name the exact data you used" in d
-    assert d.index(PAPER) < d.index(dataset) and d.endswith(pack.HF_URL)
+    how = how_to_cite(d)
+    words = flat(how)
+    # Under its own heading: the paper, its BibTeX entry, the dataset's version, the software.
+    assert words.startswith(f"{FIRST} {PAPER}")
+    assert f"```bibtex\n{pack.paper_bibtex()}\n```" in how
+    assert words.index(PAPER) < words.index(SECOND) < words.index(dataset)
+    assert words.index(dataset) < words.index(pack.SOFTWARE_DOI)
+    assert how.strip() == how_to_cite((p / "README.md").read_text(encoding="utf-8")).strip()
     for field, (low, high) in pack.KAGGLE_LIMITS.items():
         assert low <= len(meta[field]) <= high, field
     assert pack.check_kaggle(k, p) == [] and pack.raw_tags(d) == []
     meta["description"] = d.replace(PAPER, "the paper")
     (k / "dataset-metadata.json").write_text(json.dumps(meta), encoding="utf-8")
     assert pack.check_kaggle(k, p) == [
-        "the Kaggle description does not cite the paper as the card does."
+        "the Kaggle description does not cite the paper as the card does.",
+        "the Kaggle description's How to cite does not name the paper before the dataset's "
+        "version.",
     ]
 
 

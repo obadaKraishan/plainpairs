@@ -356,6 +356,23 @@ def cmd_release_card(args: argparse.Namespace) -> int:
     return cmd_release_pack_check(args)
 
 
+def cmd_release_kaggle_settings(args: argparse.Namespace) -> int:
+    from plainpairs import kaggle_meta
+
+    try:
+        path, changed = kaggle_meta.write_update_settings(
+            Path(args.live), Path(args.kaggle), Path(args.out)
+        )
+    except ValueError as exc:
+        raise SystemExit(f"No settings written: {exc}") from None
+    print(f"Wrote {path}; the fields that change: {', '.join(changed) or 'none'}.")
+    print(
+        f"Send it (only with Obada's approval file): kaggle datasets metadata --update "
+        f"-p {args.out} {pack.KAGGLE_ID}"
+    )
+    return 0
+
+
 def cmd_update(args: argparse.Namespace) -> int:
     _check_drive(Path("data/raw"))
     work = Path(args.work)
@@ -804,9 +821,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the card and LICENSES.md again from the pack's manifest (data untouched)",
     )
     rk.add_argument("--pack", required=True)
-    rk.add_argument("--kaggle", help="also its LICENSES.md and dataset-metadata.json")
+    rk.add_argument("--kaggle", help="also its LICENSES.md, dataset-metadata.json and cover image")
     rk.add_argument("--takedown", default="data/takedown.csv", help="the takedown list")
     rk.set_defaults(func=cmd_release_card)
+    rs = rsub.add_parser(
+        "kaggle-settings",
+        help="the Kaggle page's settings to send, from the live ones (nothing is sent)",
+    )
+    rs.add_argument("--live", required=True, help="from `kaggle datasets metadata ID -p DIR`")
+    rs.add_argument("--kaggle", required=True, help="the version's Kaggle folder")
+    rs.add_argument("--out", required=True, help="a new, empty folder")
+    rs.set_defaults(func=cmd_release_kaggle_settings)
 
     p = sub.add_parser("update", help="from the last build to the newest export (counts only)")
     p.add_argument("--from-tables", default="data/interim/tables", help="the last build")
