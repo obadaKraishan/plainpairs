@@ -209,12 +209,18 @@ def test_the_frequency_sources_keywords_and_cover(made, tmp_path):  # noqa: F811
     assert all(a in meta["userSpecifiedSources"] for a in kaggle_meta.SOURCE_ADDRESSES)
     assert meta["keywords"][:3] == ["health", "nlp", "text"]
     assert (k / kaggle_meta.COVER_NAME).read_bytes() == cover.TRACKED.read_bytes()
+    assert not set(meta["keywords"]) & set(kaggle_meta.REFUSED_TAGS)
     meta["expectedUpdateFrequency"] = "weekly"
     meta["userSpecifiedSources"] = ""
+    meta["keywords"] = [*meta["keywords"], "public-health", "text-mining"]
     rewrite(k, meta)
     problems = pack.check_kaggle(k, p)
-    assert len(problems) == 2 and "no schedule is promised" in problems[0]
+    assert len(problems) == 3 and "no schedule is promised" in problems[0]
     assert "do not name all three sources" in problems[1]
+    assert problems[2] == (
+        "Kaggle refuses the tags public-health, text-mining, and with them the whole update; "
+        "leave them out."
+    )
     (k / kaggle_meta.COVER_NAME).write_bytes(b"not the cover")
     assert any("is not the project's cover" in x for x in pack.check_kaggle(k, p))
 
