@@ -177,3 +177,18 @@ def test_citation_cff_parses_and_prefers_the_paper():
     assert [i["value"] for i in c["identifiers"]] == [pack.SOFTWARE_DOI, "10.5281/zenodo.24267451"]
     (data,) = [r for r in c["references"] if r["type"] == "data"]
     assert data["title"] == pack.TITLE and data["url"] == pack.HF_URL
+
+
+def test_the_readme_and_the_data_card_cite_the_paper_first():
+    readme = Path("README.md").read_text(encoding="utf-8")
+    assert "[![arXiv](https://img.shields.io/badge/arXiv-2611.21160-b31b1b.svg)]" in readme
+    assert "(https://arxiv.org/abs/2611.21160)" in readme.split("\n\n", 2)[1]
+    data_card = Path("docs/data-card.md").read_text(encoding="utf-8")
+    assert "DRAFT" not in data_card
+    for text in (readme, data_card):
+        how = how_to_cite(text)
+        words = flat(how)
+        assert words.startswith(f"{FIRST} {PAPER}")
+        assert f"```bibtex\n{pack.paper_bibtex()}\n```" in how
+        assert words.index(PAPER) < words.index(SECOND) < words.index(pack.SOFTWARE_DOI)
+        assert "credit line" in words and pack.raw_tags(how) == []

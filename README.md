@@ -1,5 +1,6 @@
 # PlainPairs
 
+[![arXiv](https://img.shields.io/badge/arXiv-2611.21160-b31b1b.svg)](https://arxiv.org/abs/2611.21160)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24267450.svg)](https://doi.org/10.5281/zenodo.24267450)
 
 PlainPairs is a research corpus of how United States medicine labels are worded for two
@@ -73,13 +74,33 @@ sheet guide, the codebook of rule-based codes (`codebook.md`, a draft), the benc
 (`removal.md`) and the figures of each release for a data paper (`paper-facts.md`).
 
 ## How to cite
-Cite the version of the corpus you used, as the dataset's card gives it; for version 0.1.0:
+If you use PlainPairs, please cite the paper:
+
+> Kraishan, O. (2026). PlainPairs: A Corpus Pairing the Prescriber and Patient Texts of U.S.
+> Prescription Medicine Labels. arXiv:2611.21160. <https://arxiv.org/abs/2611.21160>
+> (doi:10.48550/arXiv.2611.21160)
+
+```bibtex
+@misc{kraishan2026plainpairs,
+  author        = {Kraishan, Obada},
+  title         = {{PlainPairs}: A Corpus Pairing the Prescriber and Patient Texts of {U.S.} Prescription Medicine Labels},
+  year          = {2026},
+  eprint        = {2611.21160},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  doi           = {10.48550/arXiv.2611.21160},
+  url           = {https://arxiv.org/abs/2611.21160}
+}
+```
+
+To name the exact data you used, also give the dataset and its version:
 
 > Kraishan, O. (2026). PlainPairs: a research corpus pairing the prescriber and patient texts of
 > US medicine labels (Version 0.1.0) [Data set]. Hugging Face.
 > <https://huggingface.co/datasets/obadakr/plainpairs>
 
-Please also give the sources' credit lines (in the card and in `LICENSES.md`). The software and
+That is version 0.1.0; the dataset's card gives the citation of each version. Please also give
+the sources' credit lines (in the card and in `LICENSES.md`). The software and
 documents are archived on Zenodo, with no data table:
 <https://doi.org/10.5281/zenodo.24267450>. This DOI stands for all versions and resolves to the
 latest; version 0.1.0 is <https://doi.org/10.5281/zenodo.24267451>. GitHub's "Cite this

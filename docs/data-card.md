@@ -1,9 +1,8 @@
-# PlainPairs data card (DRAFT)
+# PlainPairs data card
 
-**DRAFT for the maintainer's review.** Version 0.1.0 is public on Hugging Face
-(`obadakr/plainpairs`, tag `v0.1.0`, 16 configs, 1,409,294 rows, 563.0 MB) and mirrored on
-Kaggle (`obadakraishan/plainpairs`). Sizes are those of the build from the openFDA drug label
-export of 2026-11-13.
+Version 0.1.0 is public on Hugging Face (`obadakr/plainpairs`, tag `v0.1.0`, 16 configs,
+1,409,294 rows, 563.0 MB) and mirrored on Kaggle (`obadakraishan/plainpairs`). Sizes are those
+of the build from the openFDA drug label export of 2026-11-13.
 
 ## What it is
 A research record of how United States medicine labels are worded for two readers. For every
@@ -234,9 +233,34 @@ over five years once final (a final rule is planned for December 2026 and not ye
 A weekly record would show the old texts giving way to the new ones.
 
 ## How to cite
-The citation of the dataset and the Zenodo DOI of the software and documents
-(<https://doi.org/10.5281/zenodo.24267450>, all versions) are in `CITATION.cff`. Please also
-cite the source with its credit line above. The nearest earlier work: Meyer et al. (2023), Neural text
+If you use PlainPairs, please cite the paper:
+
+> Kraishan, O. (2026). PlainPairs: A Corpus Pairing the Prescriber and Patient Texts of U.S.
+> Prescription Medicine Labels. arXiv:2611.21160. <https://arxiv.org/abs/2611.21160>
+> (doi:10.48550/arXiv.2611.21160)
+
+```bibtex
+@misc{kraishan2026plainpairs,
+  author        = {Kraishan, Obada},
+  title         = {{PlainPairs}: A Corpus Pairing the Prescriber and Patient Texts of {U.S.} Prescription Medicine Labels},
+  year          = {2026},
+  eprint        = {2611.21160},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  doi           = {10.48550/arXiv.2611.21160},
+  url           = {https://arxiv.org/abs/2611.21160}
+}
+```
+
+To name the exact data you used, also give the dataset and its version:
+
+> Kraishan, O. (2026). PlainPairs: a research corpus pairing the prescriber and patient texts of
+> US medicine labels (Version 0.1.0) [Data set]. Hugging Face.
+> <https://huggingface.co/datasets/obadakr/plainpairs>
+
+Please also cite the source with its credit line above. The software and documents are archived
+on Zenodo (<https://doi.org/10.5281/zenodo.24267450>, all versions); `CITATION.cff` holds all
+three citations. The nearest earlier work: Meyer et al. (2023), Neural text
 generation in regulatory medical writing, *Frontiers in Pharmacology*
 (doi:10.3389/fphar.2023.1086913), and the CLARA-MeD corpus (Campillos-Llanos et al., 2022).
 
