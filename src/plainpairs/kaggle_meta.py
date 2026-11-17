@@ -61,21 +61,20 @@ UPDATE_FREQUENCIES = (
     "daily",
     "hourly",
 )
-#: Kaggle keeps a keyword only when it is one of its tags and drops the rest without a word;
-#: the release report says which were kept.
+#: Kaggle tags. Its documentation says an unknown tag is dropped, but `metadata --update`
+#: refuses the whole update over one ("The following keywords are invalid", 2026-11-17), so
+#: only tags Kaggle has not refused stay here.
 KEYWORDS = (
     "health",
     "nlp",
     "text",
     "medicine",
     "healthcare",
-    "text-mining",
     "linguistics",
     "cancer",
-    "united-states",
-    "drugs-and-medications",
-    "public-health",
 )
+#: Tags Kaggle refused on 2026-11-17; the check fails on any of them.
+REFUSED_TAGS = ("text-mining", "united-states", "drugs-and-medications", "public-health")
 #: Provenance > Sources on Kaggle (``userSpecifiedSources``; Kaggle reads basic Markdown).
 SOURCES = (
     "- **Medicine labels:** the openFDA drug label bulk files, U.S. Food and Drug "
@@ -478,6 +477,12 @@ def kaggle_problems(meta: dict[str, Any], manifest: dict[str, Any], pack_dir: Pa
     sources = meta.get("userSpecifiedSources", "")
     if not all(a in sources for a in SOURCE_ADDRESSES):
         problems.append("the Kaggle sources do not name all three sources with their addresses.")
+    refused = [k for k in meta.get("keywords", []) if k in REFUSED_TAGS]
+    if refused:
+        problems.append(
+            f"Kaggle refuses the tags {', '.join(refused)}, and with them the whole update; "
+            "leave them out."
+        )
     return problems
 
 
