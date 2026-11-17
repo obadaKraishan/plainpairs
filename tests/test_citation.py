@@ -192,3 +192,18 @@ def test_the_readme_and_the_data_card_cite_the_paper_first():
         assert f"```bibtex\n{pack.paper_bibtex()}\n```" in how
         assert words.index(PAPER) < words.index(SECOND) < words.index(pack.SOFTWARE_DOI)
         assert "credit line" in words and pack.raw_tags(how) == []
+
+
+def test_zenodo_and_the_package_links_name_the_paper():
+    z = json.loads(Path(".zenodo.json").read_text(encoding="utf-8"))
+    paper = [r for r in z["related_identifiers"] if r["identifier"] == pack.PAPER_DOI]
+    assert paper == [
+        {
+            "identifier": pack.PAPER_DOI,
+            "relation": "isDescribedBy",
+            "resource_type": "publication-preprint",
+        }
+    ]
+    project = Path("pyproject.toml").read_text(encoding="utf-8").split("[project.urls]\n", 1)[1]
+    links = dict(re.findall(r'^(\w+) = "(\S+)"$', project.split("\n\n", 1)[0], re.M))
+    assert links["Paper"] == pack.PAPER_URL
