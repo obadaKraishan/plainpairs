@@ -76,6 +76,17 @@ TITLE = (
 HF_URL = "https://huggingface.co/datasets/obadakr/plainpairs"
 #: The Zenodo DOI of the software and documents, all versions (it resolves to the latest).
 SOFTWARE_DOI = "10.5281/zenodo.24267450"
+#: The data paper that describes PlainPairs, as arXiv gives it. Every card, the Kaggle
+#: description and the repository cite it first, before the dataset's version.
+PAPER_ARXIV_ID = "2611.21160"
+PAPER_TITLE = (
+    "PlainPairs: A Corpus Pairing the Prescriber and Patient Texts of U.S. Prescription "
+    "Medicine Labels"
+)
+PAPER_YEAR = "2026"
+PAPER_CLASS = "cs.CL"
+PAPER_URL = f"https://arxiv.org/abs/{PAPER_ARXIV_ID}"
+PAPER_DOI = f"10.48550/arXiv.{PAPER_ARXIV_ID}"
 #: Hugging Face's size categories by number of rows: (exclusive upper bound, category).
 SIZE_CATEGORIES = (
     (1_000, "n<1K"),
@@ -104,6 +115,33 @@ def citation(version: str, created: str) -> str:
     return (
         f"Kraishan, O. ({created[:4]}). {TITLE} (Version {version}) [Data set]. "
         f"Hugging Face. {HF_URL}"
+    )
+
+
+def paper_citation() -> str:
+    """How to cite the paper that describes PlainPairs: first, before the dataset's version."""
+    return (
+        f"Kraishan, O. ({PAPER_YEAR}). {PAPER_TITLE}. arXiv:{PAPER_ARXIV_ID}. {PAPER_URL} "
+        f"(doi:{PAPER_DOI})"
+    )
+
+
+def paper_bibtex() -> str:
+    """The paper's BibTeX entry, with arXiv's fields (for a code block)."""
+    title = PAPER_TITLE.replace("PlainPairs", "{PlainPairs}").replace("U.S.", "{U.S.}")
+    return "\n".join(
+        [
+            f"@misc{{kraishan{PAPER_YEAR}plainpairs,",
+            "  author        = {Kraishan, Obada},",
+            f"  title         = {{{title}}},",
+            f"  year          = {{{PAPER_YEAR}}},",
+            f"  eprint        = {{{PAPER_ARXIV_ID}}},",
+            "  archivePrefix = {arXiv},",
+            f"  primaryClass  = {{{PAPER_CLASS}}},",
+            f"  doi           = {{{PAPER_DOI}}},",
+            f"  url           = {{{PAPER_URL}}}",
+            "}",
+        ]
     )
 
 
@@ -300,6 +338,8 @@ def _template(name: str, manifest: dict[str, Any]) -> str:
         "configs": _configs_yaml(manifest["files"]),
         "size_category": size_category(manifest["rows"]),
         "citation": citation(manifest["version"], manifest["created"]),
+        "paper_citation": paper_citation(),
+        "paper_bibtex": paper_bibtex(),
         "software_doi": SOFTWARE_DOI,
         "nci_name": NCI_NAME,
         "held_marked": f"{manifest['held_back']['label_text_rows_marked']:,}",
@@ -460,6 +500,11 @@ def check_pack(pack_dir: Path, takedown_path: Path | None = None) -> list[str]:
         cite = citation(manifest.get("version", ""), manifest.get("created", ""))
         if cite not in text:
             problems.append("the card does not cite this version as the manifest gives it")
+        paper = text.find(paper_citation())
+        if paper < 0 or PAPER_URL not in text or paper_bibtex() not in text:
+            problems.append("the card does not cite the paper (its citation and BibTeX entry)")
+        elif cite in text and text.find(cite) < paper:
+            problems.append("the card cites the dataset's version before the paper")
     if (root / "LICENSES.md").exists():
         problems += tag_problems("LICENSES.md", (root / "LICENSES.md").read_text(encoding="utf-8"))
     return problems
@@ -548,8 +593,9 @@ def kaggle_metadata(manifest: dict[str, Any], resources: list[dict[str, str]]) -
             "either to decide anything about a medicine or about care. Current cancer "
             "information is on the National Cancer Institute's own site, https://www.cancer.gov. "
             "Three configurations, never pooled: current, unlisted and nci "
-            f"({NCI_NAME}). The terms for each are in LICENSES.md. Cite as: "
-            f"{citation(manifest['version'], manifest['created'])}"
+            f"({NCI_NAME}). The terms for each are in LICENSES.md. If you use PlainPairs, please "
+            f"cite the paper: {paper_citation()}. To name the exact data you used, also give the "
+            f"dataset and its version: {citation(manifest['version'], manifest['created'])}"
         ),
         "resources": resources,
     }
@@ -597,6 +643,8 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
         problems.append("the Kaggle metadata lacks its id or the not-medical-information line.")
     if citation(manifest["version"], manifest["created"]) not in meta.get("description", ""):
         problems.append("the Kaggle description does not cite this version as the card does.")
+    if paper_citation() not in meta.get("description", ""):
+        problems.append("the Kaggle description does not cite the paper as the card does.")
     problems += tag_problems("the Kaggle description", meta.get("description", ""))
     for field, (low, high) in KAGGLE_LIMITS.items():
         n = len(meta.get(field, ""))
