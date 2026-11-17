@@ -246,7 +246,6 @@ def test_the_first_screen_covers_the_nci_text_and_excluded_otc_is_explained(made
 
 
 def test_card_kaggle_and_citation_file_cite_the_same_version(made, tmp_path):
-    import re
     from pathlib import Path
 
     _out, p, m = made
@@ -257,15 +256,16 @@ def test_card_kaggle_and_citation_file_cite_the_same_version(made, tmp_path):
     assert cite in card
     meta = pack.build_kaggle(p, tmp_path / "k")
     assert cite in meta["description"] and "https://www.cancer.gov" in meta["description"]
-    cff = Path("CITATION.cff").read_text(encoding="utf-8")
-    pref = cff.split("preferred-citation:\n", 1)[1]
-    assert re.search(r"^  type: data$", pref, re.M)
-    assert re.search(r'^  title: "(.+)"$', pref, re.M).group(1) == pack.TITLE
-    assert re.search(r"^  year: (\d{4})$", pref, re.M).group(1) == m["created"][:4]
-    assert re.search(r'^  version: "(.+)"$', pref, re.M).group(1) == m["version"]
-    assert re.search(r'^  url: "(.+)"$', pref, re.M).group(1) == pack.HF_URL
-    assert re.search(r'^    name: "(.+)"$', pref, re.M).group(1) == "Hugging Face"
-    assert "family-names: Kraishan" in pref and "given-names: Obada" in pref
+    from tests.test_citation import read_cff
+
+    # The paper is the preferred citation; the dataset's version is CITATION.cff's reference.
+    refs = read_cff(Path("CITATION.cff").read_text(encoding="utf-8"))["references"]
+    (data,) = [r for r in refs if r["type"] == "data"]
+    assert data["title"] == pack.TITLE and data["year"] == m["created"][:4]
+    assert data["version"] == m["version"] and data["url"] == pack.HF_URL
+    assert data["publisher"] == {"name": "Hugging Face"}
+    names = [(a["family-names"], a["given-names"]) for a in data["authors"]]
+    assert names == [("Kraishan", "Obada")]
     (p / "README.md").write_text(card.replace("(2026)", "(2025)"), encoding="utf-8")
     assert any("does not cite this version" in x for x in pack.check_pack(p))
     meta["description"] = meta["description"].replace("(2026)", "")
@@ -372,7 +372,7 @@ def test_the_card_and_citation_file_give_the_same_zenodo_doi(made):
     _out, p, _m = made
     cff = Path("CITATION.cff").read_text(encoding="utf-8")
     assert re.search(r"^doi: (\S+)$", cff, re.M).group(1) == pack.SOFTWARE_DOI
-    assert re.search(r'^  date-released: "(\d{4}-\d{2}-\d{2})"$', cff, re.M)
+    assert re.search(r'^    date-released: "(\d{4}-\d{2}-\d{2})"$', cff, re.M)
     flat = " ".join((p / "README.md").read_text(encoding="utf-8").split())
     assert f"https://doi.org/{pack.SOFTWARE_DOI} (all versions" in flat
     assert f"https://doi.org/{pack.SOFTWARE_DOI}" in Path("README.md").read_text(encoding="utf-8")

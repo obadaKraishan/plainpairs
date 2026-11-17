@@ -19,6 +19,11 @@
   ],
   "related_identifiers": [
     {
+      "identifier": "10.48550/arXiv.2611.21160",
+      "relation": "isDescribedBy",
+      "resource_type": "publication-preprint"
+    },
+    {
       "identifier": "https://huggingface.co/datasets/obadakr/plainpairs",
       "relation": "isSupplementTo",
       "resource_type": "dataset"

@@ -177,11 +177,21 @@ the request is answered within 14 days.
   built from the JSON, carry the repeat too.
 
 ## How to cite
+If you use PlainPairs, please cite the paper:
+
+$paper_citation
+
+```bibtex
+$paper_bibtex
+```
+
+To name the exact data you used, also give the dataset and its version:
+
 $citation
 
 Please also give the sources' credit lines above. The software and documents that build the
 corpus (no data table) are archived on Zenodo: https://doi.org/$software_doi (all versions;
-it resolves to the latest). The project's repository holds both in `CITATION.cff`.
+it resolves to the latest). The project's repository holds all three in `CITATION.cff`.
 
 ## Files
 $files_table

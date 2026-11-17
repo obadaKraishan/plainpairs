@@ -46,6 +46,7 @@ plainpairs = "plainpairs.cli:main"
 Repository = "https://github.com/obadaKraishan/plainpairs"
 Issues = "https://github.com/obadaKraishan/plainpairs/issues"
 Changelog = "https://github.com/obadaKraishan/plainpairs/blob/main/CHANGELOG.md"
+Paper = "https://arxiv.org/abs/2611.21160"
 
 [tool.hatch.version]
 path = "src/plainpairs/__init__.py"
