@@ -18,6 +18,16 @@ All notable changes to this project are recorded here. The format follows
   0.1.0 is 10.5281/zenodo.24267451): a badge and a "How to cite" section in the README,
   `doi`, `identifiers` and the release date in `CITATION.cff`, and the dataset card's "How to
   cite".
+- The data paper, arXiv:2611.21160 (doi:10.48550/arXiv.2611.21160), as the first citation:
+  "How to cite" in the README, the dataset card (every version's, from constants in `pack`),
+  the Kaggle description and `docs/data-card.md` asks for the paper first, with a BibTeX entry,
+  then the dataset and its version, then the Zenodo DOI; `CITATION.cff`'s `preferred-citation`
+  is the paper and the dataset's version is under `references`; `.zenodo.json` names the paper
+  (`isDescribedBy`) for the next release's Zenodo record; an arXiv badge and a "Paper" project
+  link. The pack and Kaggle checks fail when the paper is missing or cited after the dataset.
+
+### Changed
+- `docs/data-card.md` is no longer marked as a draft.
 
 ## [0.1.0] - 2026-11-16
 
