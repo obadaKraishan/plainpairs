@@ -159,3 +159,21 @@ def test_the_kaggle_description_cites_the_paper_within_kaggles_limits(made, tmp_
     assert pack.check_kaggle(k, p) == [
         "the Kaggle description does not cite the paper as the card does."
     ]
+
+
+def test_citation_cff_parses_and_prefers_the_paper():
+    c = cff()
+    assert c["cff-version"] == "1.2.0" and c["type"] == "software"
+    assert "cite the paper" in c["message"]
+    pref = c["preferred-citation"]
+    assert pref["title"] == pack.PAPER_TITLE and pref["year"] == pack.PAPER_YEAR
+    assert pref["doi"] == pack.PAPER_DOI and pref["url"] == pack.PAPER_URL
+    assert pref["status"] == "preprint" and pref["publisher"] == {"name": "arXiv"}
+    assert pref["identifiers"][0]["value"] == f"arXiv:{pack.PAPER_ARXIV_ID}"
+    assert [a["family-names"] for a in pref["authors"]] == ["Kraishan"]
+    assert pref["authors"] == c["authors"]
+    # The software's own DOI and identifiers stay; the dataset's version is a reference.
+    assert c["doi"] == pack.SOFTWARE_DOI
+    assert [i["value"] for i in c["identifiers"]] == [pack.SOFTWARE_DOI, "10.5281/zenodo.24267451"]
+    (data,) = [r for r in c["references"] if r["type"] == "data"]
+    assert data["title"] == pack.TITLE and data["url"] == pack.HF_URL

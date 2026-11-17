@@ -1,8 +1,10 @@
-# The preferred citation is the dataset's version on Hugging Face. Zenodo archives each GitHub
-# release of this repository from .zenodo.json (which it reads in place of this file); the DOI
-# below stands for all versions of the software and documents and resolves to the latest.
+# The preferred citation is the paper that describes PlainPairs, on arXiv. To name the exact
+# data used, cite the dataset's version on Hugging Face as well (under references). Zenodo
+# archives each GitHub release of this repository from .zenodo.json (which it reads in place of
+# this file); the DOI below stands for all versions of the software and documents and resolves
+# to the latest.
 cff-version: 1.2.0
-message: "If you use PlainPairs, please cite it as below."
+message: "If you use PlainPairs, please cite the paper below. To name the exact data you used, also cite the dataset and its version (under references)."
 type: software
 title: "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
 abstract: >-
@@ -34,15 +36,34 @@ keywords:
   - medication guides
   - dataset
 preferred-citation:
-  type: data
-  title: "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
+  type: generic
+  title: "PlainPairs: A Corpus Pairing the Prescriber and Patient Texts of U.S. Prescription Medicine Labels"
   authors:
     - family-names: Kraishan
       given-names: Obada
       affiliation: "College of Media and Communication, Texas Tech University"
   year: 2026
-  version: "0.1.0"
-  date-released: "2026-11-16"
+  month: 11
+  date-published: "2026-11-16"
+  status: preprint
   publisher:
-    name: "Hugging Face"
-  url: "https://huggingface.co/datasets/obadakr/plainpairs"
+    name: arXiv
+  doi: 10.48550/arXiv.2611.21160
+  url: "https://arxiv.org/abs/2611.21160"
+  identifiers:
+    - type: other
+      value: "arXiv:2611.21160"
+      description: "The arXiv identifier (primary class cs.CL)"
+references:
+  - type: data
+    title: "PlainPairs: a research corpus pairing the prescriber and patient texts of US medicine labels"
+    authors:
+      - family-names: Kraishan
+        given-names: Obada
+        affiliation: "College of Media and Communication, Texas Tech University"
+    year: 2026
+    version: "0.1.0"
+    date-released: "2026-11-16"
+    publisher:
+      name: "Hugging Face"
+    url: "https://huggingface.co/datasets/obadakr/plainpairs"
