@@ -151,7 +151,7 @@ def test_the_kaggle_mirror_holds_the_pack(made, tmp_path):
     _out, p, m = made
     k = tmp_path / "kaggle"
     meta = pack.build_kaggle(p, k)
-    assert meta["id"] == pack.KAGGLE_ID and len(meta["resources"]) == len(m["files"])
+    assert meta["id"] == pack.KAGGLE_ID and len(meta["resources"]) == len(m["files"]) + 2
     assert pack.check_kaggle(k, p) == []
     (k / "current_labels.parquet").write_bytes(b"changed")
     assert any("differs" in x for x in pack.check_kaggle(k, p))

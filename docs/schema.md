@@ -3,8 +3,13 @@
 The tables as `plainpairs build` writes them (Parquet, zstd), from all bulk parts of one
 weekly export. Sizes for the export of 2026-11-13 are in [`data-card.md`](data-card.md).
 
-Every row of every table carries `source`, `export_date`, `set_id` and `version`. A
+Every row of every label table carries `source`, `export_date`, `set_id` and `version`. A
 label's `set_id` is stable across its versions; `version` is the source's version number.
+
+Each release table below lists its columns one per row; the Kaggle mirror's column and file
+descriptions are built from these tables (`plainpairs.kaggle_meta`), so a column is described
+here once. A name with `<section>` or `<text>` stands for one column per prescriber section or
+per patient text (the lists under `labels`).
 
 ## Two layers
 - **Record layer** (always releasable; no label text): `labels`, `patient_texts`,
@@ -33,29 +38,58 @@ patient package insert. The format is read from the sections the label has, in t
 Only `plr` and `older` are in scope. Labels typed as over-the-counter drugs that carry a guide
 or an insert are listed in `excluded_otc` and are not in any other table.
 
+## Columns in every label table (`labels`, `patient_texts`, `section_pairs`, `excluded_otc`, `text_prescriber`, `text_patient`, `codes`)
+| column | type | notes |
+|---|---|---|
+| `source` | string | where the row was read: the openFDA drug label bulk files, with their address |
+| `export_date` | string | the date of the source's weekly export the row was built from |
+| `set_id` | string | the label's set id, stable across its versions |
+| `version` | int | the source's version number of the label |
+
 ## `labels` (table A): one row per label in scope
 | column | type | notes |
 |---|---|---|
-| `source`, `export_date`, `set_id`, `version` | string, string, string, int | every table |
 | `id` | string | this version's document id |
 | `source_part` | int | the bulk part the label was read from |
-| `effective_date`, `effective_time_raw` | date, string | the date is null when the source's value is not a date |
-| `label_format`, `format_conflicts` | string, list | the scope rule above; signals that point two ways |
+| `effective_date` | date | the label's effective date; null when the source's value is not a date |
+| `effective_time_raw` | string | the effective time as the source gives it |
+| `label_format` | string | the label's format by the scope rule above: `plr` or `older` |
+| `format_conflicts` | list | signals that point to another format |
 | `harmonized` | bool | whether the source's `openfda` block is present |
-| `product_type`, `routes`, `application_numbers`, `manufacturers`, `brand_names`, `generic_names`, `pharm_classes_epc` | string, lists | from the `openfda` block; empty without it |
-| `medicine_key`, `medicine_key_source` | string | see below |
-| `product_name`, `product_name_source`, `product_name_rule` | string | the name at the head of the label's structured product data (`spl_product_data_elements`); the source is `spl_product_data_elements` or `none`; the rule is `restart`, `lowercase` or `ingredient` (`docs/method.md`, section 4). Never merged into the medicine key |
-| `listed_in_ndc_directory`, `ndc_match` | bool, string | in the current NDC directory, matched by `set_id` or by `spl_id` (the document id), or `none`; null when the build had no directory file |
-| `served_by_dailymed`, `dailymed_version` | bool, int | DailyMed's zip file metadata lists the set id, and the version it serves; null when the build had no such file. "Served" says only that DailyMed lists the label; it never means "marketed" |
+| `product_type` | string | the product type, from the `openfda` block; empty without it |
+| `routes` | list | the routes of administration, from the `openfda` block; empty without it |
+| `application_numbers` | list | the application numbers, from the `openfda` block; empty without it |
+| `manufacturers` | list | the manufacturer names, from the `openfda` block; empty without it |
+| `brand_names` | list | the brand names, from the `openfda` block; empty without it |
+| `generic_names` | list | the generic names, from the `openfda` block; empty without it |
+| `pharm_classes_epc` | list | the established pharmacologic classes, from the `openfda` block; empty without it |
+| `medicine_key` | string | the medicine key (see below); null when the label has none |
+| `medicine_key_source` | string | where the key comes from: `openfda`, `shared_text` or `none` (see below) |
+| `product_name` | string | the name at the head of the label's structured product data (`spl_product_data_elements`); never merged into the medicine key |
+| `product_name_source` | string | `spl_product_data_elements`, or `none` when no name was read |
+| `product_name_rule` | string | the rule that ended the name: `restart`, `lowercase` or `ingredient` (`docs/method.md`, section 4) |
+| `listed_in_ndc_directory` | bool | the product is in the current NDC directory; null when the build had no directory file |
+| `ndc_match` | string | how the label matched the directory: by `set_id`, by `spl_id` (the document id), or `none` |
+| `served_by_dailymed` | bool | DailyMed's zip file metadata lists the set id; null when the build had no such file. "Served" says only that DailyMed lists the label; it never means "marketed" |
+| `dailymed_version` | int | the version of the label DailyMed serves |
 | `configuration` | string | `current`: DailyMed's full release of the same week holds this label in this version, and each of its patient texts with the same words as the JSON; its structure comes from the XML. `unlisted`: every other label, measured from the JSON only. Null when the build had no structure folder (`docs/method.md`, section 6b) |
 | `structure_source` | string | `dailymed_xml` for `current`, `json` for `unlisted` |
 | `unlisted_reason` | string | for `unlisted` labels: `not_in_release`, `other_version`, `patient_text_missing` (a patient text of the JSON has no section in the XML) or `patient_text_differs`; null for `current` |
-| `has_boxed_warning`, `has_medication_guide`, `has_patient_package_insert`, `has_instructions_for_use`, `has_other_patient_text` | bool | presence of each text |
+| `has_boxed_warning` | bool | the label has a boxed warning |
+| `has_medication_guide` | bool | the label has a Medication Guide |
+| `has_patient_package_insert` | bool | the label has a patient package insert |
+| `has_instructions_for_use` | bool | the label has Instructions for Use |
+| `has_other_patient_text` | bool | the label has the mixed `patient_medication_information` field |
 | `has_copyright_mark` | bool | any text field of the label shows the copyright sign, the word "copyright" or "all rights reserved" |
-| `n_tables`, `tables_sha256` | int, list | the label's tables in the text layer, and the hash of each |
-| `p_<section>_sha256`, `p_<section>` | string, struct | for each of the 11 prescriber sections: the text's hash and its measures |
-| `t_<text>_sha256`, `t_<text>_id`, `t_<text>` | string, string, struct | for each of the 4 patient texts: hash, its `patient_texts` id, measures |
-| `p_<section>_structured`, `t_<text>_structured` | struct | measures from structure, for `current` labels only (null for every `unlisted` label); see below. The JSON measures stay in `p_<section>` and `t_<text>` for every label |
+| `n_tables` | int | the number of the label's tables in the text layer |
+| `tables_sha256` | list | the SHA-256 of each of those tables, in the order the rows are written |
+| `p_<section>_sha256` | string | the SHA-256 of the label's `<section>` text, a prescriber section; null when the label lacks it |
+| `p_<section>` | struct | the measures of the `<section>` text, from the JSON (see Measures) |
+| `t_<text>_sha256` | string | the SHA-256 of the label's `<text>`, a patient text; null when the label lacks it |
+| `t_<text>_id` | string | the `patient_texts` id of the label's `<text>` |
+| `t_<text>` | struct | the measures of the `<text>`, from the JSON (see Measures) |
+| `p_<section>_structured` | struct | the measures of the `<section>` text from structure, for `current` labels only (null for every `unlisted` label); see Measures from structure. The JSON measures stay in `p_<section>` |
+| `t_<text>_structured` | struct | the measures of the `<text>` from structure, for `current` labels only (null for every `unlisted` label); see Measures from structure. The JSON measures stay in `t_<text>` |
 
 Prescriber sections: `boxed_warning`, `indications_and_usage`, `dosage_and_administration`,
 `contraindications`, `warnings_and_precautions` (the older format's Warnings and Precautions
@@ -92,48 +126,107 @@ an identical patient text with (`shared_text`), when those have one; otherwise i
 (`none`). No key is ever read from the label's own text.
 
 ## `patient_texts` (table B): one row per distinct patient text
-`patient_text_id` (`<kind>:<core hash>`), `kind`, `core_hash`, `n_labels`, `n_exact_variants`,
-`n_loose_variants`, `set_ids` (all labels that carry it), `n_manufacturers_known`,
-`n_labels_without_manufacturer`, `crosses_makers`, `medicine_keys`, `has_copyright_mark_any`,
-`headings_found`, `measures` (of the most common exact variant), and the `set_id` and `version`
-of that variant's first label. `configuration` is `current` when at least one label carrying
-the text is `current` (`n_labels_current` says how many); `measures_structured` is then taken
-from a current label with the most common exact variant when there is one, else from any
-current label; it is null for texts that are not `current`.
+| column | type | notes |
+|---|---|---|
+| `patient_text_id` | string | the text's id: its kind and core hash, as `kind:core hash` |
+| `kind` | string | which patient text it is (one of the patient texts under `labels`) |
+| `core_hash` | string | the core hash of the text (see the three hashes below) |
+| `n_labels` | int | the number of labels that carry the text |
+| `n_exact_variants` | int | the number of distinct exact hashes among those labels |
+| `n_loose_variants` | int | the number of distinct loose hashes among those labels |
+| `set_ids` | list | the set ids of all labels that carry the text |
+| `n_manufacturers_known` | int | the number of distinct manufacturers named in those labels' `openfda` blocks |
+| `n_labels_without_manufacturer` | int | the number of those labels that name no manufacturer |
+| `crosses_makers` | bool | the labels that carry the text name more than one manufacturer |
+| `medicine_keys` | list | the medicine keys of those labels |
+| `has_copyright_mark_any` | bool | any label that carries the text shows a copyright mark |
+| `headings_found` | list | the standard headings found in the text |
+| `measures` | struct | the measures of the most common exact variant, from the JSON (see Measures) |
+| `configuration` | string | `current` when at least one label carrying the text is `current`, else `unlisted` |
+| `n_labels_current` | int | the number of `current` labels that carry the text |
+| `measures_structured` | struct | the measures from structure, taken from a `current` label with the most common exact variant when there is one, else from any `current` label; null for texts that are not `current` (in `current` files only) |
+
+The `set_id` and `version` of a row are those of the first label with the most common exact
+variant.
 
 Three hashes: exact (after spacing), loose (case, punctuation and symbols ignored) and core
 (loose, without the closing lines that name the maker or distributor and the revision date).
 Table B groups by the core hash.
 
 ## `section_pairs` (table C): one row per segment of a guide or insert
-`kind`, `patient_text_id`, `segment_index`, `heading_key` (one of ten), `heading_template` (the
-heading with the medicine's name replaced by `[medicine]`), `seg_start`, `heading_end`,
-`seg_end` (character offsets into the patient text), `measures` (of the segment's body),
-`mapped_sections`, `mapped_present`, `best_section`, `best_similarity`,
-`mapped_best_similarity`, `best_is_mapped`, `section17_similarity`, `rule_status`
-(`pending_hand_check` until the hand sheet is scored), and last `configuration` (the label's).
+| column | type | notes |
+|---|---|---|
+| `kind` | string | the patient text the segment is in: `medication_guide` or `patient_package_insert` |
+| `patient_text_id` | string | the `patient_texts` id of that text |
+| `segment_index` | int | the segment's place in the text, from 0 |
+| `heading_key` | string | the standard heading that opens the segment, one of ten |
+| `heading_template` | string | the heading with the medicine's name replaced by `[medicine]` |
+| `seg_start` | int | the character offset into the patient text where the segment starts |
+| `heading_end` | int | the character offset where its heading ends |
+| `seg_end` | int | the character offset where the segment ends |
+| `measures` | struct | the measures of the segment's body, from the JSON (see Measures) |
+| `mapped_sections` | list | the prescriber sections the heading key points to |
+| `mapped_present` | list | those of them the label has |
+| `best_section` | string | the prescriber section most similar to the segment (TF-IDF cosine) |
+| `best_similarity` | float | that section's similarity |
+| `mapped_best_similarity` | float | the highest similarity among the mapped sections the label has |
+| `best_is_mapped` | bool | the most similar section is one of the mapped sections |
+| `section17_similarity` | float | the segment's similarity to `patient_counseling_information` (section 17) |
+| `rule_status` | string | `rule_released` when the heading key passed the hand check and keeps its mapping rule, `similarity_only` when it did not (`pending_hand_check` before the check is scored) |
+| `configuration` | string | the label's configuration |
+
 Every column before `configuration` is built from the JSON text, as in the build the hand
-sheet was drawn from. A heading followed at once by its
-restatement is one segment (`docs/method.md`, section 7). The mapping of `general` is this
-project's choice, not the regulation's (`plainpairs.align.mapping_source`).
+sheet was drawn from. A heading followed at once by its restatement is one segment
+(`docs/method.md`, section 7). The mapping of `general` is this project's choice, not the
+regulation's (`plainpairs.align.mapping_source`).
 
-## `excluded_otc`
-`product_type`, `label_format`, `has_medication_guide`, `has_patient_package_insert`.
+## `excluded_otc`: one row per label typed over the counter that carries a guide or an insert
+| column | type | notes |
+|---|---|---|
+| `product_type` | string | the product type, from the `openfda` block |
+| `label_format` | string | the label's format by the scope rule above |
+| `has_medication_guide` | bool | the label has a Medication Guide |
+| `has_patient_package_insert` | bool | the label has a patient package insert |
 
-## `text_prescriber`, `text_patient` (the text layer)
-`section` (a prescriber section or a patient text), `part` (`text` or `table`), `part_index`
-(0 for the text, 1, 2... for its tables), `text`, `sha256`, `has_copyright_mark` (the label's
-flag), `text_has_copyright_mark` (this row's own text).
+## `text_prescriber`, `text_patient` (the text layer): one row per label, section and part
+| column | type | notes |
+|---|---|---|
+| `section` | string | a prescriber section (in `text_prescriber`) or a patient text (in `text_patient`) |
+| `part` | string | `text` for the section's prose, `table` for one of its tables |
+| `part_index` | int | 0 for the text, 1, 2... for its tables |
+| `text` | string | the cleaned text of the part |
+| `sha256` | string | the SHA-256 of `text` |
+| `has_copyright_mark` | bool | the label's copyright flag |
+| `text_has_copyright_mark` | bool | this row's own text shows a copyright mark |
 
 ## `codes`: one row per text of the text layer (record layer; `plainpairs codes`)
-Codebook version 1. `source`, `export_date`, `set_id`, `version`, `section`, `side` (`patient`
-or `prescriber`), `patient_text_id` (patient texts only), `code_version`, `configuration` and
-`structure_source` (the label's), the counts `words` and `sentences`, then **the trusted codes
-only**: `you_words`, `sentences_with_you`, `command_sentences`, `conditional_commands`,
-`distinct_actions`, `percentages`, `one_in_n`, `frequencies`, `doses`, `contact_sentences`, and
-for `current` labels the length codes from structure: `structured_sentences`,
-`structured_sentences_over_20`, `structured_sentences_over_40`,
-`structured_longest_sentence_words` (null for `unlisted`).
+Codebook version 1, **the trusted codes only** (`docs/codebook.md` gives each code's rule and
+check).
+
+| column | type | notes |
+|---|---|---|
+| `section` | string | the prescriber section or patient text coded |
+| `side` | string | `patient` or `prescriber` |
+| `patient_text_id` | string | the `patient_texts` id (patient texts only) |
+| `code_version` | string | the codebook version |
+| `configuration` | string | the label's configuration |
+| `structure_source` | string | the label's structure source |
+| `words` | int | the words of the text |
+| `sentences` | int | the sentences of the text |
+| `you_words` | int | the words "you", "your", "yours", "yourself" and "yourselves" |
+| `sentences_with_you` | int | the sentences with at least one of those words |
+| `command_sentences` | int | the sentences that open with a command (a base-form verb from a fixed list, or "Do not", "Don't" or "Never" with one) |
+| `conditional_commands` | int | the sentences with a condition, a comma, then a command |
+| `distinct_actions` | int | the number of different verbs that open the text's commands |
+| `percentages` | int | the numbers followed by "%" or "percent" |
+| `one_in_n` | int | the "1 in N" expressions |
+| `frequencies` | int | the expressions of how often (a number of times a day, every so many hours, daily) |
+| `doses` | int | the numbers followed by a dose unit (mg, mcg, mL and the like) |
+| `contact_sentences` | int | the sentences that name a contact verb and someone to contact |
+| `structured_sentences` | int | the sentences measured on structure (`current` labels only; null for `unlisted`; in `current` files only) |
+| `structured_sentences_over_20` | int | the sentences over 20 words, on structure (`current` only) |
+| `structured_sentences_over_40` | int | the sentences over 40 words, on structure (`current` only) |
+| `structured_longest_sentence_words` | int | the words of the longest sentence, on structure (`current` only) |
 
 ## `codes_experimental` (not a release table)
 The same ids, then the experimental codes: `risk_sentences`, `risk_sentences_with_number`,
@@ -168,30 +261,68 @@ names), and the flags `block_changed`, `format_changed`, `mark_changed`,
 `ndc_listing_changed`, `dailymed_listing_changed`. Ids, versions, names and flags only.
 
 ## Text from the National Cancer Institute's cancer information summaries, with parts left out (configuration `nci`; `plainpairs nci-build`)
-Every row of the three tables carries `configuration` (`nci`), `source`, `url` (NCI's address
-for the page), `date_read`, `nci_updated` (the date NCI gives for the page's last update) and
-`credit_line` (the summary's title in quotation marks, then "was originally published by the
-National Cancer Institute.", then the page's address);
-the pairs carry each of these for both pages (`_a`, `_b`).
+Three tables. A pair carries each page's address, dates and credit line for both of its pages
+(`_a`, `_b`).
 
-- `nci_summaries` (record layer), one row per summary page: `language` (`en`, `es`),
-  `version` (`health_professional`, `patient`), `title` (NCI's own), `topic_id` (the smallest
-  address among the pages linked to it), `other_version_url`, `other_language_url`,
-  `text_sha256` (over its kept blocks), `n_blocks`, `references` (counted, not kept),
-  `left_out` (counts by kind: `figure`, `navigation`, `key_points`, `reference`,
-  `citation_mark`, `about_this`, `credit_line`, `credited_table`), `measures` (`words`,
-  `sentences`, `long_sentence_share`; English `flesch_kincaid` and `smog`; Spanish
-  `szigriszt_pazos` and `inflesz_band`; blocks by kind) and `codes` (the trusted codes, English
-  only; null for Spanish).
-- `nci_pairs` (record layer), one row per pair found by NCI's own links: `pair_kind`
-  (`version`: the health-professional and the patient summary in one language, `url_a` the
-  professional one; `language`: one version in English and Spanish, `url_a` the English one),
-  `language` or `version` (the one the pair shares), `url_a`, `url_b`, `linked_from` (`both`,
-  `a_only`, `b_only`), `topic_id`.
-- `nci_text` (text layer), one row per kept block: `block_index`, `kind` (`heading`,
-  `paragraph`, `item`, `cell`, `data_cell`, `caption`), `level` (a heading's level), `table`,
-  `text`, `sha256`. Released with its credit line under the switch for this configuration
-  (`docs/data-card.md`); never a left-out block.
+### Columns in every `nci` table (`nci_summaries`, `nci_pairs`, `nci_text`)
+| column | type | notes |
+|---|---|---|
+| `configuration` | string | always `nci` |
+| `source` | string | where the row was read: the National Cancer Institute's cancer information summaries, with their address |
+
+### Columns of each page (`nci_summaries`, `nci_text`)
+| column | type | notes |
+|---|---|---|
+| `url` | string | NCI's address for the page |
+| `date_read` | string | the date the page was read |
+| `nci_updated` | string | the date NCI gives for the page's last update |
+| `credit_line` | string | the summary's title in quotation marks, then "was originally published by the National Cancer Institute.", then the page's address |
+
+### `nci_summaries` (record layer): one row per summary page
+| column | type | notes |
+|---|---|---|
+| `language` | string | `en` or `es` |
+| `version` | string | `health_professional` or `patient` |
+| `title` | string | NCI's own title for the summary |
+| `topic_id` | string | the smallest address among the pages linked to it |
+| `other_version_url` | string | the address of the page's other version, by NCI's own link |
+| `other_language_url` | string | the address of the page in the other language, by NCI's own link |
+| `text_sha256` | string | the SHA-256 over its kept blocks |
+| `n_blocks` | int | the number of kept blocks |
+| `references` | int | the references, counted, not kept |
+| `left_out` | struct | the blocks left out, counted by kind: `figure`, `navigation`, `key_points`, `reference`, `citation_mark`, `about_this`, `credit_line`, `credited_table` |
+| `measures` | struct | `words`, `sentences`, `long_sentence_share`; English `flesch_kincaid` and `smog`; Spanish `szigriszt_pazos` and `inflesz_band`; blocks by kind |
+| `codes` | struct | the trusted codes, English only; null for Spanish |
+
+### `nci_pairs` (record layer): one row per pair found by NCI's own links
+| column | type | notes |
+|---|---|---|
+| `pair_kind` | string | `version`: the health-professional and the patient summary in one language, `url_a` the professional one; `language`: one version in English and Spanish, `url_a` the English one |
+| `language` | string | for a version pair, the language the pair shares |
+| `version` | string | for a language pair, the version the pair shares |
+| `url_a` | string | the address of the first page of the pair |
+| `url_b` | string | the address of the second page of the pair |
+| `linked_from` | string | which page links to the other: `both`, `a_only` or `b_only` |
+| `topic_id` | string | the topic both pages belong to |
+| `date_read_a` | string | the date the first page was read |
+| `date_read_b` | string | the date the second page was read |
+| `nci_updated_a` | string | the date NCI gives for the first page's last update |
+| `nci_updated_b` | string | the date NCI gives for the second page's last update |
+| `credit_line_a` | string | the first page's credit line |
+| `credit_line_b` | string | the second page's credit line |
+
+### `nci_text` (text layer): one row per kept block
+| column | type | notes |
+|---|---|---|
+| `block_index` | int | the block's place in the page, from 0 |
+| `kind` | string | `heading`, `paragraph`, `item`, `cell`, `data_cell` or `caption` |
+| `level` | int | a heading's level (0 for other blocks) |
+| `table` | int | the number of the table a cell belongs to (0 outside a table) |
+| `text` | string | the block's text |
+| `sha256` | string | the SHA-256 of `text` |
+
+Released with its credit line under the switch for this configuration (`docs/data-card.md`);
+never a left-out block.
 
 ## Release rules (`plainpairs release-check`)
 It fails when: the labels read differ from the manifest's listed records; a table's rows differ

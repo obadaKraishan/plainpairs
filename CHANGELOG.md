@@ -25,9 +25,23 @@ All notable changes to this project are recorded here. The format follows
   is the paper and the dataset's version is under `references`; `.zenodo.json` names the paper
   (`isDescribedBy`) for the next release's Zenodo record; an arXiv badge and a "Paper" project
   link. The pack and Kaggle checks fail when the paper is missing or cited after the dataset.
+- The Kaggle mirror's page, built by the pack (`plainpairs.kaggle_meta`): a Markdown
+  description with headings (what PlainPairs is; a bold "Not medical information" line; what is
+  inside, with the 18 files and their rows; how to load one table; sources, terms and credit;
+  limits; how to cite, with the paper first and its BibTeX entry; links), a description for
+  every file and every column (from `docs/schema.md`), the sources, Kaggle tags, and a cover
+  image drawn by code (`plainpairs.cover`, 560 by 280, no word from any label). `release check
+  --kaggle` checks all of it; `release card` rewrites it with no data file touched; the new
+  `release kaggle-settings` writes the settings for `kaggle datasets metadata --update` from the
+  live ones, never changing the title, subtitle or license. The update frequency stays "not
+  specified" until the weekly update runs.
+- The author's ORCID iD (https://orcid.org/0009-0007-7180-8620) in `CITATION.cff` (`authors`,
+  `preferred-citation` and the dataset's reference) and in `.zenodo.json` (`creators`).
 
 ### Changed
 - `docs/data-card.md` is no longer marked as a draft.
+- `docs/schema.md` lists every column of every release table one per row, with what it holds;
+  the facts are those it gave before.
 
 ## [0.1.0] - 2026-11-16
 

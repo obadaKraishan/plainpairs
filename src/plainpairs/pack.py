@@ -578,48 +578,54 @@ KAGGLE_SUBTITLE = "A research record of wording, not medical information"
 KAGGLE_LIMITS = {"title": (6, 50), "subtitle": (20, 80)}
 
 
-def kaggle_metadata(manifest: dict[str, Any], resources: list[dict[str, str]]) -> dict[str, Any]:
-    """The Kaggle mirror's dataset-metadata.json, from the pack's manifest."""
+def kaggle_metadata(manifest: dict[str, Any], pack_dir: Path) -> dict[str, Any]:
+    """The Kaggle mirror's dataset-metadata.json, from the pack's manifest, its files' columns,
+    the built card and the schema documentation (see :mod:`plainpairs.kaggle_meta`). It serves
+    `datasets create` and `version` (files) and `datasets metadata --update` (the page)."""
+    from plainpairs import kaggle_meta
+
+    doc = kaggle_meta.read_schema_doc()
     return {
         "title": KAGGLE_TITLE,
         "subtitle": KAGGLE_SUBTITLE,
         "id": KAGGLE_ID,
         "licenses": [{"name": "other"}],
-        "keywords": ["health", "nlp", "text"],
-        "description": (
-            f"Version {manifest['version']} of PlainPairs, mirrored from Hugging Face "
-            f"({HF_URL}). Not medical information: a research record of how medicine label "
-            "text and cancer information text are worded. Both may be out of date; never use "
-            "either to decide anything about a medicine or about care. Current cancer "
-            "information is on the National Cancer Institute's own site, https://www.cancer.gov. "
-            "Three configurations, never pooled: current, unlisted and nci "
-            f"({NCI_NAME}). The terms for each are in LICENSES.md. If you use PlainPairs, please "
-            f"cite the paper: {paper_citation()}. To name the exact data you used, also give the "
-            f"dataset and its version: {citation(manifest['version'], manifest['created'])}"
-        ),
-        "resources": resources,
+        "keywords": list(kaggle_meta.KEYWORDS),
+        "expectedUpdateFrequency": kaggle_meta.UPDATE_FREQUENCY,
+        "userSpecifiedSources": kaggle_meta.SOURCES,
+        "description": kaggle_meta.description(manifest, card(manifest)),
+        "resources": kaggle_meta.resources(Path(pack_dir), manifest, doc),
     }
 
 
-def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
-    """The Kaggle mirror: the same files as the pack (flat names), the card and the licenses."""
-    pack_dir, out_dir = Path(pack_dir), Path(out_dir)
-    manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
-    out_dir.mkdir(parents=True, exist_ok=True)
-    resources = []
-    for f in manifest["files"]:
-        flat = f"{f['config']}.parquet"
-        shutil.copyfile(pack_dir / f["path"], out_dir / flat)
-        resources.append({"path": flat, "description": f"{f['config']} ({f['layer']} layer)"})
-    for name in ("LICENSES.md", "manifest.json"):
-        shutil.copyfile(pack_dir / name, out_dir / name)
-    meta = kaggle_metadata(manifest, resources)
+def _write_kaggle_page(pack_dir: Path, out_dir: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    """The Kaggle folder's dataset-metadata.json and cover image (no data file is touched)."""
+    from plainpairs import cover, kaggle_meta
+
+    meta = kaggle_metadata(manifest, pack_dir)
     (out_dir / "dataset-metadata.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
+    shutil.copyfile(cover.TRACKED, out_dir / kaggle_meta.COVER_NAME)
     return meta
 
 
+def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
+    """The Kaggle mirror: the same files as the pack (flat names), the licenses, the manifest,
+    the page's settings and its cover."""
+    pack_dir, out_dir = Path(pack_dir), Path(out_dir)
+    manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for f in manifest["files"]:
+        shutil.copyfile(pack_dir / f["path"], out_dir / f"{f['config']}.parquet")
+    for name in ("LICENSES.md", "manifest.json"):
+        shutil.copyfile(pack_dir / name, out_dir / name)
+    return _write_kaggle_page(pack_dir, out_dir, manifest)
+
+
 def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
-    """The Kaggle folder holds exactly the pack's files, byte for byte, and the metadata."""
+    """The Kaggle folder holds exactly the pack's files, byte for byte, the metadata and the
+    cover; the page's settings pass :func:`plainpairs.kaggle_meta.kaggle_problems`."""
+    from plainpairs import cover, kaggle_meta
+
     out_dir, pack_dir = Path(out_dir), Path(pack_dir)
     problems = []
     manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -628,6 +634,7 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
         "dataset-metadata.json",
         "LICENSES.md",
         "manifest.json",
+        kaggle_meta.COVER_NAME,
     }
     if have != set(want):
         problems.append("the Kaggle folder's files differ from the pack's.")
@@ -653,13 +660,20 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
     lic = out_dir / "LICENSES.md"
     if not lic.exists() or _sha(lic) != _sha(pack_dir / "LICENSES.md"):
         problems.append("the Kaggle folder's LICENSES.md differs from the pack's.")
+    image = out_dir / kaggle_meta.COVER_NAME
+    if not image.exists() or _sha(image) != _sha(cover.TRACKED):
+        problems.append(f"the Kaggle folder's {kaggle_meta.COVER_NAME} is not the project's cover.")
+    problems += kaggle_meta.kaggle_problems(meta, manifest, pack_dir)
     return problems
 
 
 def write_card(pack_dir: Path, kaggle_dir: Path | None = None) -> list[Path]:
     """Write the card (README.md) and LICENSES.md again from the pack's own manifest, and the
-    Kaggle folder's LICENSES.md and metadata. The data files and the manifest are not touched,
-    so a fix to the card's wording needs no rebuild of the tables."""
+    Kaggle folder's LICENSES.md, page settings (description, file and column descriptions,
+    sources) and cover. The data files and the manifest are not touched, so a fix to the
+    card's or the page's wording needs no rebuild of the tables."""
+    from plainpairs import kaggle_meta
+
     pack_dir = Path(pack_dir)
     manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
     written = [pack_dir / "README.md", pack_dir / "LICENSES.md"]
@@ -667,11 +681,11 @@ def write_card(pack_dir: Path, kaggle_dir: Path | None = None) -> list[Path]:
     written[1].write_text(_template(LICENSES_TEMPLATE, manifest), encoding="utf-8")
     if kaggle_dir is not None:
         kaggle_dir = Path(kaggle_dir)
-        meta_path = kaggle_dir / "dataset-metadata.json"
-        old = json.loads(meta_path.read_text(encoding="utf-8"))
         shutil.copyfile(pack_dir / "LICENSES.md", kaggle_dir / "LICENSES.md")
-        meta_path.write_text(
-            json.dumps(kaggle_metadata(manifest, old["resources"]), indent=1), encoding="utf-8"
-        )
-        written += [kaggle_dir / "LICENSES.md", meta_path]
+        _write_kaggle_page(pack_dir, kaggle_dir, manifest)
+        written += [
+            kaggle_dir / "LICENSES.md",
+            kaggle_dir / "dataset-metadata.json",
+            kaggle_dir / kaggle_meta.COVER_NAME,
+        ]
     return written

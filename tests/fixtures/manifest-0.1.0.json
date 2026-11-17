@@ -1,0 +1,234 @@
+{
+ "name": "PlainPairs",
+ "version": "0.1.0",
+ "created": "2026-11-15",
+ "switch": {
+  "labels": "unmarked",
+  "nci": "kept_text_with_credit"
+ },
+ "sources": {
+  "openfda_label_export": "2026-11-13",
+  "openfda_ndc_export": "2026-11-13",
+  "dailymed_list_read": "2026-11-15",
+  "dailymed_release": "2026-11-13",
+  "nci_pages_read": "2026-11-15"
+ },
+ "code_version": "1",
+ "experimental_codes_left_out": [
+  "risk_sentences",
+  "risk_sentences_with_number",
+  "vague_core",
+  "vague_extended",
+  "explained_in_brackets",
+  "explained_called",
+  "abbreviations_in_brackets",
+  "sentences_over_20",
+  "sentences_over_40",
+  "longest_sentence_words",
+  "sections",
+  "longest_section_words",
+  "sections_over_250",
+  "contact_sentences_with_when",
+  "structured_parts",
+  "structured_longest_part_words",
+  "structured_parts_over_250"
+ ],
+ "takedown_entries": {
+  "set_id": 0,
+  "url": 0
+ },
+ "held_back": {
+  "label_text_rows_marked": 68156,
+  "label_text_rows_taken_down": 0,
+  "nci_text_rows_taken_down": 0
+ },
+ "files": [
+  {
+   "path": "data/current/labels.parquet",
+   "config": "current_labels",
+   "configuration": "current",
+   "table": "labels",
+   "layer": "record",
+   "rows": 19778,
+   "bytes": 20232902,
+   "sha256": "e2051c07d84d88c2d79f6446e59fa1e6e93061540150857d43a5337ac20bc25d"
+  },
+  {
+   "path": "data/current/patient_texts.parquet",
+   "config": "current_patient_texts",
+   "configuration": "current",
+   "table": "patient_texts",
+   "layer": "record",
+   "rows": 12857,
+   "bytes": 2481702,
+   "sha256": "3037dc7c4d9a90bb4d418cbcf37387d9ed90359432711e1da9383fecacbdc66c"
+  },
+  {
+   "path": "data/current/section_pairs.parquet",
+   "config": "current_section_pairs",
+   "configuration": "current",
+   "table": "section_pairs",
+   "layer": "record",
+   "rows": 143885,
+   "bytes": 5112444,
+   "sha256": "20b3ca450a9854dd117458ee4993fedc330df433a4d7e84f1dec5150ddada863"
+  },
+  {
+   "path": "data/current/codes.parquet",
+   "config": "current_codes",
+   "configuration": "current",
+   "table": "codes",
+   "layer": "record",
+   "rows": 221072,
+   "bytes": 2916198,
+   "sha256": "89111ed1673bed07661779357206a663a35d16435b2c972c24536ac51d4e139c"
+  },
+  {
+   "path": "data/current/text_prescriber.parquet",
+   "config": "current_text_prescriber",
+   "configuration": "current",
+   "table": "text_prescriber",
+   "layer": "text",
+   "rows": 260290,
+   "bytes": 242600795,
+   "sha256": "91f4aa729a9b4af72510867fda73eccfdbccfa6be1ca7b6d44f237894301707b"
+  },
+  {
+   "path": "data/current/text_patient.parquet",
+   "config": "current_text_patient",
+   "configuration": "current",
+   "table": "text_patient",
+   "layer": "text",
+   "rows": 33003,
+   "bytes": 41400336,
+   "sha256": "648117688ab2040de1e1135944ebf2d61e925ec6431032b7b7313c38e5d9ad9e"
+  },
+  {
+   "path": "data/unlisted/labels.parquet",
+   "config": "unlisted_labels",
+   "configuration": "unlisted",
+   "table": "labels",
+   "layer": "record",
+   "rows": 15399,
+   "bytes": 11019869,
+   "sha256": "955189c4bd9df493c2de22e6f46ad6fcb4406a5fc450c9f2a56df98c35a6fa46"
+  },
+  {
+   "path": "data/unlisted/patient_texts.parquet",
+   "config": "unlisted_patient_texts",
+   "configuration": "unlisted",
+   "table": "patient_texts",
+   "layer": "record",
+   "rows": 8559,
+   "bytes": 1263903,
+   "sha256": "b5956a9f7d44efecf1ff8cfc895603be820ca98900cc62452e274cc606b25ede"
+  },
+  {
+   "path": "data/unlisted/section_pairs.parquet",
+   "config": "unlisted_section_pairs",
+   "configuration": "unlisted",
+   "table": "section_pairs",
+   "layer": "record",
+   "rows": 106944,
+   "bytes": 3942169,
+   "sha256": "c97c6bcc9db86f3015aad8f72779fb8976325eaa3a135ec14bb22a08cd1d766d"
+  },
+  {
+   "path": "data/unlisted/codes.parquet",
+   "config": "unlisted_codes",
+   "configuration": "unlisted",
+   "table": "codes",
+   "layer": "record",
+   "rows": 171088,
+   "bytes": 1820322,
+   "sha256": "8d1bcbda5ea88b2b665a478189194fd444a138025935c922df534b107e2210bc"
+  },
+  {
+   "path": "data/unlisted/text_prescriber.parquet",
+   "config": "unlisted_text_prescriber",
+   "configuration": "unlisted",
+   "table": "text_prescriber",
+   "layer": "text",
+   "rows": 196019,
+   "bytes": 184556597,
+   "sha256": "84c6176d408ac7d55df6539cd419b48f3f3c29f6e6a22167273fbfe630870b4f"
+  },
+  {
+   "path": "data/unlisted/text_patient.parquet",
+   "config": "unlisted_text_patient",
+   "configuration": "unlisted",
+   "table": "text_patient",
+   "layer": "text",
+   "rows": 23516,
+   "bytes": 29150934,
+   "sha256": "7956cf78738eb2a657bc1314455d52ac938ec123834e9a766f90e1679388b3ff"
+  },
+  {
+   "path": "data/excluded_otc/excluded_otc.parquet",
+   "config": "excluded_otc",
+   "configuration": null,
+   "table": "excluded_otc",
+   "layer": "record",
+   "rows": 100,
+   "bytes": 4974,
+   "sha256": "24b10b88c3c752b57efed232b1e8b3cea01f48d0379639e6cbdade6b48528d7b"
+  },
+  {
+   "path": "data/nci/summaries.parquet",
+   "config": "nci_summaries",
+   "configuration": "nci",
+   "table": "summaries",
+   "layer": "record",
+   "rows": 756,
+   "bytes": 127307,
+   "sha256": "abe4ad4533aeb2c81f47cb1442eac3a184396ffb728470fc2466f638323e05dd"
+  },
+  {
+   "path": "data/nci/pairs.parquet",
+   "config": "nci_pairs",
+   "configuration": "nci",
+   "table": "pairs",
+   "layer": "record",
+   "rows": 634,
+   "bytes": 49302,
+   "sha256": "d36d2d4204b61b0e52981b380fef2143e54dd99ea6ec8317df14e19e5002298c"
+  },
+  {
+   "path": "data/nci/text.parquet",
+   "config": "nci_text",
+   "configuration": "nci",
+   "table": "text",
+   "layer": "text",
+   "rows": 195394,
+   "bytes": 16298819,
+   "sha256": "64f81b7bf4c80ac3e23ce50a40c3f5b095f86ab5e3afc450ec493d8605f6363f"
+  }
+ ],
+ "rows": 1409294,
+ "bytes": 562978573,
+ "facts": {
+  "current_labels": 19778,
+  "current_patient_texts": 12857,
+  "current_section_pairs": 143885,
+  "current_codes": 221072,
+  "current_text_prescriber": 260290,
+  "current_text_patient": 33003,
+  "unlisted_labels": 15399,
+  "unlisted_patient_texts": 8559,
+  "unlisted_section_pairs": 106944,
+  "unlisted_codes": 171088,
+  "unlisted_text_prescriber": 196019,
+  "unlisted_text_patient": 23516,
+  "excluded_otc": 100,
+  "nci_summaries": 756,
+  "nci_pairs": 634,
+  "nci_text": 195394,
+  "current_megabytes": 314.7,
+  "unlisted_megabytes": 231.8,
+  "nci_megabytes": 16.5,
+  "nci_en_health_professional": 242,
+  "nci_en_patient": 147,
+  "nci_es_patient": 147,
+  "nci_es_health_professional": 220
+ }
+}

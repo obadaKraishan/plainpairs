@@ -17,6 +17,7 @@ authors:
   - family-names: Kraishan
     given-names: Obada
     affiliation: "College of Media and Communication, Texas Tech University"
+    orcid: "https://orcid.org/0009-0007-7180-8620"
 license: Apache-2.0
 doi: 10.5281/zenodo.24267450
 identifiers:
@@ -42,6 +43,7 @@ preferred-citation:
     - family-names: Kraishan
       given-names: Obada
       affiliation: "College of Media and Communication, Texas Tech University"
+      orcid: "https://orcid.org/0009-0007-7180-8620"
   year: 2026
   month: 11
   date-published: "2026-11-16"
@@ -61,6 +63,7 @@ references:
       - family-names: Kraishan
         given-names: Obada
         affiliation: "College of Media and Communication, Texas Tech University"
+        orcid: "https://orcid.org/0009-0007-7180-8620"
     year: 2026
     version: "0.1.0"
     date-released: "2026-11-16"
