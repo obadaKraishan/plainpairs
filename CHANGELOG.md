@@ -43,6 +43,13 @@ All notable changes to this project are recorded here. The format follows
 - `docs/data-card.md` is no longer marked as a draft.
 - `docs/schema.md` lists every column of every release table one per row, with what it holds;
   the facts are those it gave before.
+- `update` reads DailyMed's weekly update files as well as its daily ones. DailyMed lists the
+  current week day by day and each earlier week as one file, so a weekly run read only daily
+  files and missed the label versions of the week before; their labels would have fallen to
+  `unlisted` without a word. The update now takes the daily files of the current week and the
+  weekly file of each earlier week (never both for one day), and stops before downloading
+  anything when a weekday of the span is no longer covered by any listed file. `summary.json`
+  gives the files chosen, the days covered and the SHA-256 of the NCI tables carried over.
 
 ## [0.1.0] - 2026-11-16
 

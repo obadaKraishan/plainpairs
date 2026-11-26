@@ -22,9 +22,15 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
    runner's disk (14 GB) holds the 1.9 GB zipped and nothing is unpacked.
 4. **Structure from DailyMed** (for the `current` configuration). The full release (6 parts,
    18.1 GB) is read once; each week only DailyMed's update files since the last run are
-   fetched: the weekly update zip (2026-11-02 to 06: 1,590 labels of every kind, 679.93 MB as
-   listed) or, to match the export day exactly, the daily update zips up to it (38 to 226 MB a
-   day in the week of 2026-11-09). A label changed since the last run is read from the update
+   fetched. DailyMed's page lists one file per working day for the current week and one file
+   per week (Monday to Friday) for the weeks before it, so the update takes the daily files of
+   the current week and the weekly file of each earlier week, never both for one day
+   (2026-11-26: the weekly file of 2026-11-16 to 20, 466.69 MB, and the daily files of 11-23 to
+   11-25). **Coverage rule:** a weekday of the span that no listed file covers and that falls
+   before the days the page lists one by one means its weekly file is no longer listed; the
+   update then stops before anything is downloaded (`status = stopped`,
+   `dailymed_update_files_missing`). A weekday without a file among the daily ones (a holiday,
+   or the export day itself) is counted and allowed. A label changed since the last run is read from the update
    that holds its new version; an unchanged label keeps the structure of the last build. The
    zip file metadata (7.65 MB) is read again for the "served" flag. About 0.7 GB a week, read
    in place like the full release. The full release does not fit a standard runner's disk
