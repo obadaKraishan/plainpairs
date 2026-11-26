@@ -43,6 +43,7 @@ import random
 import re
 import shutil
 import struct
+import sys
 from collections.abc import Iterable, Iterator, Mapping
 from datetime import date
 from itertools import zip_longest
@@ -340,7 +341,10 @@ def write_csv(path: Path, header: Iterable[str], rows: Iterable[list[str]]) -> d
 
 
 def read_csv(path: Path) -> Iterator[list[str]]:
-    """The rows of a CSV file the layer wrote (gzipped or not), the header first."""
+    """The rows of a CSV file the layer wrote (gzipped or not), the header first. A prescriber
+    section can pass the csv module's default field limit (131,072 characters), so the limit is
+    raised first."""
+    csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
     if path.name.endswith(".gz"):
         with gzip.open(path, "rt", encoding="utf-8", newline="") as text:
             yield from csv.reader(text)

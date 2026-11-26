@@ -57,6 +57,12 @@ def test_the_same_rows_give_the_same_gzipped_bytes(tmp_path):
     assert list(access.read_csv(tmp_path / "one.csv.gz")) == [["n", "s"], *rows]
 
 
+def test_a_field_past_the_csv_modules_default_limit_reads_back(tmp_path):
+    long = "w " * 100_000  # 200,000 characters: a long prescriber section
+    access.write_csv(tmp_path / "t.csv.gz", ["text"], [[long]])
+    assert list(access.read_csv(tmp_path / "t.csv.gz")) == [["text"], [long]]
+
+
 # --- the layer in a built pack -------------------------------------------------------------------
 
 
