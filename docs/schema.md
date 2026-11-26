@@ -418,6 +418,33 @@ The trusted codes on the English text, as in the label `codes` tables (`docs/cod
 Released with its credit line under the switch for this configuration (`docs/data-card.md`);
 never a left-out block.
 
+## The easy-access files (every version from 0.2.0; `plainpairs.access`)
+Beside the Parquet files, which stay the full release and the only files the card's
+configurations point at:
+
+- `00_start_here_labels.csv`: the `current` labels table above, one row per label, as a CSV;
+  `00_start_here_labels.xlsx` holds the same rows with a Read me sheet and a Fields sheet
+  (past about 100 MB it is `00_start_here_labels_sample_1000.xlsx`, a seeded sample);
+- `00_start_here_pairs_sample_1000.xlsx`: a seeded sample of 1,000 `current` section pairs
+  whose two texts are released, with the columns of `PAIR_COLUMNS` in `plainpairs.access`
+  (ids, heading key, `rule_status`, `best_section`, the patient segment and the prescriber
+  section's text); a cell over Excel's 32,767 characters is cut and the cut is marked;
+- `fields.csv`: `table`, `column`, `type`, `meaning` (from the tables in this document),
+  `allowed_values` (read from the version's own files: the codes a column takes when it takes
+  at most 12, and 1 or 0 for yes-or-no columns) and `csv` (where the table's CSV is);
+- `codebook.csv`: the trusted codes of codebook version 1 and the ten heading keys
+  (`kind`, `name`, `label`, `codebook_version`, `columns_or_sections`, `definition`,
+  `status`, `check`);
+- a gzipped CSV beside each Parquet file (`data/current/labels.csv.gz`), left out when it
+  passes about 500 MB; on Kaggle the same CSV unpacked (`current_labels.csv`), left out when
+  it passes about 500 MB unpacked.
+
+In every CSV file a struct's fields are columns of their own, named `<column>.<field>`; a
+list's items are joined with `"; "`; yes and no are 1 and 0; dates are `YYYY-MM-DD`; an empty
+cell has no value. The manifest lists each file with its rows, size and SHA-256
+(`access_files`; a gzipped CSV also with its unpacked size and SHA-256) and the layer's counts
+(`access`).
+
 ## Release rules (`plainpairs release-check`)
 It fails when: the labels read differ from the manifest's listed records; a table's rows differ
 from the build summary, or its columns from the schema; a record-layer table has a `text` column

@@ -10,7 +10,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from plainpairs import cli, codes, cover, kaggle_meta, nci, pack, tables
+from plainpairs import access, cli, codes, cover, kaggle_meta, nci, pack, tables
 from tests.test_pack import made  # noqa: F401  (the fixture)
 from tests.test_release import built  # noqa: F401  (the fixture made needs)
 
@@ -93,8 +93,9 @@ def test_a_bad_schema_doc_is_refused_with_its_line(tmp_path):
 def test_the_description_has_the_headings_in_order_and_the_bold_line(made, tmp_path):  # noqa: F811
     p, m, k, meta = kaggle(made, tmp_path)
     d = meta["description"]
-    assert kaggle_meta.headings(d) == list(kaggle_meta.HEADINGS)
-    first, inside = d.index("## What PlainPairs is\n"), d.index("## What is inside\n")
+    assert kaggle_meta.headings(d) == list(kaggle_meta.headings_for(m))
+    assert kaggle_meta.headings(d)[1] == "Start here"  # right after the box, with the layer
+    first, inside = d.index("## What PlainPairs is\n"), d.index("## Start here\n")
     assert f"\n{kaggle_meta.NOT_MEDICAL}\n" in d[first:inside]
     assert "https://www.cancer.gov" in d[first:inside]  # the card's box, lifted whole
     for f in m["files"]:  # the file table: every data file with its rows
@@ -160,7 +161,9 @@ def test_the_dataset_version_after_the_paper_is_a_problem(made, tmp_path):  # no
 def test_every_file_and_every_column_is_described_in_order(made, tmp_path):  # noqa: F811
     p, m, k, meta = kaggle(made, tmp_path)
     res = meta["resources"]
-    assert [r["path"] for r in res] == [f"{f['config']}.parquet" for f in m["files"]] + [
+    layer = [n for n, _ in access.kaggle_files(m)]
+    assert layer[0] == access.START_HERE
+    assert [r["path"] for r in res] == [f"{f['config']}.parquet" for f in m["files"]] + layer + [
         "LICENSES.md",
         "manifest.json",
     ]
@@ -204,7 +207,7 @@ def test_no_text_of_the_pack_reaches_the_page(made, tmp_path):  # noqa: F811
 
 def test_the_frequency_sources_keywords_and_cover(made, tmp_path):  # noqa: F811
     p, _m, k, meta = kaggle(made, tmp_path)
-    assert meta["expectedUpdateFrequency"] == "not specified"
+    assert meta["expectedUpdateFrequency"] == "monthly"  # a version with the layer
     assert meta["expectedUpdateFrequency"] in kaggle_meta.UPDATE_FREQUENCIES
     assert all(a in meta["userSpecifiedSources"] for a in kaggle_meta.SOURCE_ADDRESSES)
     assert meta["keywords"][:3] == ["health", "nlp", "text"]
@@ -215,7 +218,7 @@ def test_the_frequency_sources_keywords_and_cover(made, tmp_path):  # noqa: F811
     meta["keywords"] = [*meta["keywords"], "public-health", "text-mining"]
     rewrite(k, meta)
     problems = pack.check_kaggle(k, p)
-    assert len(problems) == 3 and "no schedule is promised" in problems[0]
+    assert len(problems) == 3 and "monthly from the version with the easy-access" in problems[0]
     assert "do not name all three sources" in problems[1]
     assert problems[2] == (
         "Kaggle refuses the tags public-health, text-mining, and with them the whole update; "
@@ -283,10 +286,12 @@ def test_the_settings_start_from_the_live_page(made, tmp_path):  # noqa: F811
     assert changed == [
         "description",
         "keywords",
+        "expectedUpdateFrequency",  # not specified -> monthly, with the layer
         "userSpecifiedSources",
         "resources",
         "image",
     ]
+    assert sent["expectedUpdateFrequency"] == "monthly"
     assert (tmp_path / "out" / kaggle_meta.COVER_NAME).read_bytes() == cover.TRACKED.read_bytes()
     assert sorted(x.name for x in (tmp_path / "out").iterdir()) == [
         kaggle_meta.COVER_NAME,

@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from plainpairs import codes, pack
+from plainpairs import access, codes, pack
 from tests.test_release import _nci_tables, built  # noqa: F401  (the fixture)
 
 
@@ -151,7 +151,9 @@ def test_the_kaggle_mirror_holds_the_pack(made, tmp_path):
     _out, p, m = made
     k = tmp_path / "kaggle"
     meta = pack.build_kaggle(p, k)
-    assert meta["id"] == pack.KAGGLE_ID and len(meta["resources"]) == len(m["files"]) + 2
+    layer = access.kaggle_files(m)
+    assert meta["id"] == pack.KAGGLE_ID
+    assert len(meta["resources"]) == len(m["files"]) + len(layer) + 2
     assert pack.check_kaggle(k, p) == []
     (k / "current_labels.parquet").write_bytes(b"changed")
     assert any("differs" in x for x in pack.check_kaggle(k, p))
