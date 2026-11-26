@@ -930,3 +930,5 @@ time,method,host,path,query,status,bytes,seconds
 2026-11-15T20:14:06.884Z,GET,api.fda.gov,/download.json,,200,602365,0.655
 2026-11-15T21:47:20.634Z,GET,api.fda.gov,/download.json,,200,602365,0.579
 2026-11-16T01:15:07.321Z,GET,api.fda.gov,/download.json,,200,602365,0.613
+2026-11-26T22:12:00.012Z,GET,api.fda.gov,/download.json,,200,602509,0.576
+2026-11-26T22:12:16.120Z,GET,dailymed.nlm.nih.gov,/dailymed/spl-resources-all-drug-labels.cfm,,200,110536,0.412

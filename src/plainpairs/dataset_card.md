@@ -29,7 +29,7 @@ $configs
 > own site, https://www.cancer.gov. The project's measures describe wording only: they do not
 > say what a medicine or a treatment does, whether it is safe, or who should use it.
 
-Version $version, built from the openFDA drug label export of $export.
+$intro
 
 ## What it is, and who it is for
 For every label in a prescription format that carries a Medication Guide or a patient package
@@ -89,14 +89,7 @@ Grades are computed by stated formulas, always **Flesch-Kincaid and SMOG togethe
 configuration and per basis; neither alone is the corpus's reading level. Over distinct texts,
 export of $export:
 
-| | Flesch-Kincaid (median) | SMOG (median) | above grade 8, FK / SMOG |
-|---|---:|---:|---:|
-| Medication Guides, `current`, from structure | 8.67 | 11.10 | 71.9% / 99.2% |
-| the same guides, from the JSON | 10.86 | 12.94 | 95.0% / 99.5% |
-| Medication Guides, `unlisted`, from the JSON | 10.70 | 12.85 | 93.1% / 99.5% |
-| patient package inserts, `current`, from structure | 8.58 | 11.21 | 66.9% / 99.5% |
-| NCI patient summaries (English) | 8.65 | 11.11 | 83% / 100% |
-| NCI health-professional summaries (English) | 13.49 | 15.08 | 100% / 100% |
+$reading_levels
 
 The JSON loses list items and headings, so its grades run higher than the structure's on the
 same texts; the two bases sit in separate columns (`t_<text>` and `t_<text>_structured`).
@@ -197,4 +190,4 @@ it resolves to the latest). The project's repository holds all three in `CITATIO
 $files_table
 
 The manifest (`manifest.json`) gives every file's rows, size and SHA-256, the date of each
-source and the switch setting.
+source and the switch setting.$access_table

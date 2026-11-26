@@ -39,10 +39,41 @@ All notable changes to this project are recorded here. The format follows
 - The author's ORCID iD (https://orcid.org/0009-0007-7180-8620) in `CITATION.cff` (`authors`,
   `preferred-citation` and the dataset's reference) and in `.zenodo.json` (`creators`).
 
+- The easy-access layer, built by `release build` into every version from 0.2.0 and checked by
+  `release check` (which fails on a later version without it, or with any of its files missing
+  or changed): `00_start_here_labels.csv` (the whole `current` labels table, one row per
+  label, with its reading levels and listing flags and no label text) and the same rows as
+  `00_start_here_labels.xlsx` with a Read me sheet and a Fields sheet (a seeded 1,000-row
+  sample past about 100 MB); `00_start_here_pairs_sample_1000.xlsx` (1,000 seeded `current`
+  section pairs, the patient segment next to the prescriber section, released text only, a
+  cell over Excel's 32,767 characters cut with a visible mark); `fields.csv` (every column of
+  every table, with its type, meaning and allowed values); `codebook.csv` (the trusted codes
+  and the ten heading keys); and a gzipped CSV beside each Parquet file (left out past about
+  500 MB). The CSV files are checked row for row against the Parquet tables and against
+  Excel's limits. The Parquet files and the 16 configurations are unchanged.
+- "Start here" at the top of the card and of the Kaggle description, right after the
+  not-medical-information box: which file for which need, how to open each in Excel, SPSS,
+  Stata, R and Python, and three lines of R and of Python that join a label with its section
+  pairs and both texts.
+- The Kaggle mirror carries the layer: the start-here file first, each table's CSV unpacked
+  (Kaggle unpacks a gzipped file on upload), a plain CSV past about 500 MB left out and named
+  in the description, no `README.md`. Its update frequency is monthly from 0.2.0 (weekly on
+  Hugging Face).
+
 ### Changed
+- The card's reading-level table is computed from each version's own files (0.1.0's figures
+  were fixed in the template and would have been shown under a later export's date; the
+  computation gives 0.1.0's figures exactly on its pack, and 0.1.0's card is unchanged).
 - `docs/data-card.md` is no longer marked as a draft.
 - `docs/schema.md` lists every column of every release table one per row, with what it holds;
   the facts are those it gave before.
+- `update` reads DailyMed's weekly update files as well as its daily ones. DailyMed lists the
+  current week day by day and each earlier week as one file, so a weekly run read only daily
+  files and missed the label versions of the week before; their labels would have fallen to
+  `unlisted` without a word. The update now takes the daily files of the current week and the
+  weekly file of each earlier week (never both for one day), and stops before downloading
+  anything when a weekday of the span is no longer covered by any listed file. `summary.json`
+  gives the files chosen, the days covered and the SHA-256 of the NCI tables carried over.
 
 ## [0.1.0] - 2026-11-16
 

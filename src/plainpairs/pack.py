@@ -47,7 +47,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from plainpairs import codes, nci, release, tables
+from plainpairs import access, codes, nci, release, tables
 
 SWITCH = {"labels": "unmarked", "nci": "kept_text_with_credit"}
 LABEL_CONFIGURATIONS = ("current", "unlisted")
@@ -87,6 +87,37 @@ PAPER_YEAR = "2026"
 PAPER_CLASS = "cs.CL"
 PAPER_URL = f"https://arxiv.org/abs/{PAPER_ARXIV_ID}"
 PAPER_DOI = f"10.48550/arXiv.{PAPER_ARXIV_ID}"
+#: The card's reading-level table as version 0.1.0 printed it (its manifest has no computed
+#: table); every later version computes its own from its files (:func:`reading_levels`).
+READING_LEVELS_0_1_0 = (
+    "| | Flesch-Kincaid (median) | SMOG (median) | above grade 8, FK / SMOG |\n"
+    "|---|---:|---:|---:|\n"
+    "| Medication Guides, `current`, from structure | 8.67 | 11.10 | 71.9% / 99.2% |\n"
+    "| the same guides, from the JSON | 10.86 | 12.94 | 95.0% / 99.5% |\n"
+    "| Medication Guides, `unlisted`, from the JSON | 10.70 | 12.85 | 93.1% / 99.5% |\n"
+    "| patient package inserts, `current`, from structure | 8.58 | 11.21 | 66.9% / 99.5% |\n"
+    "| NCI patient summaries (English) | 8.65 | 11.11 | 83% / 100% |\n"
+    "| NCI health-professional summaries (English) | 13.49 | 15.08 | 100% / 100% |"
+)
+#: The rows of that table: label, configuration, which texts, which measures.
+READING_ROWS = (
+    (
+        "Medication Guides, `current`, from structure",
+        "current",
+        "medication_guide",
+        "measures_structured",
+    ),
+    ("the same guides, from the JSON", "current", "medication_guide", "measures"),
+    ("Medication Guides, `unlisted`, from the JSON", "unlisted", "medication_guide", "measures"),
+    (
+        "patient package inserts, `current`, from structure",
+        "current",
+        "patient_package_insert",
+        "measures_structured",
+    ),
+    ("NCI patient summaries (English)", "nci", "patient", "measures"),
+    ("NCI health-professional summaries (English)", "nci", "health_professional", "measures"),
+)
 #: Hugging Face's size categories by number of rows: (exclusive upper bound, category).
 SIZE_CATEGORIES = (
     (1_000, "n<1K"),
@@ -299,6 +330,7 @@ def build_pack(
         "bytes": sum(f["bytes"] for f in files),
     }
     manifest["facts"] = pack_facts(files, out)
+    manifest["access_files"], manifest["access"] = access.build(out, manifest)
     (out / "README.md").write_text(card(manifest), encoding="utf-8")
     (out / "LICENSES.md").write_text(_template(LICENSES_TEMPLATE, manifest), encoding="utf-8")
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
@@ -321,7 +353,69 @@ def pack_facts(files: list[dict[str, Any]], out: Path) -> dict[str, Any]:
         for lang, ver in zip(s["language"].to_pylist(), s["version"].to_pylist(), strict=True):
             key = f"nci_{lang}_{ver}"
             facts[key] = facts.get(key, 0) + 1
+    facts["reading_levels"] = reading_levels(files, out)
     return facts
+
+
+def reading_levels(files: list[dict[str, Any]], out: Path) -> list[list[Any]]:
+    """The card's reading-level table from the pack's own files: per row, the median
+    Flesch-Kincaid and SMOG grades over distinct texts (or NCI pages) and the shares above
+    grade 8, with the number of texts measured."""
+    from statistics import median
+
+    by = {f["config"]: f for f in files}
+    rows = []
+    for label, conf, which, column in READING_ROWS:
+        if conf == "nci":
+            f = by.get("nci_summaries")
+            t = (
+                pq.read_table(out / f["path"], columns=["language", "version", column])
+                if f
+                else None
+            )
+            picked = [
+                r[column]
+                for r in (t.to_pylist() if t is not None else [])
+                if r["language"] == "en" and r["version"] == which
+            ]
+        else:
+            f = by.get(f"{conf}_patient_texts")
+            t = pq.read_table(out / f["path"], columns=["kind", column]) if f else None
+            picked = [
+                r[column] for r in (t.to_pylist() if t is not None else []) if r["kind"] == which
+            ]
+        fk = [m["flesch_kincaid"] for m in picked if m and m.get("flesch_kincaid") is not None]
+        sm = [m["smog"] for m in picked if m and m.get("smog") is not None]
+        rows.append(
+            [
+                label,
+                conf,
+                round(median(fk), 2) if fk else None,
+                round(median(sm), 2) if sm else None,
+                sum(x > 8 for x in fk) / len(fk) if fk else None,
+                sum(x > 8 for x in sm) / len(sm) if sm else None,
+                len(fk),
+            ]
+        )
+    return rows
+
+
+def reading_table(rows: list[list[Any]] | None) -> str:
+    """The card's reading-level table (0.1.0's own text when the manifest has no rows)."""
+    if not rows:
+        return READING_LEVELS_0_1_0
+    out = [
+        "| | Flesch-Kincaid (median) | SMOG (median) | above grade 8, FK / SMOG |",
+        "|---|---:|---:|---:|",
+    ]
+    for label, conf, fk, smog, above_fk, above_smog, _n in rows:
+        num = ["none" if v is None else f"{v:.2f}" for v in (fk, smog)]
+        pct = [
+            "none" if v is None else (f"{v:.0%}" if conf == "nci" else f"{v:.1%}")
+            for v in (above_fk, above_smog)
+        ]
+        out.append(f"| {label} | {num[0]} | {num[1]} | {pct[0]} / {pct[1]} |")
+    return "\n".join(out)
 
 
 def _template(name: str, manifest: dict[str, Any]) -> str:
@@ -345,9 +439,24 @@ def _template(name: str, manifest: dict[str, Any]) -> str:
         "held_marked": f"{manifest['held_back']['label_text_rows_marked']:,}",
         "megabytes": f"{manifest['bytes'] / 1e6:,.1f}",
         "files_table": _files_table(manifest["files"]),
+        "intro": (
+            access.start_here_section(manifest)
+            if manifest.get("access_files")
+            else f"Version {manifest['version']}, built from the openFDA drug label export of "
+            f"{manifest['sources']['openfda_label_export']}."
+        ),
+        "reading_levels": reading_table(f.get("reading_levels")),
+        "access_table": (
+            "\n\nThe easy-access files (see Start here): a CSV, two workbooks and two catalogues "
+            "at the top, and a gzipped CSV beside each Parquet file.\n\n"
+            + access.access_table(manifest)
+            if manifest.get("access_files")
+            else ""
+        ),
     }
     for k, v in f.items():
-        values[f"n_{k}"] = f"{v:,}" if isinstance(v, int) else str(v)
+        if isinstance(v, (int, str)):
+            values[f"n_{k}"] = f"{v:,}" if isinstance(v, int) else v
     return Template(raw).safe_substitute(values)
 
 
@@ -465,7 +574,7 @@ def check_pack(pack_dir: Path, takedown_path: Path | None = None) -> list[str]:
     except (OSError, ValueError):
         return ["No readable manifest.json in the pack."]
     files = manifest.get("files", [])
-    listed = {f["path"] for f in files}
+    listed = {f["path"] for f in files} | {f["path"] for f in manifest.get("access_files") or []}
     on_disk = {
         p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()
     } - ALLOWED_FILES
@@ -507,7 +616,21 @@ def check_pack(pack_dir: Path, takedown_path: Path | None = None) -> list[str]:
             problems.append("the card cites the dataset's version before the paper")
     if (root / "LICENSES.md").exists():
         problems += tag_problems("LICENSES.md", (root / "LICENSES.md").read_text(encoding="utf-8"))
+    problems += access.problems(root, manifest)
+    if manifest.get("access_files") and (root / "README.md").exists():
+        problems += start_here_problems((root / "README.md").read_text(encoding="utf-8"))
     return problems
+
+
+def start_here_problems(text: str) -> list[str]:
+    """A card with the easy-access layer opens with "Start here", right after the box."""
+    m = _FRONT.match(text)
+    body = text[m.end() :] if m else text
+    first = re.search(r"^## (.+)$", body, re.M)
+    box = body.find("> **Not medical information.**")
+    if not first or first.group(1).strip() != "Start here" or not 0 <= box < first.start():
+        return ["the card does not open with '## Start here' right after the box."]
+    return []
 
 
 def _check_file(f: dict[str, Any], t: pa.Table) -> list[str]:
@@ -591,7 +714,7 @@ def kaggle_metadata(manifest: dict[str, Any], pack_dir: Path) -> dict[str, Any]:
         "id": KAGGLE_ID,
         "licenses": [{"name": "other"}],
         "keywords": list(kaggle_meta.KEYWORDS),
-        "expectedUpdateFrequency": kaggle_meta.UPDATE_FREQUENCY,
+        "expectedUpdateFrequency": kaggle_meta.update_frequency(manifest),
         "userSpecifiedSources": kaggle_meta.SOURCES,
         "description": kaggle_meta.description(manifest, card(manifest)),
         "resources": kaggle_meta.resources(Path(pack_dir), manifest, doc),
@@ -618,6 +741,7 @@ def build_kaggle(pack_dir: Path, out_dir: Path) -> dict[str, Any]:
         shutil.copyfile(pack_dir / f["path"], out_dir / f"{f['config']}.parquet")
     for name in ("LICENSES.md", "manifest.json"):
         shutil.copyfile(pack_dir / name, out_dir / name)
+    access.build_kaggle(pack_dir, out_dir, manifest)
     return _write_kaggle_page(pack_dir, out_dir, manifest)
 
 
@@ -630,14 +754,18 @@ def check_kaggle(out_dir: Path, pack_dir: Path) -> list[str]:
     problems = []
     manifest = json.loads((pack_dir / "manifest.json").read_text(encoding="utf-8"))
     want = {f"{f['config']}.parquet": f["sha256"] for f in manifest["files"]}
+    layer = [name for name, _ in access.kaggle_files(manifest)]
     have = {p.name for p in out_dir.iterdir() if p.is_file()} - {
         "dataset-metadata.json",
         "LICENSES.md",
         "manifest.json",
         kaggle_meta.COVER_NAME,
     }
-    if have != set(want):
+    if have != set(want) | set(layer):
         problems.append("the Kaggle folder's files differ from the pack's.")
+    if any(n.lower() == "readme.md" for n in have):
+        problems.append("the Kaggle folder holds a README.md (the description carries the card).")
+    problems += access.kaggle_problems(pack_dir, out_dir, manifest)
     for name, sha in want.items():
         p = out_dir / name
         if p.exists() and _sha(p) != sha:

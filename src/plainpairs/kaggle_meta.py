@@ -47,8 +47,13 @@ DESCRIPTION_MAX = 20_000
 LOAD_FILE = "current_labels.parquet"
 KAGGLE_INPUT = "/kaggle/input/plainpairs"
 REPO_URL = "https://github.com/obadaKraishan/plainpairs"
-#: "not specified" until the weekly update really runs (no schedule is promised).
+#: "not specified" for 0.1.0 (no schedule was promised); from 0.2.0, the first version with the
+#: easy-access layer, Hugging Face is updated weekly and this mirror monthly.
 UPDATE_FREQUENCY = "not specified"
+UPDATE_FREQUENCY_LAYERED = "monthly"
+#: The description's "Start here" heading, right after the first section (versions with the
+#: easy-access layer).
+START_HERE_HEADING = "Start here"
 #: The name the Kaggle CLI looks for next to dataset-metadata.json (and never uploads as a file).
 COVER_NAME = "dataset-cover-image.png"
 UPDATE_FREQUENCIES = (
@@ -110,6 +115,40 @@ OTHER_FILES = {
         "source, and the switch setting."
     ),
 }
+
+
+#: What each easy-access file is, for the Kaggle file list.
+LAYER_FILES = {
+    "00_start_here_labels.csv": (
+        "Start here: every current label, one row per label, with its reading levels and listing "
+        "flags and no label text (the current_labels table as a CSV)."
+    ),
+    "00_start_here_labels.xlsx": "The same rows in Excel, with a Read me sheet and a Fields sheet.",
+    "00_start_here_labels_sample_1000.xlsx": (
+        "A seeded sample of 1,000 of those rows in Excel, with a Read me sheet and a Fields sheet."
+    ),
+    "00_start_here_pairs_sample_1000.xlsx": (
+        "A seeded sample of 1,000 current section pairs: the patient segment next to the "
+        "prescriber section, released text only, with a Read me sheet."
+    ),
+    "fields.csv": "Every column of every table: its type, meaning and allowed values.",
+    "codebook.csv": (
+        "The trusted codes of codebook version 1 and the alignment's ten heading keys, each with "
+        "its definition, status and check."
+    ),
+}
+
+
+def update_frequency(manifest: dict[str, Any]) -> str:
+    """The Kaggle update frequency a version's page sends."""
+    return UPDATE_FREQUENCY_LAYERED if manifest.get("access_files") else UPDATE_FREQUENCY
+
+
+def headings_for(manifest: dict[str, Any]) -> tuple[str, ...]:
+    """The description's headings in order for this version."""
+    if manifest.get("access_files"):
+        return (HEADINGS[0], START_HERE_HEADING, *HEADINGS[1:])
+    return HEADINGS
 
 
 class SchemaDocError(ValueError):
@@ -283,6 +322,18 @@ def resources(pack_dir: Path, manifest: dict[str, Any], doc: SchemaDoc) -> list[
                 "schema": {"fields": fields},
             }
         )
+    from plainpairs import access
+
+    layer = []
+    for name, _source in access.kaggle_files(manifest):
+        if name in LAYER_FILES:
+            text = LAYER_FILES[name]
+        else:
+            config = name.removesuffix(".csv")
+            f = next(x for x in manifest["files"] if x["config"] == config)
+            text = f"The {config} table as a CSV file (the same rows as {config}.parquet)."
+        layer.append({"path": name, "description": text})
+    out += layer
     out += [{"path": name, "description": text} for name, text in OTHER_FILES.items()]
     return out
 
@@ -337,6 +388,7 @@ def description(manifest: dict[str, Any], card: str) -> str:
         "those who build and test text-simplification tools.",
         NOT_MEDICAL,
         card_box(card),
+        *_start_here(manifest),
         f"## {HEADINGS[1]}",
         "Three configurations, **never pooled**: each has its own record tables (no label "
         "text) and text tables, and no file holds rows of two. They hold different sets of "
@@ -388,6 +440,14 @@ def description(manifest: dict[str, Any], card: str) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def _start_here(manifest: dict[str, Any]) -> list[str]:
+    from plainpairs import access
+
+    if not manifest.get("access_files"):
+        return []
+    return [access.start_here_section(manifest, kaggle=True)]
+
+
 # --- the checks ----------------------------------------------------------------------------------
 
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
@@ -410,12 +470,11 @@ def description_problems(text: str, manifest: dict[str, Any], files: list[str]) 
     from plainpairs import pack
 
     problems = []
-    if headings(text) != list(HEADINGS):
-        problems.append(
-            f"the Kaggle description's headings are {headings(text)}, not {list(HEADINGS)}."
-        )
+    want = list(headings_for(manifest))
+    if headings(text) != want:
+        problems.append(f"the Kaggle description's headings are {headings(text)}, not {want}.")
         return problems
-    first, inside = (text.index(f"## {h}\n") for h in HEADINGS[:2])
+    first, inside = (text.index(f"## {h}\n") for h in want[:2])
     if f"\n{NOT_MEDICAL}\n" not in text[first:inside]:
         problems.append(
             f"the Kaggle description lacks the bold line {NOT_MEDICAL} before 'What is inside'."
@@ -443,8 +502,11 @@ def kaggle_problems(meta: dict[str, Any], manifest: dict[str, Any], pack_dir: Pa
     """What is wrong with the mirror's page settings: the description, every file and column
     described (all columns, in the files' own order), the frequency and the sources."""
     problems = []
+    from plainpairs import access
+
     res = {r.get("path"): r for r in meta.get("resources", [])}
-    want = [f"{f['config']}.parquet" for f in manifest["files"]] + list(OTHER_FILES)
+    layer = [n for n, _ in access.kaggle_files(manifest)]
+    want = [f"{f['config']}.parquet" for f in manifest["files"]] + layer + list(OTHER_FILES)
     if list(res) != want:
         problems.append(
             "the Kaggle metadata's files are not the pack's files and its two documents."
@@ -469,10 +531,11 @@ def kaggle_problems(meta: dict[str, Any], manifest: dict[str, Any], pack_dir: Pa
                 f"the Kaggle file {r['path']} has {len(bare)} columns without a description "
                 f"({', '.join(bare[:5])}); describe them in docs/schema.md."
             )
-    if meta.get("expectedUpdateFrequency") != UPDATE_FREQUENCY:
+    if meta.get("expectedUpdateFrequency") != update_frequency(manifest):
         problems.append(
             f"the Kaggle update frequency is {meta.get('expectedUpdateFrequency')!r}, not "
-            f"{UPDATE_FREQUENCY!r} (no schedule is promised before the weekly update runs)."
+            f"{update_frequency(manifest)!r} (monthly from the version with the easy-access "
+            "layer, not specified before it)."
         )
     sources = meta.get("userSpecifiedSources", "")
     if not all(a in sources for a in SOURCE_ADDRESSES):
