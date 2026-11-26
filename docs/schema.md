@@ -100,25 +100,71 @@ older format's Information for Patients), `description`, `how_supplied_storage`.
 Patient texts: `medication_guide`, `patient_package_insert`, `instructions_for_use`,
 `patient_medication_information` (a mixed field, flagged as other).
 
-**Measures** (a struct per text): `words`, `words_with_tables`, `sentences`, `sentences_s1`,
-`syllables`, `polysyllables`, `long_sentence_share` (sentences over 20 words), `numbers`,
-`percentages`, `flesch_kincaid`, `flesch_kincaid_s1`, `flesch_reading_ease`, `smog`,
-`smog_s1`, `smog_short_text`, `headings` (numbered headings in a prescriber section; standard
-headings in a patient text), `table_chars_cut`. Grades use the `s2` sentence rule unless the
-name ends in `_s1`, and are computed on the prose with inline tables cut (`docs/method.md`).
+### Fields of a measures struct (`measures`)
+A struct per text (`p_<section>`, `t_<text>` and `measures`). Grades use the `s2` sentence rule
+unless the name ends in `_s1`, and are computed on the prose with inline tables cut
+(`docs/method.md`). In the CSV files each field is a column of its own, named
+`<column>.<field>` (`t_medication_guide.flesch_kincaid`).
 
-**Measures from structure** (a struct per section of a `current` label; `docs/method.md`,
-section 6b): `xml_match` (`exact`, `near`, `json_repeats`, `not`, `json_missing`,
-`xml_missing`), `xml_dice`, `xml_tokens`, `json_tokens` (the word test against the JSON),
-`blocks_dice` (how much of the JSON's words the measured blocks cover), then, when the words
-agree (`exact`, `near` or `json_repeats`): `words`, `sentences`, `syllables`, `polysyllables`,
-`long_sentence_share`, `numbers`, `percentages`, `flesch_kincaid`, `flesch_reading_ease`,
-`smog`, `smog_short_text`, the blocks by kind (`blocks_title`, `blocks_heading`,
-`blocks_paragraph`, `blocks_item`, `blocks_cell`, `blocks_caption`, `blocks_data_cell`,
-`blocks_in_highlights`), `subsection_titles`, and the length codes from structure
-(`sentences_over_20`, `sentences_over_40`, `longest_sentence_words`, `parts`,
-`longest_part_words`, `parts_over_250`). These grades are on a different basis from the JSON's
-and are never pooled with them.
+| column | type | notes |
+|---|---|---|
+| `words` | int | the words of the prose, inline tables cut |
+| `words_with_tables` | int | the words with the inline tables kept |
+| `sentences` | int | the sentences, by the `s2` rule |
+| `sentences_s1` | int | the sentences, by the `s1` rule |
+| `syllables` | int | the syllables |
+| `polysyllables` | int | the words of three or more syllables |
+| `long_sentence_share` | float | the share of sentences over 20 words |
+| `numbers` | int | the numbers written in digits |
+| `percentages` | int | the numbers followed by "%" or "percent" |
+| `flesch_kincaid` | float | the Flesch-Kincaid grade, by `s2` |
+| `flesch_kincaid_s1` | float | the Flesch-Kincaid grade, by `s1` |
+| `flesch_reading_ease` | float | the Flesch reading ease (higher is easier) |
+| `smog` | float | the SMOG grade, by `s2` |
+| `smog_s1` | float | the SMOG grade, by `s1` |
+| `smog_short_text` | bool | the text has fewer than 30 sentences, the number SMOG is defined for |
+| `headings` | int | numbered headings in a prescriber section; standard headings in a patient text |
+| `table_chars_cut` | int | the characters of inline tables cut before measuring |
+
+### Fields of a measures-from-structure struct (`measures_structured`)
+A struct per section of a `current` label (`p_<section>_structured`, `t_<text>_structured`
+and `measures_structured`; `docs/method.md`, section 6b). The word test comes first; the
+measures follow only when the words agree (`exact`, `near` or `json_repeats`). These grades are
+on a different basis from the JSON's and are never pooled with them.
+
+| column | type | notes |
+|---|---|---|
+| `xml_match` | string | the word test against the JSON: `exact`, `near`, `json_repeats`, `not`, `json_missing` or `xml_missing` |
+| `xml_dice` | float | the Dice overlap of the XML's and the JSON's words |
+| `xml_tokens` | int | the words of the section in the XML, read flat |
+| `json_tokens` | int | the words of the section in the JSON |
+| `blocks_dice` | float | how much of the JSON's words the measured blocks cover |
+| `words` | int | the words of the measured blocks |
+| `sentences` | int | the sentences of the measured blocks |
+| `syllables` | int | the syllables |
+| `polysyllables` | int | the words of three or more syllables |
+| `long_sentence_share` | float | the share of sentences over 20 words |
+| `numbers` | int | the numbers written in digits |
+| `percentages` | int | the numbers followed by "%" or "percent" |
+| `flesch_kincaid` | float | the Flesch-Kincaid grade, on structure |
+| `flesch_reading_ease` | float | the Flesch reading ease, on structure (higher is easier) |
+| `smog` | float | the SMOG grade, on structure |
+| `smog_short_text` | bool | fewer than 30 sentences, the number SMOG is defined for |
+| `blocks_title` | int | the blocks that are titles |
+| `blocks_heading` | int | the blocks that are headings |
+| `blocks_paragraph` | int | the blocks that are paragraphs |
+| `blocks_item` | int | the blocks that are list items |
+| `blocks_cell` | int | the blocks that are table cells of layout tables |
+| `blocks_caption` | int | the blocks that are captions |
+| `blocks_data_cell` | int | the blocks that are cells of data tables (not measured) |
+| `blocks_in_highlights` | int | the blocks inside the Highlights excerpt |
+| `subsection_titles` | int | the titles of subsections |
+| `sentences_over_20` | int | the sentences over 20 words, on structure |
+| `sentences_over_40` | int | the sentences over 40 words, on structure |
+| `longest_sentence_words` | int | the words of the longest sentence, on structure |
+| `parts` | int | the parts between the XML's own headings |
+| `longest_part_words` | int | the words of the longest part |
+| `parts_over_250` | int | the parts of more than 250 words |
 
 **Medicine key.** The lower-cased, sorted generic names from the `openfda` block
 (`medicine_key_source = openfda`). A label without them takes the key of the labels it shares
@@ -293,6 +339,54 @@ Three tables. A pair carries each page's address, dates and credit line for both
 | `left_out` | struct | the blocks left out, counted by kind: `figure`, `navigation`, `key_points`, `reference`, `citation_mark`, `about_this`, `credit_line`, `credited_table` |
 | `measures` | struct | `words`, `sentences`, `long_sentence_share`; English `flesch_kincaid` and `smog`; Spanish `szigriszt_pazos` and `inflesz_band`; blocks by kind |
 | `codes` | struct | the trusted codes, English only; null for Spanish |
+
+### Fields of the left_out struct (`nci_left_out`)
+| column | type | notes |
+|---|---|---|
+| `figure` | int | the figures left out |
+| `navigation` | int | the navigation blocks left out |
+| `key_points` | int | the key-point blocks left out |
+| `reference` | int | the references left out |
+| `citation_mark` | int | the citation marks left out |
+| `about_this` | int | the blocks of the closing "About This" sections left out |
+| `credit_line` | int | the credit lines left out of the text (each row carries its own) |
+| `credited_table` | int | the tables NCI credits to other publishers, left out whole |
+
+### Fields of the NCI measures struct (`nci_measures`)
+| column | type | notes |
+|---|---|---|
+| `words` | int | the words of the kept prose |
+| `sentences` | int | the sentences |
+| `long_sentence_share` | float | the share of sentences over 20 words |
+| `flesch_kincaid` | float | the Flesch-Kincaid grade (English only) |
+| `smog` | float | the SMOG grade (English only) |
+| `szigriszt_pazos` | float | the Szigriszt-Pazos perspicuity index (Spanish only; higher is easier; provisional) |
+| `inflesz_band` | string | the index's band on the INFLESZ scale (Spanish only) |
+| `blocks_heading` | int | the kept headings |
+| `blocks_paragraph` | int | the kept paragraphs |
+| `blocks_item` | int | the kept list items |
+| `blocks_cell` | int | the kept table cells |
+| `blocks_data_cell` | int | the kept cells of data tables |
+| `blocks_caption` | int | the kept captions |
+
+### Fields of the NCI codes struct (`nci_codes`)
+The trusted codes on the English text, as in the label `codes` tables (`docs/codebook.md`).
+
+| column | type | notes |
+|---|---|---|
+| `you_words` | int | the words "you", "your", "yours", "yourself" and "yourselves" |
+| `sentences_with_you` | int | the sentences with at least one of those words |
+| `command_sentences` | int | the sentences that open with a command |
+| `conditional_commands` | int | the sentences with a condition, a comma, then a command |
+| `distinct_actions` | int | the number of different verbs that open the text's commands |
+| `percentages` | int | the numbers followed by "%" or "percent" |
+| `one_in_n` | int | the "1 in N" expressions |
+| `frequencies` | int | the expressions of how often |
+| `doses` | int | the numbers followed by a dose unit |
+| `contact_sentences` | int | the sentences that name a contact verb and someone to contact |
+| `sentences_over_20` | int | the sentences over 20 words |
+| `sentences_over_40` | int | the sentences over 40 words |
+| `longest_sentence_words` | int | the words of the longest sentence |
 
 ### `nci_pairs` (record layer): one row per pair found by NCI's own links
 | column | type | notes |
