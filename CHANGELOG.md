@@ -7,6 +7,9 @@ All notable changes to this project are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- The weekly workflow is switched on: it runs every Monday at 07:23 UTC and delivers a ready
+  version as a draft pull request on the dataset (`DELIVERY_ENABLED: "true"`); the README says
+  so.
 - `plainpairs.weekly`: the weekly run's own steps on GitHub Actions. `next-version` (0.2.0 to
   0.2.1); `report` (the run's counts in Markdown, from named fields of `summary.json`, the
   manifest and the usage log only, for the job summary, the stop issue and the pull request's

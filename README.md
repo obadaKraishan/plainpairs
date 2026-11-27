@@ -18,9 +18,11 @@ export of 2026-11-26). The corpus is on Hugging Face,
 [`obadakr/plainpairs`](https://huggingface.co/datasets/obadakr/plainpairs) (tag `v0.2.0`; its
 card starts with "Start here": which file to open, a CSV and an Excel workbook for readers who
 do not use Parquet, and how to load each table), with a mirror on Kaggle,
-[`obadakraishan/plainpairs`](https://www.kaggle.com/datasets/obadakraishan/plainpairs). The
-weekly update is built and not yet switched on. The method, the source terms and the drafts are
-in [`docs/`](docs/).
+[`obadakraishan/plainpairs`](https://www.kaggle.com/datasets/obadakraishan/plainpairs). Every
+Monday a workflow builds the next weekly version (0.2.1, 0.2.2, ...) from the newest export and
+opens it as a draft pull request on the dataset, which the maintainer reads and merges
+([`docs/automation.md`](docs/automation.md)); the Kaggle mirror is updated about monthly. The
+method, the source terms and the drafts are in [`docs/`](docs/).
 
 ## What it holds
 - One row per label, with its identity (set id, version, effective date, product type, route,
