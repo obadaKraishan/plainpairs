@@ -53,6 +53,7 @@ def test_the_report_holds_counts_only():
     assert "version: 0.2.1 (after 0.2.0)" in text and "delivery: on" in text
     assert "3 new labels" in text and "unlisted to current 1" in text
     assert "without a file 2026-11-26" in text and "missing none" in text
+    assert "weekdays after 2026-11-25 through 2026-11-27: 2, covered 1" in text
     assert "invented sentence" not in text
     stopped = weekly.report(None, stopped_because="1 open pull request on the dataset")
     assert "stopped before building: 1 open pull request" in stopped

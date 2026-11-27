@@ -4,11 +4,11 @@ name: Weekly update
 # (once switched on) delivers it as a draft pull request on the dataset, which the maintainer
 # reads and merges. See docs/automation.md.
 #
-# SWITCHED OFF: there is no schedule and DELIVERY_ENABLED is "false", so a run (started by hand
-# from the Actions tab) builds and checks a version and uploads nothing, and a stop opens no
-# issue (the job summary shows the issue it would open). Switching it on is one pull request:
-# the schedule below and DELIVERY_ENABLED "true" together (a test checks that they change
-# together). Setting DELIVERY_ENABLED back to "false" makes every run a dry run again.
+# SWITCHED ON: it runs every Monday (and by hand from the Actions tab), and DELIVERY_ENABLED is
+# "true", so a version that passes every check is delivered as a draft pull request on the
+# dataset, and a stop or a failure opens an issue. To switch it off, one pull request sets
+# DELIVERY_ENABLED to "false" and comments out the schedule (a test checks that they change
+# together); every run started by hand is then a dry run that uploads nothing.
 #
 # One job builds, checks and delivers, because jobs share no disk. It runs in the environment
 # `release` (deployments from main only), which holds HF_TOKEN: a fine-grained token that may
@@ -26,8 +26,8 @@ name: Weekly update
 on:
   workflow_dispatch:
   # The weekly run (docs/automation.md), away from the hour's start, GitHub's busiest moment.
-  # schedule:
-  #   - cron: "23 7 * * 1" # Mondays, 07:23 UTC
+  schedule:
+    - cron: "23 7 * * 1" # Mondays, 07:23 UTC
 
 permissions: {}
 
@@ -37,7 +37,7 @@ concurrency:
 
 env:
   # "true" lets a ready build be delivered as a draft pull request on the dataset.
-  DELIVERY_ENABLED: "false"
+  DELIVERY_ENABLED: "true"
   DATASET: obadakr/plainpairs
   HUB_CLIENT: "huggingface_hub==2.4.0"
   HF_HUB_DISABLE_TELEMETRY: "1"
