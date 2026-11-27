@@ -127,7 +127,7 @@ The companies that market each medicine write its label; some labels carry a com
 copyright mark.
 
 **DailyMed** (National Library of Medicine) is the source of the text structure of `current`
-labels (its full release of human prescription labels of $dailymed_release) and of the
+labels (its full release of human prescription labels of $dailymed_words) and of the
 "served" flag. Courtesy of the National Library of Medicine.
 
 **The National Cancer Institute** (the `nci` configuration; pages read on $nci_read). Its terms:

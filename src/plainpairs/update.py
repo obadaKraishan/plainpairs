@@ -296,11 +296,15 @@ def previous_from_pack(pack_dir: Path, out_dir: Path) -> tuple[Path, Path]:
     (sdir / "structure_summary.json").write_text(
         json.dumps({"release_date": manifest["sources"].get("dailymed_release")}), encoding="utf-8"
     )
+    src = manifest["sources"]
     (tdir / "build_summary.json").write_text(
         json.dumps(
             {
-                "export_date": manifest["sources"]["openfda_label_export"],
-                "structure": {"release_date": manifest["sources"].get("dailymed_release")},
+                "export_date": src["openfda_label_export"],
+                "structure": {"release_date": src.get("dailymed_release")},
+                "dailymed": {
+                    "full_release": src.get("dailymed_full_release") or src.get("dailymed_release")
+                },
             }
         ),
         encoding="utf-8",
@@ -374,6 +378,9 @@ def run(
     )
     prev_export = prev_summary["export_date"]
     prev_release = (prev_summary.get("structure") or {}).get("release_date") or prev_export
+    # The day the last build's structure was read through (its full release, or the last day its
+    # update files covered), and the full release it started from.
+    prev_full = (prev_summary.get("dailymed") or {}).get("full_release") or prev_release
     listing = sources.listing()
     new_export, _ = bulk.label_parts(listing)
     summary: dict[str, Any] = {"previous_export": prev_export, "listed_export": new_export}
@@ -413,7 +420,13 @@ def run(
     if updates:
         structure.build(updates, new_export, first, fresh, workers=1, log=lambda s: None)
     merged = work / "structure"
-    summary.update(_carry_structure(Path(prev_structure), fresh, labels_new, merged, new_export))
+    # Read through the last day the chosen files cover (never the export day itself when it has no
+    # file yet): the next update starts after that day, so a file DailyMed posts later is read.
+    through = min(max((d for f in choice.files for d in f.days), default=prev_release), new_export)
+    through = max(through, prev_release)
+    summary["dailymed_full_release"] = prev_full
+    summary["dailymed_updates_through"] = through
+    summary.update(_carry_structure(Path(prev_structure), fresh, labels_new, merged, through))
     final = work / "tables"
     tables.Builder(
         parts, final, new_export, log=lambda s: None, workers=workers, listings=listings,
@@ -444,6 +457,13 @@ def run(
             moved[f"{before}_to_{r['configuration']}"] += 1
     summary["moved"] = dict(moved)
     summary["configurations"] = dict(Counter(r["configuration"] for r in new_conf))
+    built = json.loads((final / "build_summary.json").read_text(encoding="utf-8"))
+    built["dailymed"] = {
+        "full_release": prev_full,
+        "updates_through": through,
+        "update_files": [f.name for f in choice.files],
+    }
+    (final / "build_summary.json").write_text(json.dumps(built, indent=1), encoding="utf-8")
     codes.build(
         final, workers=workers, log=lambda s: None, structure_path=merged / "structure.parquet"
     )

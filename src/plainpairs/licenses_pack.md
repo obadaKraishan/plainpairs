@@ -22,7 +22,7 @@ License 2.0 (https://www.apache.org/licenses/LICENSE-2.0) in the project's repos
   released only for labels that show no copyright mark (the `unmarked` setting); the record
   rows of marked labels stay, without their text. A rights holder may ask for removal
   (README, "Removal").
-- **Structure** for `current` labels comes from DailyMed's release of $dailymed_release
+- **Structure** for `current` labels comes from DailyMed's release of $dailymed_words
   (National Library of Medicine): Courtesy of the National Library of Medicine.
 
 ## `nci`: $nci_name

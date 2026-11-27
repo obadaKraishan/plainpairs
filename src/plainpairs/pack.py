@@ -319,6 +319,8 @@ def build_pack(
             "openfda_ndc_export": (listed.get("ndc") or {}).get("date"),
             "dailymed_list_read": (listed.get("dailymed") or {}).get("date"),
             "dailymed_release": (summary.get("structure") or {}).get("release_date"),
+            "dailymed_full_release": (summary.get("dailymed") or {}).get("full_release"),
+            "dailymed_updates_through": (summary.get("dailymed") or {}).get("updates_through"),
             "nci_pages_read": nci_read,
         },
         "code_version": codes.CODE_VERSION,
@@ -428,6 +430,7 @@ def _template(name: str, manifest: dict[str, Any]) -> str:
         "ndc": manifest["sources"]["openfda_ndc_export"] or "",
         "dailymed_list": manifest["sources"]["dailymed_list_read"] or "",
         "dailymed_release": manifest["sources"]["dailymed_release"] or "",
+        "dailymed_words": dailymed_words(manifest["sources"]),
         "nci_read": manifest["sources"]["nci_pages_read"] or "",
         "configs": _configs_yaml(manifest["files"]),
         "size_category": size_category(manifest["rows"]),
@@ -458,6 +461,16 @@ def _template(name: str, manifest: dict[str, Any]) -> str:
         if isinstance(v, (int, str)):
             values[f"n_{k}"] = f"{v:,}" if isinstance(v, int) else v
     return Template(raw).safe_substitute(values)
+
+
+def dailymed_words(sources: dict[str, Any]) -> str:
+    """The DailyMed release a version's structure comes from, in words: the full release's date,
+    with the last day its update files cover when an update read them."""
+    full = sources.get("dailymed_full_release")
+    through = sources.get("dailymed_updates_through")
+    if full and through and through != full:
+        return f"{full}, with its update files through {through}"
+    return sources.get("dailymed_release") or ""
 
 
 def card(manifest: dict[str, Any]) -> str:
