@@ -1,24 +1,33 @@
 name: Weekly update
 
-# Builds the next PlainPairs version from the one published on Hugging Face, with the
-# repository's own `plainpairs update`, and checks it. See docs/automation.md.
+# Builds the next PlainPairs version from the one published on Hugging Face, checks it, and
+# (once switched on) delivers it as a draft pull request on the dataset, which the maintainer
+# reads and merges. See docs/automation.md.
 #
-# SWITCHED OFF: there is no schedule, and DELIVERY_ENABLED is "false", so a run (started by
-# hand from the Actions tab) builds and checks a version and uploads nothing. To switch it on,
-# after the repository is public (its Actions minutes are then free): add the schedule below,
-# create the environment `release` (deployments from main only) with the secret HF_TOKEN (a
-# token that may open pull requests on obadakr/plainpairs, nothing more), and set
-# DELIVERY_ENABLED to "true". A ready version is then delivered as a pull request on the
-# dataset, which the maintainer merges.
+# SWITCHED OFF: there is no schedule and DELIVERY_ENABLED is "false", so a run (started by hand
+# from the Actions tab) builds and checks a version and uploads nothing, and a stop opens no
+# issue (the job summary shows the issue it would open). Switching it on is one pull request:
+# the schedule below and DELIVERY_ENABLED "true" together (a test checks that they change
+# together). Setting DELIVERY_ENABLED back to "false" makes every run a dry run again.
+#
+# One job builds, checks and delivers, because jobs share no disk. It runs in the environment
+# `release` (deployments from main only), which holds HF_TOKEN: a fine-grained token that may
+# read the dataset and open pull requests on it, nothing more. HF_TOKEN is in the delivery
+# step's env only; the check after it runs with no token and no saved login. Weekly versions
+# are not tagged (the token cannot tag): the merge commit ("PlainPairs 0.2.N (#K)") and the
+# manifest name them. The Kaggle mirror is not updated from here: it gets a new version by
+# hand, about monthly.
 #
 # Every action is pinned to a full commit SHA (the comment gives the version). No job runs on
-# pull requests, so a fork's pull request never reaches this workflow or its secret. The logs and
-# the job summary carry counts only; nothing is uploaded as an artifact.
+# pull requests, so a fork's pull request never reaches this workflow or its secret. Logs, the
+# job summary, the stop issue and the pull request's description carry counts, dates, names
+# and hashes only; nothing is uploaded as an artifact.
 
 on:
   workflow_dispatch:
+  # The weekly run (docs/automation.md), away from the hour's start, GitHub's busiest moment.
   # schedule:
-  #   - cron: "23 7 * * 1" # Mondays, 07:23 UTC (openFDA's export usually lands by then)
+  #   - cron: "23 7 * * 1" # Mondays, 07:23 UTC
 
 permissions: {}
 
@@ -27,16 +36,27 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # "true" lets a ready build be delivered as a draft pull request on the dataset.
   DELIVERY_ENABLED: "false"
   DATASET: obadakr/plainpairs
+  HUB_CLIENT: "huggingface_hub==2.4.0"
+  HF_HUB_DISABLE_TELEMETRY: "1"
 
 jobs:
   update:
-    name: Build and check the next version
+    name: Build, check and deliver the next version
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 300
+    # Holds HF_TOKEN, which only the delivery step reads; deployments from main only.
+    environment: release
     permissions:
       contents: read
+      issues: read # to count open removal requests
+    outputs:
+      status: ${{ steps.update.outputs.status || steps.open.outputs.status }}
+      version: ${{ steps.prev.outputs.version }}
+      delivery_enabled: ${{ env.DELIVERY_ENABLED }}
+      report: ${{ steps.report.outputs.report }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,54 +66,160 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.12"
+          enable-cache: false # a run that delivers never reads a cache others could write
 
-      - name: Install the project (locked) and the Hugging Face client
+      - name: Install the project (locked)
+        run: uv sync --locked
+
+      - name: Room on the runner (start)
+        run: df -h "$RUNNER_TEMP" "$GITHUB_WORKSPACE"
+
+      - name: Count what must stop a delivery (open removal requests, open dataset pull requests)
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          uv sync --locked
-          uv tool install "huggingface_hub==2.4.0"
+          takedowns="$(gh issue list --repo "$GITHUB_REPOSITORY" --label takedown --state open \
+            --json number --jq length)"
+          mkdir -p "$RUNNER_TEMP/hf-anonymous"
+          prs="$(HF_HOME="$RUNNER_TEMP/hf-anonymous" uv run --no-project --with "$HUB_CLIENT" \
+            python -I -c '
+          import os
+          from huggingface_hub import HfApi
+          prs = HfApi(token=False).get_repo_discussions(os.environ["DATASET"], repo_type="dataset",
+              discussion_type="pull_request", discussion_status="open")
+          print(sum(1 for _ in prs))')"
+          echo "open removal requests: $takedowns; open pull requests on the dataset: $prs"
+          blocked=""
+          if [ "$DELIVERY_ENABLED" = "true" ]; then
+            [ "$takedowns" != "0" ] && blocked="$takedowns open removal request(s) on the repository"
+            [ "$prs" != "0" ] && blocked="${blocked:+$blocked; }$prs open pull request(s) on the dataset"
+          fi
+          echo "blocked=$blocked" >> "$GITHUB_OUTPUT"
+          [ -n "$blocked" ] && echo "status=stopped" >> "$GITHUB_OUTPUT"
+          true
 
-      - name: Room on the runner
-        run: df -h "$RUNNER_TEMP" . | tail -n +1
-
-      - name: Download the latest published version (anonymous)
+      - name: Download the published version (anonymous; only the files the update reads)
+        id: prev
         run: |
-          hf download "$DATASET" --repo-type dataset --local-dir "$RUNNER_TEMP/prev" > /dev/null
+          HF_HOME="$RUNNER_TEMP/hf-anonymous" uvx --from "$HUB_CLIENT" hf download "$DATASET" \
+            --repo-type dataset --local-dir "$RUNNER_TEMP/prev" --include manifest.json \
+            --include "data/*/labels.parquet" --include "data/*/patient_texts.parquet" \
+            --include "data/*/section_pairs.parquet" --include "data/nci/*.parquet" > /dev/null
           rm -rf "$RUNNER_TEMP/prev/.cache"
           du -sh "$RUNNER_TEMP/prev"
+          previous="$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["version"])' \
+            "$RUNNER_TEMP/prev/manifest.json")"
+          version="$(uv run --no-sync python -I -m plainpairs.weekly next-version \
+            --manifest "$RUNNER_TEMP/prev/manifest.json")"
+          echo "the published version is $previous; this run builds $version"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Build and check the next version
+      - name: Build and check the next version (the weekly update)
         id: update
+        if: steps.open.outputs.blocked == ''
         run: |
+          since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "since=$since" >> "$GITHUB_OUTPUT"
           mkdir -p data/raw
+          set +e
           uv run --no-sync python -I -m plainpairs update --from-pack "$RUNNER_TEMP/prev" \
-            --work "$RUNNER_TEMP/work" --workers 4 --max-calls 120 --max-bytes 4000000000
-          python3 -I - "$RUNNER_TEMP/work/summary.json" >> "$GITHUB_OUTPUT" <<'PY'
-          import json, sys
-          s = json.load(open(sys.argv[1]))
-          print(f"status={s['status']}")
-          PY
+            --work "$RUNNER_TEMP/work" --since "$since" --workers 4 \
+            --max-calls 120 --max-bytes 4000000000
+          code=$?
+          set -e
+          summary="$RUNNER_TEMP/work/summary.json"
+          if [ -f "$summary" ]; then
+            status="$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["status"])' "$summary")"
+          else
+            status="failed"
+          fi
+          echo "the update ended with status $status (exit $code)"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          df -h "$RUNNER_TEMP" "$GITHUB_WORKSPACE"
+          # ready, no new export, or stopped by a check (reported by the next job); else failed
+          case "$status" in ready|no_new_export|stopped) exit 0 ;; *) exit 1 ;; esac
 
-      - name: Write the next pack and check it on its own
+      - name: Write the pack and check it on its own
+        id: build
+        if: steps.update.outputs.status == 'ready'
+        env:
+          VERSION: ${{ steps.prev.outputs.version }}
+        run: |
+          uv run --no-sync python -I -m plainpairs release build --version "$VERSION" \
+            --tables "$RUNNER_TEMP/work/tables" --out "$RUNNER_TEMP/next" \
+            --takedown data/takedown.csv
+          uv run --no-sync python -I -m plainpairs release check --pack "$RUNNER_TEMP/next" \
+            --takedown data/takedown.csv
+          df -h "$RUNNER_TEMP" "$GITHUB_WORKSPACE"
+
+      - name: Check the card with Hugging Face's own validator
         if: steps.update.outputs.status == 'ready'
         run: |
-          version="$(python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1]))["version"].split("."); v[-1]=str(int(v[-1])+1); print(".".join(v))' "$RUNNER_TEMP/prev/manifest.json")"
-          uv run --no-sync python -I -m plainpairs release build --version "$version" \
-            --tables "$RUNNER_TEMP/work/tables" --out "$RUNNER_TEMP/next"
-          uv run --no-sync python -I -m plainpairs release check --pack "$RUNNER_TEMP/next"
-          echo "VERSION=$version" >> "$GITHUB_ENV"
+          HF_HOME="$RUNNER_TEMP/hf-anonymous" uv run --no-project --with "$HUB_CLIENT" \
+            python -I - "$RUNNER_TEMP/next/README.md" <<'PY'
+          import sys
+          from huggingface_hub import DatasetCard
+          DatasetCard(open(sys.argv[1], encoding="utf-8").read()).validate(repo_type="dataset")
+          print("the card passes Hugging Face's validation")
+          PY
 
-      - name: The run's counts
+      - name: The run's report (counts only)
+        id: report
         if: always()
+        env:
+          VERSION: ${{ steps.prev.outputs.version }}
+          PREVIOUS: ${{ steps.prev.outputs.previous }}
+          SINCE: ${{ steps.update.outputs.since }}
+          BLOCKED: ${{ steps.open.outputs.blocked }}
         run: |
-          [ -f "$RUNNER_TEMP/work/summary.json" ] && cat "$RUNNER_TEMP/work/summary.json" >> "$GITHUB_STEP_SUMMARY" || true
+          args=(--delivery "$([ "$DELIVERY_ENABLED" = "true" ] && echo on || echo off)")
+          [ -n "$VERSION" ] && args+=(--version "$VERSION" --previous "$PREVIOUS")
+          [ -f "$RUNNER_TEMP/work/summary.json" ] && args+=(--summary "$RUNNER_TEMP/work/summary.json")
+          [ -f "$RUNNER_TEMP/next/manifest.json" ] && args+=(--manifest "$RUNNER_TEMP/next/manifest.json")
+          [ -n "$SINCE" ] && args+=(--usage-log data/usage_log.csv --since "$SINCE")
+          [ -n "$BLOCKED" ] && args+=(--stopped-because "$BLOCKED")
+          uv run --no-sync python -I -m plainpairs.weekly report "${args[@]}" > "$RUNNER_TEMP/report.md"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "report<<PP_REPORT_END"
+            cat "$RUNNER_TEMP/report.md"
+            echo "PP_REPORT_END"
+          } >> "$GITHUB_OUTPUT"
 
-  deliver:
-    name: Deliver as a pull request on the dataset
+      - name: Deliver as a draft pull request on the dataset
+        if: env.DELIVERY_ENABLED == 'true' && steps.update.outputs.status == 'ready'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          VERSION: ${{ steps.prev.outputs.version }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/hf-deliver"
+          export HF_HOME="$RUNNER_TEMP/hf-deliver"
+          uvx --from "$HUB_CLIENT" hf auth whoami | awk 'NR == 1 { print "the token belongs to: " $0 }'
+          uvx --from "$HUB_CLIENT" hf upload "$DATASET" "$RUNNER_TEMP/next" . --repo-type dataset \
+            --create-pr --delete "*" --commit-message "PlainPairs $VERSION" \
+            --commit-description "$(cat "$RUNNER_TEMP/report.md")" > /dev/null
+          echo "a draft pull request titled \"PlainPairs $VERSION\" was opened on $DATASET"
+
+      - name: Check the pull request signed out, by hash
+        if: env.DELIVERY_ENABLED == 'true' && steps.update.outputs.status == 'ready'
+        env:
+          VERSION: ${{ steps.prev.outputs.version }}
+          HF_HUB_DISABLE_IMPLICIT_TOKEN: "1"
+        run: |
+          mkdir -p "$RUNNER_TEMP/hf-signed-out"
+          HF_HOME="$RUNNER_TEMP/hf-signed-out" uv run --no-sync --with "$HUB_CLIENT" \
+            python -I -m plainpairs.weekly pr-check --pack "$RUNNER_TEMP/next" --version "$VERSION"
+
+  report:
+    name: Report a stop or a failure
     needs: update
-    if: false # switched off: becomes needs.update.result == 'success' && env.DELIVERY_ENABLED == 'true'
-    runs-on: ubuntu-latest
-    environment: release # holds HF_TOKEN; deployments from main only
+    if: always() && (needs.update.result != 'success' || needs.update.outputs.status == 'stopped')
     permissions:
-      contents: read
-    steps:
-      - run: echo "The delivery step uploads the checked pack with hf upload --create-pr."
+      issues: write # to open the stop issue, or comment on the one already open
+    uses: ./.github/workflows/failure-issue.yml
+    with:
+      title: "Weekly update stopped"
+      body: ${{ needs.update.outputs.report || 'The update job failed before it wrote its report; see the run.' }}
+      enabled: ${{ needs.update.outputs.delivery_enabled == 'true' }}

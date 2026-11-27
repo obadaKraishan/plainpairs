@@ -1172,6 +1172,17 @@ def start_here_section(manifest: Mapping[str, Any], kaggle: bool = False) -> str
             "`hf download obadakr/plainpairs --repo-type dataset --local-dir plainpairs`."
         ),
         "",
+    ]
+    if not kaggle:
+        lines += [
+            "**Which version.** Minor versions are tagged (`v0.2.0`). Weekly versions (0.2.1, "
+            '0.2.2 and on) are not: each is the commit titled "PlainPairs 0.2.N (#K)" in the '
+            "dataset's history, and its `manifest.json` names it. To load one, give that commit: "
+            '`load_dataset("obadakr/plainpairs", "current_labels", revision="COMMIT", '
+            'split="train")`; `revision="v0.2.0"` loads a tagged one.',
+            "",
+        ]
+    lines += [
         "**Opening the files.**",
         f"- **Excel:** open `{book}` or `{PAIRS_BOOK}`. For a CSV file, use Data > From "
         "Text/CSV and choose UTF-8 (a double-click can garble accented letters)"

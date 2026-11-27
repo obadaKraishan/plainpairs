@@ -124,20 +124,17 @@ def daily_updates(markup: str) -> list[UpdateFile]:
 
 
 def choose(files: list[UpdateFile], after: str, until: str) -> list[UpdateFile]:
-    """The files for the days after ``after`` up to ``until`` (ISO dates): every daily file in
-    that span, and every weekly file that reaches into it and overlaps no listed daily file (a
-    week the page still lists day by day is read from its daily files, never twice)."""
-    daily_days = {f.day for f in files if f.kind == "daily"}
-    out = [f for f in files if f.kind == "daily" and after < f.day <= until]
-    out += [
-        f
-        for f in files
-        if f.kind == "weekly"
-        and f.day > after
-        and f.first_day <= until
-        and not daily_days.intersection(f.days)
+    """The files for the days after ``after`` up to ``until`` (ISO dates): every weekly file that
+    reaches into that span, then a daily file for each day of the span that no chosen weekly
+    file covers. A weekly file holds its whole week, so when DailyMed lists a week both ways (a
+    new weekly file while the week's daily files are still listed) the week is read once, from
+    the weekly file, and none of its days is left uncovered."""
+    weekly = [f for f in files if f.kind == "weekly" and f.day > after and f.first_day <= until]
+    by_week = {d for f in weekly for d in f.days}
+    daily = [
+        f for f in files if f.kind == "daily" and after < f.day <= until and f.day not in by_week
     ]
-    return sorted(out, key=lambda u: (u.first_day, u.day))
+    return sorted(weekly + daily, key=lambda u: (u.first_day, u.day))
 
 
 def coverage(files: list[UpdateFile], chosen: list[UpdateFile], after: str, until: str) -> dict:
