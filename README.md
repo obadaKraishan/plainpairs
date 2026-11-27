@@ -13,11 +13,13 @@ It is built for health literacy, health communication and risk communication res
 studies how official patient information is written: how long it is, how hard it is to read,
 how it words numbers and risks, and how it differs from the professional text it comes from.
 
-**Status: version 0.2.0, released on 2026-11-27,** the first weekly update (from the openFDA
-export of 2026-11-26). The corpus is on Hugging Face,
-[`obadakr/plainpairs`](https://huggingface.co/datasets/obadakr/plainpairs) (tag `v0.2.0`; its
-card starts with "Start here": which file to open, a CSV and an Excel workbook for readers who
-do not use Parquet, and how to load each table), with a mirror on Kaggle,
+**Status: version 0.2.1, released on 2026-11-27,** the first version built and delivered by
+the weekly workflow (from the openFDA export of 2026-11-27), after version 0.2.0 (tag `v0.2.0`,
+the same day, from the export of 2026-11-26). The corpus is on Hugging Face,
+[`obadakr/plainpairs`](https://huggingface.co/datasets/obadakr/plainpairs) (version 0.2.1 is the
+dataset commit "PlainPairs 0.2.1 (#2)", since weekly versions are not tagged; its card starts
+with "Start here": which file to open, a CSV and an Excel workbook for readers who do not use
+Parquet, and how to load each table), with a mirror on Kaggle (version 0.2.0),
 [`obadakraishan/plainpairs`](https://www.kaggle.com/datasets/obadakraishan/plainpairs). Every
 Monday a workflow builds the next weekly version (0.2.1, 0.2.2, ...) from the newest export and
 opens it as a draft pull request on the dataset, which the maintainer reads and merges
