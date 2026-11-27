@@ -199,3 +199,39 @@ Section pairs per configuration: `current` 143,885, `unlisted` 106,944 (M).
   beside an English grade.
 - The code check and the alignment check were each done by one reader; ten rows per heading key
   give wide intervals.
+
+## Version 0.2.0 (the first weekly update; separate from the figures above)
+The paper describes version 0.1.0, so every section above keeps 0.1.0's figures. Version 0.2.0's
+come from **M2**, its `manifest.json` (Hugging Face `obadakr/plainpairs`, tag `v0.2.0`, built
+2026-11-27), and **U**, the update's `summary.json` (counts only).
+
+| figure | value | from |
+|---|---|---|
+| version | 0.2.0 (tag `v0.2.0`) | M2 |
+| openFDA drug label export | 2026-11-26 (14 parts, 265,067 labels listed) | M2, U |
+| openFDA NDC directory export / DailyMed's label list read | 2026-11-26 / 2026-11-27 | M2 |
+| DailyMed: full release / update files through | 2026-11-13 / 2026-11-25 (one weekly file, three daily files) | M2, U |
+| NCI pages read | 2026-11-15 (carried over from 0.1.0, the same SHA-256) | M2, U |
+| files, rows, Parquet | 16 configs, 1,410,823 rows, 563.7 MB | M2 |
+| `current`: labels / rows / MB | 19,820 / 692,539 / 315.6 | M2 |
+| `unlisted`: labels / rows / MB | 15,396 / 521,401 / 231.6 | M2 |
+| `nci`: summary pages / rows / MB | 756 / 196,784 / 16.5 | M2 |
+| `excluded_otc` | 99 labels | M2 |
+| text rows held back (a copyright mark) | 68,198 | M2 |
+| against 0.1.0: new labels / left scope / withdrawn | 41 / 2 / 0 | U |
+| against 0.1.0: changed texts / new versions with the same texts / record fields only | 126 / 125 / 181 | U |
+| moved `unlisted` to `current` / `current` to `unlisted` | 7 / 0 | U |
+| structure rows carried / read from the update files | 218,832 / 2,721 | U |
+| easy-access files | 21 files, 789.8 MB | M2 |
+
+Reading levels of 0.2.0 (M2, `facts.reading_levels`; the card's table, computed from the
+version's own files; medians over distinct texts, shares above grade 8):
+
+| | Flesch-Kincaid | SMOG | above grade 8, FK / SMOG | texts with a grade |
+|---|---:|---:|---:|---:|
+| Medication Guides, `current`, from structure | 8.67 | 11.10 | 71.9% / 99.2% | 7,105 |
+| the same guides, from the JSON | 10.86 | 12.94 | 95.0% / 99.5% | 7,150 |
+| Medication Guides, `unlisted`, from the JSON | 10.70 | 12.85 | 93.1% / 99.5% | 4,808 |
+| patient package inserts, `current`, from structure | 8.58 | 11.21 | 66.8% / 99.5% | 4,551 |
+| NCI patient summaries (English) | 8.65 | 11.11 | 83% / 100% | 147 |
+| NCI health-professional summaries (English) | 13.49 | 15.08 | 100% / 100% | 242 |

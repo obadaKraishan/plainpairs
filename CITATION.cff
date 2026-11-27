@@ -65,8 +65,8 @@ references:
         affiliation: "College of Media and Communication, Texas Tech University"
         orcid: "https://orcid.org/0009-0007-7180-8620"
     year: 2026
-    version: "0.1.0"
-    date-released: "2026-11-16"
+    version: "0.2.0"
+    date-released: "2026-11-27"
     publisher:
       name: "Hugging Face"
     url: "https://huggingface.co/datasets/obadakr/plainpairs"

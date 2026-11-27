@@ -264,7 +264,10 @@ def test_card_kaggle_and_citation_file_cite_the_same_version(made, tmp_path):
     refs = read_cff(Path("CITATION.cff").read_text(encoding="utf-8"))["references"]
     (data,) = [r for r in refs if r["type"] == "data"]
     assert data["title"] == pack.TITLE and data["year"] == m["created"][:4]
-    assert data["version"] == m["version"] and data["url"] == pack.HF_URL
+    from plainpairs import __version__
+
+    # CITATION.cff names the current release, whose number the package carries.
+    assert data["version"] == __version__ and data["url"] == pack.HF_URL
     assert data["publisher"] == {"name": "Hugging Face"}
     names = [(a["family-names"], a["given-names"]) for a in data["authors"]]
     assert names == [("Kraishan", "Obada")]

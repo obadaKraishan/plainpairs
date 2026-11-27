@@ -13,9 +13,11 @@ It is built for health literacy, health communication and risk communication res
 studies how official patient information is written: how long it is, how hard it is to read,
 how it words numbers and risks, and how it differs from the professional text it comes from.
 
-**Status: version 0.1.0, released on 2026-11-16.** The corpus is on Hugging Face,
-[`obadakr/plainpairs`](https://huggingface.co/datasets/obadakr/plainpairs) (tag `v0.1.0`; its
-card says how to load each table), with a mirror on Kaggle,
+**Status: version 0.2.0, released on 2026-11-27,** the first weekly update (from the openFDA
+export of 2026-11-26). The corpus is on Hugging Face,
+[`obadakr/plainpairs`](https://huggingface.co/datasets/obadakr/plainpairs) (tag `v0.2.0`; its
+card starts with "Start here": which file to open, a CSV and an Excel workbook for readers who
+do not use Parquet, and how to load each table), with a mirror on Kaggle,
 [`obadakraishan/plainpairs`](https://www.kaggle.com/datasets/obadakraishan/plainpairs). The
 weekly update is built and not yet switched on. The method, the source terms and the drafts are
 in [`docs/`](docs/).
@@ -96,10 +98,10 @@ If you use PlainPairs, please cite the paper:
 To name the exact data you used, also give the dataset and its version:
 
 > Kraishan, O. (2026). PlainPairs: a research corpus pairing the prescriber and patient texts of
-> US medicine labels (Version 0.1.0) [Data set]. Hugging Face.
+> US medicine labels (Version 0.2.0) [Data set]. Hugging Face.
 > <https://huggingface.co/datasets/obadakr/plainpairs>
 
-That is version 0.1.0; the dataset's card gives the citation of each version. Please also give
+That is version 0.2.0; the dataset's card gives the citation of each version. Please also give
 the sources' credit lines (in the card and in `LICENSES.md`). The software and
 documents are archived on Zenodo, with no data table:
 <https://doi.org/10.5281/zenodo.24267450>. This DOI stands for all versions and resolves to the

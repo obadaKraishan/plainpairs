@@ -6,6 +6,17 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
+The first weekly update and the first version with the easy-access files. The corpus, version
+0.2.0, is on Hugging Face with the tag `v0.2.0`: built from the openFDA drug label export of
+2026-11-26, with DailyMed's full release of 2026-11-13 and its update files through 2026-11-25;
+16 configs, 1,410,823 rows, 563.7 MB of Parquet, and 21 easy-access files (789.8 MB). Against
+0.1.0: 41 new labels, 2 that left scope, none withdrawn, 126 with changed texts, 125 new
+versions with the same texts, 181 changes to record fields only; 7 labels moved from
+`unlisted` to `current`. The NCI configuration is carried over unchanged (the same SHA-256).
+It was delivered as a pull request on the dataset, which the maintainer merged.
+
 ### Added
 - `docs/paper-facts.md`: every figure the card and the method give for version 0.1.0 (sizes per
   configuration, the switch, reading levels per configuration and basis, the trusted codes and
@@ -61,6 +72,10 @@ All notable changes to this project are recorded here. The format follows
   Hugging Face).
 
 ### Changed
+- The README, `CITATION.cff` (the dataset's version under `references`), `.zenodo.json` (its
+  `version`) and the package name version 0.2.0; `docs/data-card.md` gains a "Version 0.2.0"
+  section and `docs/paper-facts.md` a separate 0.2.0 section (0.1.0's figures, which the paper
+  cites, stay as they are).
 - The card's reading-level table is computed from each version's own files (0.1.0's figures
   were fixed in the template and would have been shown under a later export's date; the
   computation gives 0.1.0's figures exactly on its pack, and 0.1.0's card is unchanged).
