@@ -134,7 +134,12 @@ bytes, inside the caps of 120 calls and 4 GB. Free space on the runner was 87 GB
 84 GB after the update and 82 GB after the pack. It built 0.2.1 from the export of 2026-11-27
 (3 labels with record fields changed only), and every check passed: the release check (0
 problems), the pack check and the card validator. The two delivery steps were skipped and no
-issue was opened.
+issue was opened. The first run with delivery on (the same day, run 46021762042, after the
+switch-on) took 53 min 43 s, 2,803 s of it in the update. It read the same export and the same
+DailyMed file (19 calls, the same bytes, the same free space) and built the same 0.2.1. It
+opened the draft pull request #2 "PlainPairs 0.2.1" on the dataset, and its signed-out check
+found 40 of 40 files matching the pack by hash and none extra. The maintainer published and
+merged it as the dataset commit "PlainPairs 0.2.1 (#2)".
 
 **Switched on and off.** The schedule (Mondays, 07:23 UTC) and `DELIVERY_ENABLED: "true"` change
 together, in one pull request (a test checks it). They were switched on on 2026-11-27; the first
