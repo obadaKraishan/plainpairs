@@ -1,8 +1,9 @@
 # PlainPairs data card
 
-Version 0.1.0 is public on Hugging Face (`obadakr/plainpairs`, tag `v0.1.0`, 16 configs,
-1,409,294 rows, 563.0 MB) and mirrored on Kaggle (`obadakraishan/plainpairs`). Sizes are those
-of the build from the openFDA drug label export of 2026-11-13.
+Version 0.2.0 is public on Hugging Face (`obadakr/plainpairs`, tag `v0.2.0`, 16 configs,
+1,410,823 rows, 563.7 MB of Parquet, and 21 easy-access files) and mirrored on Kaggle
+(`obadakraishan/plainpairs`). Its figures are in "Version 0.2.0" below; the other sections give
+version 0.1.0's (tag `v0.1.0`), from the build of the openFDA drug label export of 2026-11-13.
 
 ## What it is
 A research record of how United States medicine labels are worded for two readers. For every
@@ -45,6 +46,33 @@ and states:
 
 > Do not rely on openFDA to make decisions regarding medical care. Always speak to your health
 > provider about the risks and benefits of FDA-regulated products.
+
+## Version 0.2.0 (export of 2026-11-26)
+The first weekly update: the openFDA drug label export of 2026-11-26 (14 parts, 265,067 labels
+listed), DailyMed's full release of human prescription labels of 2026-11-13 with its update
+files through 2026-11-25 (the weekly file of 2026-11-16 to 20 and the daily files of 11-23 to
+11-25), the NDC directory of 2026-11-26 and DailyMed's label list of 2026-11-27. The NCI
+configuration is carried over from 0.1.0 unchanged (its three files have the same SHA-256).
+
+| | `current` | `unlisted` | `nci` |
+|---|---:|---:|---:|
+| labels, or summary pages | 19,820 | 15,396 | 756 |
+| rows, all tables of the configuration | 692,539 | 521,401 | 196,784 |
+| Parquet, MB | 315.6 | 231.6 | 16.5 |
+
+`excluded_otc` lists 99 labels. Text rows held back because the label shows a copyright mark:
+68,198. Against 0.1.0, by set id: 41 new labels; 2 that left scope (still in the export, no
+longer in a prescription format with a guide or an insert); none withdrawn; 126 with changed
+texts; 125 new versions with the same texts; 181 with changes to record fields only (the
+source's `openfda` block 170, the NDC listing 170, the DailyMed listing 26). 7 labels moved
+from `unlisted` to `current` and none the other way.
+
+From this version on, each version also holds the easy-access files (`docs/schema.md`): a
+start-here CSV of the `current` labels (19,820 rows) and the same rows in Excel, a seeded
+1,000-pair workbook with both texts side by side (13 cells cut at Excel's limit), `fields.csv`,
+`codebook.csv` and a gzipped CSV beside each Parquet file (21 files, 789.8 MB). On Kaggle the
+CSVs are unpacked, and the two `text_prescriber` CSVs (over 500 MB unpacked) are left out
+there.
 
 ## Honest sizes (export of 2026-11-13)
 | | count |
@@ -224,7 +252,8 @@ figures as if they were one corpus.
 The source holds only the current version of each label. This corpus's history therefore
 starts with its first release, version 0.1.0 (built from the export of 2026-11-13, released on
 2026-11-16): each weekly release records the export date it was built from, and labels that
-change or leave the source can be followed from then on. Older versions exist
+change or leave the source can be followed from then on. Version 0.2.0 (built from the export
+of 2026-11-26, released on 2026-11-27) is the first weekly release. Older versions exist
 on DailyMed's labeling archives but are not part of this corpus.
 
 The record matters now because a proposed rule (88 FR 35694, 2023) would replace Medication
@@ -255,7 +284,7 @@ If you use PlainPairs, please cite the paper:
 To name the exact data you used, also give the dataset and its version:
 
 > Kraishan, O. (2026). PlainPairs: a research corpus pairing the prescriber and patient texts of
-> US medicine labels (Version 0.1.0) [Data set]. Hugging Face.
+> US medicine labels (Version 0.2.0) [Data set]. Hugging Face.
 > <https://huggingface.co/datasets/obadakr/plainpairs>
 
 Please also cite the source with its credit line above. The software and documents are archived
