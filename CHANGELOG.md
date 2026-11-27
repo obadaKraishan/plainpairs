@@ -6,6 +6,14 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+- `plainpairs.weekly`: the weekly run's own steps on GitHub Actions. `next-version` (0.2.0 to
+  0.2.1); `report` (the run's counts in Markdown, from named fields of `summary.json`, the
+  manifest and the usage log only, for the job summary, the stop issue and the pull request's
+  description); `pr-check` (signed out, it refuses when a token is visible: the open pull
+  request "PlainPairs VERSION" on the dataset holds the pack's files by hash, and nothing
+  else). huggingface_hub is imported only when the check runs; it is not a dependency.
+
 ### Changed
 - `update` takes DailyMed's weekly file whenever it reaches into the span, and a daily file only
   for a day no chosen weekly file covers. A week that DailyMed lists both ways for a while (the
