@@ -92,6 +92,8 @@ def report(
             f"- openFDA drug label export: {s.get('listed_export')} (the last version's: "
             f"{s.get('previous_export')})"
         )
+    if s.get("stopped_because"):
+        lines.append(f"- the update stopped: {s['stopped_because'].replace('_', ' ')}")
     if s.get("status") == "no_new_export":
         lines.append("- nothing new: no export newer than the last version's is listed")
     cov = s.get("dailymed_coverage")

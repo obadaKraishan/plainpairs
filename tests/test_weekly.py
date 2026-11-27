@@ -60,6 +60,10 @@ def test_the_report_holds_counts_only():
         {"status": "no_new_export", "listed_export": "2026-11-27", "previous_export": "2026-11-27"}
     )
     assert "nothing new" in nothing and "delivery: off" in nothing
+    cov = weekly.report({"status": "stopped", "stopped_because": "dailymed_update_files_missing"})
+    assert (
+        "status: stopped" not in cov and "the update stopped: dailymed update files missing" in cov
+    )
 
 
 def test_the_usage_log_is_counted_since_the_run_started(tmp_path):
