@@ -2,6 +2,7 @@
 prompts/
 reports/
 CLAUDE.md
+AGENTS.md
 .claude/
 docs/session-log.md
 docs/roadmap.md
