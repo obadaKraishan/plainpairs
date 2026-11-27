@@ -98,7 +98,8 @@ def test_a_week_listed_both_ways_is_read_once_from_its_weekly_file():
 
 
 def test_thanksgiving_with_no_file_never_stops_a_run():
-    """2026-11-26 has no DailyMed file. None of the pages the next runs may meet stops them."""
+    """A holiday with no DailyMed file (invented: DailyMed did list one for 2026-11-26, a day
+    later). None of the pages the next runs may meet stops them."""
     weeks = [_week("2026-11-09", "2026-11-13"), _week("2026-11-16", "2026-11-20", "w1120")]
     # 2026-11-27: the week is listed day by day, with no file for 11-26 (and none yet for 11-27).
     page = [*weeks, _day("2026-11-23"), _day("2026-11-24"), _day("2026-11-25")]

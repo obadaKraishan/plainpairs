@@ -32,8 +32,17 @@ All notable changes to this project are recorded here. The format follows
   for a day no chosen weekly file covers. A week that DailyMed lists both ways for a while (the
   new weekly file and the old daily files) is read once and never counts as missing; before,
   the weekly file was dropped and two days of it would have stopped every run that week. A
-  weekday with no file at all (2026-11-26, Thanksgiving) stops no run (tests for each page
-  state).
+  weekday with no file at all (a holiday, or a day whose file is not listed yet) stops no run
+  (tests for each page state; DailyMed did list a daily file for 2026-11-26, Thanksgiving, by
+  the afternoon of 11-27).
+- The weekly report's DailyMed line says "weekdays after D through E", which is what it counts.
+- `docs/automation.md`: the runner's disk as measured (87 GB free at the start, not 14 GB), the
+  weekly run's structure rebuilt from the published tables, and the first runs' figures.
+- The README and the data card name version 0.2.1 (the export of 2026-11-27), the first version
+  the weekly workflow built and delivered, published as the dataset commit "PlainPairs 0.2.1
+  (#2)"; the data card gives its figures.
+- The weekly workflow's delivery step says only that the Hub accepts the token.
+- `.gitignore` covers `AGENTS.md`, like `CLAUDE.md`.
 
 ### Added
 - The Zenodo DOI of version 0.2.0 of the software and documents (10.5281/zenodo.24576965),

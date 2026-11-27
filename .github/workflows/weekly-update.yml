@@ -196,7 +196,8 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/hf-deliver"
           export HF_HOME="$RUNNER_TEMP/hf-deliver"
-          uvx --from "$HUB_CLIENT" hf auth whoami | awk 'NR == 1 { print "the token belongs to: " $0 }'
+          uvx --from "$HUB_CLIENT" hf auth whoami > /dev/null
+          echo "the Hub accepts the token"
           uvx --from "$HUB_CLIENT" hf upload "$DATASET" "$RUNNER_TEMP/next" . --repo-type dataset \
             --create-pr --delete "*" --commit-message "PlainPairs $VERSION" \
             --commit-description "$(cat "$RUNNER_TEMP/report.md")" > /dev/null

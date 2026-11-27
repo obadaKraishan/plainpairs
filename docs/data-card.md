@@ -1,9 +1,12 @@
 # PlainPairs data card
 
-Version 0.2.0 is public on Hugging Face (`obadakr/plainpairs`, tag `v0.2.0`, 16 configs,
-1,410,823 rows, 563.7 MB of Parquet, and 21 easy-access files) and mirrored on Kaggle
-(`obadakraishan/plainpairs`). Its figures are in "Version 0.2.0" below; the other sections give
-version 0.1.0's (tag `v0.1.0`), from the build of the openFDA drug label export of 2026-11-13.
+Version 0.2.1, the first version the weekly workflow built, is the newest on Hugging Face
+(`obadakr/plainpairs`, the dataset commit "PlainPairs 0.2.1 (#2)"; weekly versions are not
+tagged). Version 0.2.0 (tag `v0.2.0`, 16 configs, 1,410,823 rows, 563.7 MB of Parquet, and 21
+easy-access files) is the newest minor version and the one mirrored on Kaggle
+(`obadakraishan/plainpairs`). Their figures are in "Version 0.2.1" and "Version 0.2.0" below;
+the other sections give version 0.1.0's (tag `v0.1.0`), from the build of the openFDA drug
+label export of 2026-11-13.
 
 ## What it is
 A research record of how United States medicine labels are worded for two readers. For every
@@ -46,6 +49,22 @@ and states:
 
 > Do not rely on openFDA to make decisions regarding medical care. Always speak to your health
 > provider about the risks and benefits of FDA-regulated products.
+
+## Version 0.2.1 (export of 2026-11-27)
+The first version built and delivered by the weekly workflow (`docs/automation.md`), published
+on 2026-11-27 as the dataset commit "PlainPairs 0.2.1 (#2)". It is built from the openFDA drug
+label export of 2026-11-27 (14 parts) and DailyMed's full release of 2026-11-13 with its update
+files through 2026-11-26 (the daily file of 11-26), plus the NDC directory and DailyMed's label
+list, both read on 2026-11-27. The NCI configuration is carried over unchanged (its three files
+have the same SHA-256 as in 0.1.0 and 0.2.0).
+
+Every table has as many rows as in 0.2.0: 16 files, 1,410,823 rows and 563.7 MB of Parquet;
+19,820 labels in `current`, 15,396 in `unlisted`, 756 summary pages in `nci` and 99 in
+`excluded_otc`; 68,198 text rows held back. Against 0.2.0, by set id: no new label, none
+withdrawn, none that left scope, none with changed texts and no new version with the same
+texts; 3 labels with changes to record fields only. No label moved between configurations.
+Every label file's SHA-256 differs from 0.2.0's all the same, because each row names the export
+it was built from.
 
 ## Version 0.2.0 (export of 2026-11-26)
 The first weekly update: the openFDA drug label export of 2026-11-26 (14 parts, 265,067 labels
@@ -253,7 +272,8 @@ The source holds only the current version of each label. This corpus's history t
 starts with its first release, version 0.1.0 (built from the export of 2026-11-13, released on
 2026-11-16): each weekly release records the export date it was built from, and labels that
 change or leave the source can be followed from then on. Version 0.2.0 (built from the export
-of 2026-11-26, released on 2026-11-27) is the first weekly release. Older versions exist
+of 2026-11-26, released on 2026-11-27) is the first weekly release, and version 0.2.1 (the
+export of 2026-11-27, the same day) the first that the weekly workflow built. Older versions exist
 on DailyMed's labeling archives but are not part of this corpus.
 
 The record matters now because a proposed rule (88 FR 35694, 2023) would replace Medication
