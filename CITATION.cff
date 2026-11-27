@@ -25,6 +25,9 @@ identifiers:
     value: 10.5281/zenodo.24267450
     description: "The software and documents on Zenodo, all versions"
   - type: doi
+    value: 10.5281/zenodo.24576965
+    description: "The software and documents on Zenodo, version 0.2.0"
+  - type: doi
     value: 10.5281/zenodo.24267451
     description: "The software and documents on Zenodo, version 0.1.0"
 repository-code: "https://github.com/obadaKraishan/plainpairs"

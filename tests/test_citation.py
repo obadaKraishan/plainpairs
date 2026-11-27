@@ -185,7 +185,11 @@ def test_citation_cff_parses_and_prefers_the_paper():
     assert [a["orcid"] for a in c["authors"]] == [ORCID]
     # The software's own DOI and identifiers stay; the dataset's version is a reference.
     assert c["doi"] == pack.SOFTWARE_DOI
-    assert [i["value"] for i in c["identifiers"]] == [pack.SOFTWARE_DOI, "10.5281/zenodo.24267451"]
+    assert [i["value"] for i in c["identifiers"]] == [
+        pack.SOFTWARE_DOI,
+        "10.5281/zenodo.24576965",  # version 0.2.0
+        "10.5281/zenodo.24267451",  # version 0.1.0
+    ]
     (data,) = [r for r in c["references"] if r["type"] == "data"]
     assert data["title"] == pack.TITLE and data["url"] == pack.HF_URL
     assert data["authors"] == c["authors"]

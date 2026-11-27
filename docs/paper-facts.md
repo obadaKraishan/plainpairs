@@ -203,7 +203,8 @@ Section pairs per configuration: `current` 143,885, `unlisted` 106,944 (M).
 ## Version 0.2.0 (the first weekly update; separate from the figures above)
 The paper describes version 0.1.0, so every section above keeps 0.1.0's figures. Version 0.2.0's
 come from **M2**, its `manifest.json` (Hugging Face `obadakr/plainpairs`, tag `v0.2.0`, built
-2026-11-27), and **U**, the update's `summary.json` (counts only).
+2026-11-27), **U**, the update's `summary.json` (counts only), and **Z2**, the Zenodo record of the
+GitHub release `v0.2.0`, <https://zenodo.org/records/24576965>.
 
 | figure | value | from |
 |---|---|---|
@@ -223,6 +224,7 @@ come from **M2**, its `manifest.json` (Hugging Face `obadakr/plainpairs`, tag `v
 | moved `unlisted` to `current` / `current` to `unlisted` | 7 / 0 | U |
 | structure rows carried / read from the update files | 218,832 / 2,721 | U |
 | easy-access files | 21 files, 789.8 MB | M2 |
+| software and documents on Zenodo, version 0.2.0 | DOI 10.5281/zenodo.24576965 (record 24576965, published 2026-11-27; all versions 10.5281/zenodo.24267450) | Z2 |
 
 Reading levels of 0.2.0 (M2, `facts.reading_levels`; the card's table, computed from the
 version's own files; medians over distinct texts, shares above grade 8):
