@@ -13,6 +13,16 @@ All notable changes to this project are recorded here. The format follows
   description); `pr-check` (signed out, it refuses when a token is visible: the open pull
   request "PlainPairs VERSION" on the dataset holds the pack's files by hash, and nothing
   else). huggingface_hub is imported only when the check runs; it is not a dependency.
+- The weekly workflow (`.github/workflows/weekly-update.yml`), rebuilt on one job that builds,
+  checks and delivers in the environment `release`: it stops on an open removal request or an
+  open pull request on the dataset; downloads only the ten files the update reads; runs
+  `update --from-pack`, `release build`, `release check` and Hugging Face's card validator;
+  writes the report; delivers with `hf upload --create-pr` (the only step that reads
+  `HF_TOKEN`); and checks the pull request signed out by hash. A stop or a failure opens
+  "Weekly update stopped" (`.github/workflows/failure-issue.yml`). Still switched off.
+  `docs/automation.md` describes the workflow as built (no longer a sketch).
+- The card's "Start here" says how to load a weekly version: by the commit titled "PlainPairs
+  0.2.N (#K)" (`revision=`), since weekly versions are not tagged.
 
 ### Changed
 - `update` takes DailyMed's weekly file whenever it reaches into the span, and a daily file only

@@ -1,0 +1,55 @@
+name: Failure issue
+
+# Opens an issue in this repository when the weekly update stops or fails (or adds a comment to
+# the one already open), so a stop never goes unseen. Called by the weekly update. The text is
+# the run's report: counts, dates, names and hashes only, never label or summary text and never
+# a secret. While delivery is off (enabled is false), it writes the would-be issue to the run's
+# summary and opens nothing.
+
+on:
+  workflow_call:
+    inputs:
+      title:
+        type: string
+        required: true
+      body:
+        type: string
+        required: true
+      enabled:
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  issue:
+    name: Open or update the issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # to open the issue, or comment on the one already open
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ inputs.title }}
+          BODY: ${{ inputs.body }}
+          ENABLED: ${{ inputs.enabled }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          text="$(printf '%s\n\nRun: %s\n' "$BODY" "$RUN_URL")"
+          if [ "$ENABLED" != "true" ]; then
+            {
+              echo "Delivery is off: no issue was opened. It would have said:"
+              echo
+              printf '%s\n' "$text"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          open="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "$text"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$text"
+          fi

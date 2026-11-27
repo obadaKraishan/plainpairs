@@ -1,8 +1,11 @@
-# Automation sketch (nothing built)
+# Automation
 
-**A sketch for the release.** A weekly run that reads the newest export, finds new and changed labels,
-and delivers the next dataset version as a pull request on the Hugging Face dataset, published
-only when the maintainer merges it (the pattern the CommonsWire weekly update uses).
+A weekly run reads the newest export, finds new and changed labels, builds the next dataset
+version and delivers it as a **draft pull request** on the Hugging Face dataset, which is
+published only when the maintainer reads it and merges it (the pattern of the CommonsWire
+weekly update). It runs on GitHub Actions: `.github/workflows/weekly-update.yml`, with the stop
+issue in `.github/workflows/failure-issue.yml`. Version 0.2.0 was the first weekly update, built
+and delivered from the maintainer's Mac; the workflow builds 0.2.1 and every version after it.
 
 ## What the source allows and requires
 - The label data are updated weekly (dataset page: "Frequency Weekly"); the export of
@@ -14,8 +17,9 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
   requests without a key (1,000 a day); no key is needed.
 
 ## The weekly run
-1. **When.** A GitHub Actions schedule a day or two after the usual export day (the next run
-   time is set from the `export_date` history at release), plus a manual button.
+1. **When.** A GitHub Actions schedule, Mondays at 07:23 UTC, plus a button to run it by hand.
+   openFDA now lists a new export most days (2026-11-26 and 2026-11-27), so each run takes the
+   newest.
 2. **Check for a new export.** Read `download.json`; if `export_date` equals the last release's,
    stop with nothing to do.
 3. **Download.** The 14 parts, one at a time, each streamed and checked against its size; the
@@ -54,50 +58,89 @@ only when the maintainer merges it (the pattern the CommonsWire weekly update us
      copyright mark appearing or disappearing (which moves text in or out under the switch);
    - **left the scope or withdrawn:** a set id no longer in the corpus, told apart by the
      export's full list of set ids (`export_ids.parquet`): still in the export but out of
-     scope, or gone from the source; kept in the release with its last export date, flagged,
-     unless the maintainer decides otherwise;
+     scope, or gone from the source. Such a label is counted, and it is not in the new
+     version's tables (its rows stay in the earlier versions);
    - **unchanged:** carried over as it is.
    The comparison writes one small table per release (`changes`: set id, old and new version,
    what changed), so the history of wording is itself a dataset. `plainpairs changes --old
    <last build> --new <this build>` does this now; the schema is in `docs/schema.md`.
-7. **Checks before delivery:** counts within expected bounds of the last release (a sudden drop
-   of more than a few percent stops the run), every row valid against the models, no duplicate
-   keys, measures recomputed for changed rows only, a summary of changes.
-8. **Deliver** as a pull request on the Hugging Face dataset, with the change summary in its
-   description, from a token that can only open pull requests; the maintainer merges it to
-   publish. A failed run opens an issue in this repository.
+7. **Checks before delivery:** DailyMed's coverage (a weekday its listed files no longer cover
+   stops the run before any download); the release check of the build (`docs/schema.md`,
+   "Release rules"); the pack check, with the easy-access layer row for row; Hugging Face's card
+   validator; open removal requests and open pull requests on the dataset. Not built: a limit on
+   how far the counts may fall from one version to the next.
+8. **Deliver** as a draft pull request on the Hugging Face dataset, with the run's report (counts
+   only) as its description, from a token that can read the dataset and open pull requests on
+   it, nothing more; then the pull request is checked signed out by hash. The maintainer reads
+   it and merges it to publish. A run that stops or fails opens an issue in this repository.
 9. **Kaggle mirror and Zenodo:** by hand, monthly and at minor releases, as for CommonsWire.
 
 ## Versions over time
 The source keeps only the current version of each label, so the weekly releases become the
 record of how label wording changes (for example under a final Patient Medication Information
-rule). Each release lists the export date it was built from, and the `labels` table keeps
-`first_seen` and `last_seen` per version.
+rule). Each version names the export it was built from (`export_date` in every row, and the
+manifest's `sources`), and each update counts what changed against the version before it (the
+run's report, in the pull request's description). The tables hold no first-seen or last-seen
+dates: a label's history is read across versions.
 
 ## Guards
-- `RELEASE_APPROVED` in the repository root before the first publication; a `DELIVERY_ENABLED`
-  switch in the workflow, off until the maintainer turns it on.
-- Actions pinned to commit SHAs; the token scoped to the one dataset and to pull requests.
+- A weekly version reaches the dataset only as a draft pull request, which the maintainer
+  publishes and merges; the workflow's token cannot write to `main` or tag.
+- `DELIVERY_ENABLED` in the workflow, and the schedule with it; a removal request or a pull
+  request still open on the dataset stops the next delivery.
+- Actions pinned to commit SHAs; `HF_TOKEN` read in one step only.
 - No model calls in the weekly run.
 
-## The route (2026-11-15)
-`plainpairs update` does the weekly run (`--from-pack` starts it from the published version:
-the record layer is public data, and the structure of every unchanged `current` label is read
-back from its measures). The workflow `.github/workflows/weekly-update.yml` runs it on GitHub
-Actions; it is **switched off** (no schedule, no delivery) until the repository is public.
+## The workflow (2026-11-27)
+One job, `update`, builds, checks and delivers, because jobs share no disk. It runs in the
+environment `release` (deployments from `main` only), which holds the secret `HF_TOKEN`: a
+fine-grained Hugging Face token for `obadakr/plainpairs` only, with read access and "Open pull
+requests", and no write. Its steps:
 
-| | needs |
-|---|---|
-| disk | about 6 to 8 GB: openFDA's 14 parts (1.9 GB), DailyMed's daily updates for the week (about 0.7 GB), the last pack (0.56 GB) and two builds; a standard runner has 14 GB free |
-| memory | the build's workers (about 120 MB each) and the pack writer, which holds one text table at a time (about 2 GB); a standard public runner has 16 GB, a private one 7 GB |
-| time | two builds, the codes and the pack: about 20 minutes on this project's laptop with six workers; an estimated 50 to 60 minutes on a four-core public runner, 90 on a two-core private one (not yet measured on a runner) |
-| minutes | free once the repository is public; while it is private, about 90 billed minutes a run, about 390 a month, which this account's private quota cannot carry |
-| secrets | `HF_TOKEN` in the environment `release`, able to open pull requests on `obadakr/plainpairs` only, for the delivery job |
+1. check out the repository (no saved credentials), set up uv and Python 3.12 (no cache) and
+   install the locked project;
+2. count what must stop a delivery: open removal requests on the repository (issues labelled
+   `takedown`) and open pull requests on the dataset. With delivery on, either one stops the
+   run before it builds anything;
+3. download the published version anonymously, only the ten files `--from-pack` reads (the
+   manifest, each configuration's labels, patient texts and section pairs, and the NCI tables:
+   58 MB for 0.2.0), and name the next version (`python -m plainpairs.weekly next-version`:
+   the last number raised, 0.2.0 to 0.2.1);
+4. `plainpairs update --from-pack` with four workers and the caps of 120 calls and 4 GB,
+   counted from the step's start;
+5. if the update is ready: `release build` and `release check` (the pack on its own, with its
+   easy-access layer row for row), then Hugging Face's own card validator;
+6. the run's report (`python -m plainpairs.weekly report`): counts, dates, names and hashes only,
+   from named fields of `summary.json`, the manifest and the usage log. It is the job summary,
+   the stop issue's body and the pull request's description;
+7. **deliver** (delivery on, the update ready): the only step that reads `HF_TOKEN`, in its own
+   `env`. `hf auth whoami`, then `hf upload ... --create-pr`, which opens a draft pull request
+   titled "PlainPairs VERSION" with the report as its description;
+8. **check** the pull request signed out (no token in the step, an empty `HF_HOME`):
+   `python -m plainpairs.weekly pr-check` finds the open pull request by its title and compares
+   every file of `refs/pr/N` with the pack by hash (data and easy-access files by LFS SHA-256
+   and size or by git blob id; README, LICENSES and the manifest by blob id), and fails on any
+   file the pack does not have.
 
-So: **a standard runner can do it**, once the repository is public. Until then the weekly run
-is done from the maintainer's Mac with the same command (`plainpairs update --work ...`), and
-delivered with the publish script's `update` step. The first real run waits for openFDA's next
-export after 2026-11-13 (none was listed on 2026-11-15).
+A second job, `report`, runs when the first fails or stops: it calls `failure-issue.yml`, which
+opens an issue titled "Weekly update stopped", or comments on the one already open, with the
+report (counts only). While delivery is off, it writes the would-be issue to the job summary.
+
+**Switched on and off.** The schedule (Mondays, 07:23 UTC) and `DELIVERY_ENABLED: "true"` change
+together, in one pull request (a test checks it). Setting `DELIVERY_ENABLED` back to "false"
+makes every run a dry run: it builds and checks, uploads nothing and opens no issue. A run can
+always be started by hand from the Actions tab.
+
+**Versions.** Weekly versions (0.2.1, 0.2.2, ...) are not tagged (the token cannot tag): each is
+the dataset commit titled "PlainPairs 0.2.N (#K)", and its manifest names it. Minor versions
+(0.2.0, 0.3.0) are built and tagged by hand from the Mac with the publish script, with a GitHub
+release and a Zenodo record. The Kaggle mirror is not updated from here: it gets a new version
+by hand, about monthly.
+
+**Never.** No job runs on pull requests, so a fork's pull request never reaches the workflow or
+its secret. Every action is pinned to a full commit SHA. Nothing is uploaded as an artifact.
+Logs, the job summary, the issue and the pull request's description hold no label or summary
+text. The workflow uses no model and no paid service.
 
 ## Text from NCI's cancer information summaries (configuration `nci`)
 NCI updates its summaries one at a time, each with its own "Updated" date, and its sitemap's

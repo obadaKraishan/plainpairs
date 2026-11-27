@@ -7,7 +7,8 @@ import pyarrow.parquet as pq
 
 from plainpairs import tables, update
 from tests.label_samples import PLR_WITH_GUIDE
-from tests.test_release import write_structure
+from tests.test_pack import made  # noqa: F401  (the fixture)
+from tests.test_release import built, write_structure  # noqa: F401
 from tests.test_tables import records, write_export
 
 H = "https://dailymed-data.nlm.nih.gov/public-release-files/"
@@ -265,9 +266,9 @@ def test_the_update_records_the_full_release_and_the_last_day_read(tmp_path):
     assert s["status"] == "ready"
     assert s["dailymed_full_release"] == "2026-11-13"
     assert s["dailymed_updates_through"] == "2026-11-24"  # not the export day: no file for it
-    built = json.loads((tmp_path / "work" / "tables" / "build_summary.json").read_text())
-    assert built["structure"]["release_date"] == "2026-11-24"
-    assert built["dailymed"] == {
+    written = json.loads((tmp_path / "work" / "tables" / "build_summary.json").read_text())
+    assert written["structure"]["release_date"] == "2026-11-24"
+    assert written["dailymed"] == {
         "full_release": "2026-11-13",
         "updates_through": "2026-11-24",
         "update_files": ["w", "d1", "d2"],
@@ -305,13 +306,45 @@ def test_previous_from_a_pack(tmp_path):
     assert (tdir / "nci_text.parquet").exists() and (tdir / "nci_summaries.parquet").exists()
 
 
-def test_the_weekly_workflow_is_switched_off_and_pinned():
-    import re
+def _active(path):
     from pathlib import Path
 
-    wf = Path(".github/workflows/weekly-update.yml").read_text(encoding="utf-8")
-    active = "\n".join(line for line in wf.splitlines() if not line.lstrip().startswith("#"))
-    assert "schedule:" not in active and 'DELIVERY_ENABLED: "false"' in active
-    assert "permissions: {}" in active and "if: false" in active
-    for uses in re.findall(r"uses: (\S+)", active):
-        assert re.fullmatch(r"[\w./-]+@[0-9a-f]{40}", uses), uses
+    text = Path(path).read_text(encoding="utf-8")
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+
+
+def test_the_weekly_workflow_is_one_job_with_the_token_in_one_step():
+    import re
+
+    wf = _active(".github/workflows/weekly-update.yml")
+    # every action pinned to a full commit SHA (the stop issue's workflow is local)
+    for uses in re.findall(r"uses: (\S+)", wf):
+        assert uses.startswith("./.github/workflows/") or re.fullmatch(
+            r"[\w./-]+@[0-9a-f]{40}", uses
+        ), uses
+    assert "\npermissions: {}\n" in wf and "pull_request" not in wf.split("\njobs:")[0]
+    assert "upload-artifact" not in wf and wf.count("environment: release") == 1
+    # HF_TOKEN is read in exactly one place: the delivery step's own env
+    assert wf.count("secrets.HF_TOKEN") == 1
+    steps = re.split(r"\n      - ", wf.split("\n  report:")[0])
+    holder = [st for st in steps if "secrets.HF_TOKEN" in st]
+    assert len(holder) == 1 and holder[0].startswith("name: Deliver as a draft pull request")
+    assert "--create-pr" in holder[0]
+    check = next(st for st in steps if st.startswith("name: Check the pull request signed out"))
+    assert "HF_TOKEN" not in check and "pr-check" in check
+    # switched on and off as one: the schedule exactly when delivery is on
+    on = re.search(r'^  DELIVERY_ENABLED: "(true|false)"$', wf, re.M).group(1)
+    assert ("schedule:" in wf.split("\npermissions:")[0]) == (on == "true")
+    assert "--max-calls 120 --max-bytes 4000000000" in wf
+    issue = _active(".github/workflows/failure-issue.yml")
+    assert "\npermissions: {}\n" in issue and "issues: write" in issue
+    assert "contents: write" not in issue and "secrets." not in issue
+
+
+def test_the_card_says_how_to_load_a_weekly_version(made):  # noqa: F811
+    from plainpairs import access
+
+    _out, p, m = made
+    card = (p / "README.md").read_text(encoding="utf-8")
+    assert "**Which version.**" in card and 'revision="COMMIT"' in card
+    assert "**Which version.**" not in access.start_here_section(m, kaggle=True)
