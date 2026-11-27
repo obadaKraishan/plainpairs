@@ -198,7 +198,7 @@ def test_the_command_line(made, tmp_path, capsys):  # noqa: F811
 
 
 def test_the_check_refuses_when_a_token_is_visible(monkeypatch):
-    hub = pytest.importorskip("huggingface_hub")
-    monkeypatch.setattr(hub, "get_token", lambda: "a-token")
+    hfh = pytest.importorskip("huggingface_hub")
+    monkeypatch.setattr(hfh, "get_token", lambda: "a-token")
     with pytest.raises(PermissionError, match="not signed out"):
         weekly.signed_out_api()
