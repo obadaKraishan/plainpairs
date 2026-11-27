@@ -102,7 +102,8 @@ def report(
         lines.append(
             f"- DailyMed: full release {s.get('dailymed_full_release')}, read through "
             f"{s.get('dailymed_updates_through')}; files: {kinds.get('weekly', 0)} weekly, "
-            f"{kinds.get('daily', 0)} daily; weekdays {cov.get('after')} to {cov.get('until')}: "
+            f"{kinds.get('daily', 0)} daily; weekdays after {cov.get('after')} through "
+            f"{cov.get('until')}: "
             f"{cov.get('weekdays', 0)}, covered {cov.get('weekdays_covered', 0)}, missing "
             f"{', '.join(cov.get('weekdays_missing') or []) or 'none'}, without a file "
             f"{', '.join(cov.get('weekdays_without_file') or []) or 'none'}"
