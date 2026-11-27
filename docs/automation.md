@@ -23,7 +23,8 @@ and delivered from the maintainer's Mac; the workflow builds 0.2.1 and every ver
 2. **Check for a new export.** Read `download.json`; if `export_date` equals the last release's,
    stop with nothing to do.
 3. **Download.** The 14 parts, one at a time, each streamed and checked against its size; the
-   runner's disk (14 GB) holds the 1.9 GB zipped and nothing is unpacked.
+   runner's disk holds the 1.9 GB zipped and nothing is unpacked (a standard runner had 87 GB
+   free at the start on 2026-11-27, and 82 GB at the lowest).
 4. **Structure from DailyMed** (for the `current` configuration). The full release (6 parts,
    18.1 GB) is read once; each week only DailyMed's update files since the last run are
    fetched. DailyMed's page lists one file per working day for the current week and one file
@@ -37,11 +38,12 @@ and delivered from the maintainer's Mac; the workflow builds 0.2.1 and every ver
    or the export day itself) is counted and allowed. A label changed since the last run is read from the update
    that holds its new version; an unchanged label keeps the structure of the last build. The
    zip file metadata (7.65 MB) is read again for the "served" flag. About 0.7 GB a week, read
-   in place like the full release. The full release does not fit a standard runner's disk
-   (14 GB), so the weekly run starts from the last build's structure table and reads only
-   update files; whether the full release must be read again from time to time (DailyMed
-   replaces it on its own schedule) is checked against the update files' counts before the run
-   is automated.
+   in place like the full release (the first run, on 2026-11-27, read one daily file of
+   129 MB). The weekly run never reads the full release: it rebuilds the last version's structure
+   from the published `current` tables (their measures from structure) and reads only update
+   files. Whether
+   the full release must be read again from time to time (DailyMed replaces it on its own
+   schedule) is still open; each run's report gives the update files and their label counts.
 5. **Parse and build** the three tables (`docs/schema.md`) for labels in scope, with the two
    small listing files read the same day (`plainpairs listed-download`, then
    `plainpairs build --listed --structure`), then the codes (`plainpairs codes --structure`).
@@ -126,8 +128,17 @@ A second job, `report`, runs when the first fails or stops: it calls `failure-is
 opens an issue titled "Weekly update stopped", or comments on the one already open, with the
 report (counts only). While delivery is off, it writes the would-be issue to the job summary.
 
+**Measured.** The first run by hand, with delivery off (2026-11-27, run 46011002223), took
+1 h 2 min 39 s on a standard runner, 3,273 s of it in the update: 19 calls and 2,048,518,491
+bytes, inside the caps of 120 calls and 4 GB. Free space on the runner was 87 GB at the start,
+84 GB after the update and 82 GB after the pack. It built 0.2.1 from the export of 2026-11-27
+(3 labels with record fields changed only), and every check passed: the release check (0
+problems), the pack check and the card validator. The two delivery steps were skipped and no
+issue was opened.
+
 **Switched on and off.** The schedule (Mondays, 07:23 UTC) and `DELIVERY_ENABLED: "true"` change
-together, in one pull request (a test checks it). Setting `DELIVERY_ENABLED` back to "false"
+together, in one pull request (a test checks it). They were switched on on 2026-11-27; the first
+scheduled run is on Monday, 2026-11-30. Setting `DELIVERY_ENABLED` back to "false"
 makes every run a dry run: it builds and checks, uploads nothing and opens no issue. A run can
 always be started by hand from the Actions tab.
 
