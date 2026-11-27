@@ -204,6 +204,47 @@ def test_an_update_stops_before_any_download_when_a_week_is_missing(tmp_path):
     ]
 
 
+class FilesSources(FakeSources):
+    """DailyMed lists a weekly file and two daily ones; none is downloaded (no zip to read)."""
+
+    def dailymed_choice(self, after, until):
+        listed = [
+            update.UpdateFile("w", "u", "2026-11-20", 0, "1MB", "0" * 32, "2026-11-16", "weekly"),
+            update.UpdateFile("d1", "u", "2026-11-23", 0, "1MB", "0" * 32),
+            update.UpdateFile("d2", "u", "2026-11-24", 0, "1MB", "0" * 32),
+        ]
+        chosen = update.choose(listed, after, until)
+        return update.UpdateChoice(chosen, update.coverage(listed, chosen, after, until))
+
+
+def test_the_update_records_the_full_release_and_the_last_day_read(tmp_path):
+    root, prev, st, _labels = _previous(tmp_path)
+    write_export(root, "2026-11-26", records())
+    s = update.run(prev, st, tmp_path / "work", FilesSources(root, "2026-11-26", 2))
+    assert s["status"] == "ready"
+    assert s["dailymed_full_release"] == "2026-11-13"
+    assert s["dailymed_updates_through"] == "2026-11-24"  # not the export day: no file for it
+    built = json.loads((tmp_path / "work" / "tables" / "build_summary.json").read_text())
+    assert built["structure"]["release_date"] == "2026-11-24"
+    assert built["dailymed"] == {
+        "full_release": "2026-11-13",
+        "updates_through": "2026-11-24",
+        "update_files": ["w", "d1", "d2"],
+    }
+
+
+def test_the_card_names_the_full_release_and_the_update_files():
+    from plainpairs import pack
+
+    src = {
+        "dailymed_release": "2026-11-24",
+        "dailymed_full_release": "2026-11-13",
+        "dailymed_updates_through": "2026-11-24",
+    }
+    assert pack.dailymed_words(src) == "2026-11-13, with its update files through 2026-11-24"
+    assert pack.dailymed_words({"dailymed_release": "2026-11-13"}) == "2026-11-13"
+
+
 def test_previous_from_a_pack(tmp_path):
     from plainpairs import codes, pack
 

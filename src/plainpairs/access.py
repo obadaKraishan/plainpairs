@@ -675,8 +675,8 @@ def read_me_rows(manifest: Mapping[str, Any], what: str) -> list[list[str]]:
         ],
         [
             "DailyMed, National Library of Medicine: the text structure of current labels (its "
-            f"full release of human prescription labels of {s.get('dailymed_release') or ''}, "
-            "with its update files since) and the served flag. Courtesy of the National Library "
+            f"full release of human prescription labels of {pack.dailymed_words(dict(s))}) and the "
+            "served flag. Courtesy of the National Library "
             "of Medicine."
         ],
         [

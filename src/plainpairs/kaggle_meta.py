@@ -418,7 +418,7 @@ def description(manifest: dict[str, Any], card: str) -> str:
         f"mark: their text is held back ({manifest['held_back']['label_text_rows_marked']:,} "
         "text rows), their record rows stay.\n"
         "- **Text structure of `current` labels:** DailyMed's full release of human "
-        f"prescription labels of {s['dailymed_release']}. Courtesy of the National Library of "
+        f"prescription labels of {pack.dailymed_words(s)}. Courtesy of the National Library of "
         "Medicine.\n"
         f"- **`nci`:** pages read on {s['nci_pages_read']}. Credit the National Cancer "
         "Institute as the source; every row carries its credit line. Images, figures, tables "

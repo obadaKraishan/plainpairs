@@ -74,6 +74,13 @@ All notable changes to this project are recorded here. The format follows
   weekly file of each earlier week (never both for one day), and stops before downloading
   anything when a weekday of the span is no longer covered by any listed file. `summary.json`
   gives the files chosen, the days covered and the SHA-256 of the NCI tables carried over.
+- `update` records the last day DailyMed's update files cover as the day the structure was read
+  through (not the export day, which may have no file yet), so the next update reads a file
+  DailyMed posts later for that day; and it keeps the date of the full release the structure
+  started from. The manifest gives both (`dailymed_full_release`, `dailymed_updates_through`),
+  and the card, LICENSES.md, the Kaggle description and the workbooks' Read me say "its full
+  release of human prescription labels of 2026-11-13, with its update files through
+  2026-11-25" instead of naming the export day as a full release.
 
 ## [0.1.0] - 2026-11-16
 
