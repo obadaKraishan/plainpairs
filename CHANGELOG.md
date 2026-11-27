@@ -6,6 +6,11 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The Zenodo DOI of version 0.2.0 of the software and documents (10.5281/zenodo.24576965),
+  beside the all-versions DOI (10.5281/zenodo.24267450), in the README, `CITATION.cff`
+  (`identifiers`) and `docs/paper-facts.md`.
+
 ## [0.2.0] - 2026-11-27
 
 The first weekly update and the first version with the easy-access files. The corpus, version

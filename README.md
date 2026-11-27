@@ -105,7 +105,8 @@ That is version 0.2.0; the dataset's card gives the citation of each version. Pl
 the sources' credit lines (in the card and in `LICENSES.md`). The software and
 documents are archived on Zenodo, with no data table:
 <https://doi.org/10.5281/zenodo.24267450>. This DOI stands for all versions and resolves to the
-latest; version 0.1.0 is <https://doi.org/10.5281/zenodo.24267451>. GitHub's "Cite this
+latest; version 0.2.0 is <https://doi.org/10.5281/zenodo.24576965> and version 0.1.0
+<https://doi.org/10.5281/zenodo.24267451>. GitHub's "Cite this
 repository" reads `CITATION.cff`.
 
 ## License
