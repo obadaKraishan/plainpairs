@@ -77,11 +77,52 @@ def test_weekly_files_are_read_and_fill_the_weeks_no_longer_listed_by_day():
     assert c["weekdays_missing"] == [] and c["weekdays_without_file"] == ["2026-11-26"]
 
 
-def test_a_week_listed_day_by_day_is_never_read_twice():
-    files = update.daily_updates(PAGE_WEEKS)
-    week = update.UpdateFile("w", "u", "2026-11-27", 1, "1MB", "0" * 32, "2026-11-23", "weekly")
-    chosen = update.choose([*files, week], "2026-11-20", "2026-11-27")
-    assert [f.kind for f in chosen] == ["daily", "daily", "daily"]
+def _week(first, last, name="w"):
+    return update.UpdateFile(name, "u", last, 1, "1MB", "0" * 32, first, "weekly")
+
+
+def _day(day, name=None):
+    return update.UpdateFile(name or f"d{day}", "u", day, 1, "1MB", "0" * 32)
+
+
+def test_a_week_listed_both_ways_is_read_once_from_its_weekly_file():
+    # DailyMed posts the new weekly file while it still lists the week's daily files: the week
+    # is read once, from the weekly file, and no day of it is left uncovered.
+    files = [_week("2026-11-16", "2026-11-20", "w1"), _week("2026-11-23", "2026-11-27", "w2")]
+    files += [_day("2026-11-23"), _day("2026-11-24"), _day("2026-11-25")]
+    chosen = update.choose(files, "2026-11-20", "2026-11-27")
+    assert [f.name for f in chosen] == ["w2"]
+    c = update.coverage(files, chosen, "2026-11-20", "2026-11-27")
+    assert c["weekdays_missing"] == [] and c["weekdays_covered"] == 5
+
+
+def test_thanksgiving_with_no_file_never_stops_a_run():
+    """2026-11-26 has no DailyMed file. None of the pages the next runs may meet stops them."""
+    weeks = [_week("2026-11-09", "2026-11-13"), _week("2026-11-16", "2026-11-20", "w1120")]
+    # 2026-11-27: the week is listed day by day, with no file for 11-26 (and none yet for 11-27).
+    page = [*weeks, _day("2026-11-23"), _day("2026-11-24"), _day("2026-11-25")]
+    chosen = update.choose(page, "2026-11-25", "2026-11-27")
+    c = update.coverage(page, chosen, "2026-11-25", "2026-11-27")
+    assert chosen == [] and c["weekdays_missing"] == []
+    assert c["weekdays_without_file"] == ["2026-11-26", "2026-11-27"]
+    # 2026-11-30: the week has become one weekly file, which covers 11-26 within its range.
+    page = [*weeks, _week("2026-11-23", "2026-11-27", "w1127")]
+    chosen = update.choose(page, "2026-11-25", "2026-11-30")
+    c = update.coverage(page, chosen, "2026-11-25", "2026-11-30")
+    assert [f.name for f in chosen] == ["w1127"] and c["weekdays_missing"] == []
+    assert c["weekdays_without_file"] == ["2026-11-30"]
+    # In between: the weekly file and the week's daily files listed together.
+    page = [*page, _day("2026-11-23"), _day("2026-11-24"), _day("2026-11-25")]
+    chosen = update.choose(page, "2026-11-25", "2026-11-30")
+    c = update.coverage(page, chosen, "2026-11-25", "2026-11-30")
+    assert [f.name for f in chosen] == ["w1127"] and c["weekdays_missing"] == []
+    # A later run that starts after the holiday (11-27 read from a daily file) never meets it.
+    page = [*weeks, _day("2026-11-23"), _day("2026-11-24"), _day("2026-11-25"), _day("2026-11-27")]
+    chosen = update.choose(page, "2026-11-25", "2026-11-27")
+    c = update.coverage(page, chosen, "2026-11-25", "2026-11-27")
+    assert [f.day for f in chosen] == ["2026-11-27"] and c["weekdays_without_file"] == [
+        "2026-11-26"
+    ]
 
 
 def test_a_week_no_longer_listed_stops_the_update():

@@ -6,6 +6,14 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- `update` takes DailyMed's weekly file whenever it reaches into the span, and a daily file only
+  for a day no chosen weekly file covers. A week that DailyMed lists both ways for a while (the
+  new weekly file and the old daily files) is read once and never counts as missing; before,
+  the weekly file was dropped and two days of it would have stopped every run that week. A
+  weekday with no file at all (2026-11-26, Thanksgiving) stops no run (tests for each page
+  state).
+
 ### Added
 - The Zenodo DOI of version 0.2.0 of the software and documents (10.5281/zenodo.24576965),
   beside the all-versions DOI (10.5281/zenodo.24267450), in the README, `CITATION.cff`
